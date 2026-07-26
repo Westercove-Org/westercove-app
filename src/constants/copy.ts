@@ -1,0 +1,146 @@
+/**
+ * Verbatim product copy, lifted from the high-fidelity screens and specs.
+ * The voice is deliberate: plain and warm, the word "died" over softer
+ * substitutes, and never a nudge about absence.
+ */
+export const copy = {
+  wordmark: 'Westercove',
+
+  crisis: {
+    bannerLine: 'In crisis? Call or text 988 · Text HOME to 741741',
+    call988: 'Call or text 988',
+    call988Sub: 'Suicide and Crisis Lifeline',
+    textHome: 'Text HOME to 741741',
+    textHomeSub: 'Crisis Text Line',
+  },
+
+  home: {
+    prompt: 'What are you feeling?',
+    search: 'Search your entries, books, memories',
+    recent: 'RECENT',
+  },
+
+  journal: {
+    prompt: 'What are you feeling?',
+    entries: 'JOURNALS',
+    empty: 'There is nothing here yet, and that is fine. Begin when you are ready.',
+  },
+
+  discover: {
+    search: 'Search books, training, community',
+    tapBook: 'Tap a book to fetch its summary.',
+    trainingTitle: 'Trainings and workshops',
+    trainingSub: 'By region and loss type, updated over time',
+    communityTitle: 'Peer connection',
+    communitySub: 'Opens in a later phase',
+    communityPhase: 'Phase 3',
+  },
+
+  support: {
+    needSomeone: 'IF YOU NEED SOMEONE NOW',
+    search: 'Search support and reading',
+    orgs: 'ORGANIZATIONS BY LOSS TYPE',
+    reading: 'READING',
+  },
+
+  profile: {
+    lovedOnes: 'LOVED ONES',
+    yourSpace: 'YOUR SPACE',
+    settings: 'SETTINGS',
+  },
+
+  disclaimer:
+    'Westercove is a wellness companion, not therapy, and it does not diagnose.',
+
+  launch: {
+    tagline: 'A quiet place, whenever you want it.',
+    begin: 'Begin',
+    haveAccount: 'I already have an account',
+  },
+
+  disclaimerScreen: {
+    title: 'Before we begin',
+    body: 'Westercove is a wellness companion, not therapy, and it does not diagnose. It is here whenever you want it, and asks nothing of you when you do not.',
+    age: 'I am 18 or older and I agree to the Westercove Terms and Conditions.',
+    agree: 'I agree',
+  },
+
+  entryPath: {
+    title: 'How are you arriving?',
+    consumer: 'Start a free trial',
+    consumerSub: 'Through Westercove directly',
+    license: 'I have a license code',
+    licenseSub: 'From an employer or partner organization',
+    licensePrivacy:
+      'Your organization covers the cost. It cannot see anything you write.',
+    licensePlaceholder: 'Enter your license code',
+    continue: 'Continue',
+  },
+
+  signIn: {
+    title: 'Welcome',
+    subtitle: 'Sign in to continue',
+    email: 'Email',
+    emailPlaceholder: 'email address',
+    password: 'Password',
+    passwordPlaceholder: 'Enter password',
+    saveEmail: 'Save email',
+    signIn: 'Sign in',
+    forgot: 'Forgot email or password?',
+    newHere: 'New to Westercove',
+    create: 'Create an account',
+    createHint: 'Setting up takes a moment, with no long intake.',
+  },
+
+  gate: {
+    saveForLater: 'Save and continue later',
+    skip: 'Skip this question',
+    next: 'Continue',
+    done: 'Enter Westercove',
+    q1: 'What would you like me to call you?',
+    q1Placeholder: 'Your name',
+    q2: 'What is your loved one’s name?',
+    q2Placeholder: 'Their name',
+    q3: 'Who were they to you?',
+    q4Human: '', // species step is pet-only
+    q4Pet: 'What kind of animal were they?',
+    q5: 'How would you like me to be with you?',
+    tonePrompt: 'Tap what fits. You can change it anytime.',
+  },
+
+  safety: {
+    // Level 2 — gentle, non-blocking, appended below a response.
+    inlineTitle: 'Support is here if you want it',
+    inlineBody:
+      'Whatever you are carrying, you do not have to carry it alone. These are here anytime.',
+    // Level 3 — Support Mode.
+    supportModeTitle: 'Let us slow down together',
+    supportModeBody:
+      'There is no rush and nothing to get right. Stay here as long as you need.',
+    grounding:
+      'If it helps, take one slow breath. Feel where you are sitting. You are here, and this moment will pass.',
+    reachTrusted: 'Reach someone you trust',
+    // Level 4 — full-screen crisis interface.
+    crisisTitle: 'You deserve support right now',
+    crisisBody: 'Please reach out. Someone is ready to talk or text with you.',
+    softExit: 'Return to a quiet screen',
+  },
+} as const;
+
+/** Organizations by loss type (Support). */
+export const LOSS_TYPES = [
+  'Child',
+  'Military',
+  'Overdose',
+  'Pet',
+  'Suicide',
+] as const;
+
+/** Reading list rows (Support). */
+export const READING = [
+  { title: 'Essays' },
+  { title: 'Framework explainers' },
+  { title: 'Grief glossary' },
+  { title: 'White papers' },
+  { title: 'Why Westercove', subtitle: 'Founder story' },
+] as const;
