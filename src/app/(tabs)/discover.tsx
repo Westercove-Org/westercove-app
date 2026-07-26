@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { PadlockIcon } from '@/components/icons';
 import { Screen } from '@/components/Screen';
@@ -7,7 +8,8 @@ import { SearchPill } from '@/components/ui/SearchPill';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
-import { MOCK_BOOKS } from '@/features/discover/mockBooks';
+import { BookSummarySheet } from '@/features/discover/BookSummarySheet';
+import { MOCK_BOOKS, type Book } from '@/features/discover/mockBooks';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
@@ -15,6 +17,7 @@ import { radii, spacing } from '@/theme/tokens';
 export default function DiscoverScreen() {
   const { colors } = useTheme();
   const now = new Date();
+  const [selected, setSelected] = useState<Book | null>(null);
 
   return (
     <Screen header={{ title: 'Discover', subtitle: formatHeaderDateTime(now) }}>
@@ -29,7 +32,13 @@ export default function DiscoverScreen() {
         contentContainerStyle={styles.booksRow}
       >
         {MOCK_BOOKS.map((book) => (
-          <View key={book.id} style={styles.book}>
+          <Pressable
+            key={book.id}
+            accessibilityRole="button"
+            accessibilityLabel={`${book.title} by ${book.author}. Tap to fetch its summary.`}
+            onPress={() => setSelected(book)}
+            style={styles.book}
+          >
             <View style={[styles.spine, { backgroundColor: book.spine }]}>
               <Text color="#FFFFFF" style={styles.spineTitle}>
                 {book.title}
@@ -39,7 +48,7 @@ export default function DiscoverScreen() {
             <Text variant="bodySmall" color="textMuted" style={styles.author}>
               {book.author}
             </Text>
-          </View>
+          </Pressable>
         ))}
       </ScrollView>
       <Text variant="bodySmall" color="textMuted" style={styles.tapHint}>
@@ -85,6 +94,8 @@ export default function DiscoverScreen() {
           </View>
         </Card>
       </View>
+
+      <BookSummarySheet book={selected} onClose={() => setSelected(null)} />
     </Screen>
   );
 }

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { ComposeCard } from '@/components/ComposeCard';
 import { EntryCard } from '@/components/EntryCard';
+import { HardDateCard } from '@/components/HardDateCard';
 import { Screen } from '@/components/Screen';
 import { SearchPill } from '@/components/ui/SearchPill';
 import { SectionLabel } from '@/components/ui/SectionLabel';
@@ -66,6 +67,11 @@ export default function HomeScreen() {
           onPress={() => router.push({ pathname: '/entry/[id]', params: { id: entry.id } })}
         />
       ))}
+
+      <HardDateCard
+        label="An anniversary is coming up soon"
+        onPrepare={() => compose('Anniversary')}
+      />
     </Screen>
   );
 }

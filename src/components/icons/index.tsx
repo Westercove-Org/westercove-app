@@ -153,3 +153,19 @@ export function PlusIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function PlayIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M7 5 L19 12 L7 19 Z" />
+    </Base>
+  );
+}
+
+export function PauseIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M8 5 V19 M16 5 V19" />
+    </Base>
+  );
+}

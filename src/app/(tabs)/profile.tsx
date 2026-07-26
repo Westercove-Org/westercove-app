@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { PlusIcon } from '@/components/icons';
@@ -11,22 +12,28 @@ import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
 
-const YOUR_SPACE = [
-  { label: 'Loved-one profiles', subtitle: 'Human or pet' },
-  { label: 'Memories' },
-  { label: 'Anniversaries and Hard Dates' },
-  { label: 'Stabilizing Practices' },
-  { label: 'Grief Patterns' },
-  { label: 'What I Know', subtitle: 'What the companion has learned, editable' },
-  { label: 'Custom commands', subtitle: 'Define your own' },
-  { label: 'Export' },
+type Row = { label: string; subtitle?: string; section: string };
+
+const YOUR_SPACE: Row[] = [
+  { label: 'Loved-one profiles', subtitle: 'Human or pet', section: 'loved-ones' },
+  { label: 'Memories', section: 'memories' },
+  { label: 'Anniversaries and Hard Dates', section: 'anniversaries' },
+  { label: 'Stabilizing Practices', section: 'practices' },
+  { label: 'Grief Patterns', section: 'patterns' },
+  {
+    label: 'What I Know',
+    subtitle: 'What the companion has learned, editable',
+    section: 'what-i-know',
+  },
+  { label: 'Custom commands', subtitle: 'Define your own', section: 'custom-commands' },
+  { label: 'Export', section: 'export' },
 ];
 
-const SETTINGS = [
-  { label: 'Account' },
-  { label: 'Subscription' },
-  { label: 'Help' },
-  { label: 'Legal', subtitle: 'Terms, Privacy, Disclaimer' },
+const SETTINGS: Row[] = [
+  { label: 'Account', section: 'account' },
+  { label: 'Subscription', section: 'subscription' },
+  { label: 'Help', section: 'help' },
+  { label: 'Legal', subtitle: 'Terms, Privacy, Disclaimer', section: 'legal' },
 ];
 
 const LOVED_ONES = [
@@ -35,8 +42,28 @@ const LOVED_ONES = [
 ];
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { colors } = useTheme();
   const now = new Date();
+
+  const go = (section: string) => {
+    if (section === 'what-i-know') router.push('/profile/what-i-know');
+    else router.push({ pathname: '/profile/[section]', params: { section } });
+  };
+
+  const renderRows = (rows: Row[]) => (
+    <Card padded={false}>
+      {rows.map((row, i) => (
+        <ListRow
+          key={row.label}
+          label={row.label}
+          subtitle={row.subtitle}
+          divider={i < rows.length - 1}
+          onPress={() => go(row.section)}
+        />
+      ))}
+    </Card>
+  );
 
   return (
     <Screen header={{ title: 'Profile', subtitle: formatHeaderDateTime(now) }}>
@@ -65,45 +92,17 @@ export default function ProfileScreen() {
       </View>
 
       <SectionLabel>{copy.profile.yourSpace}</SectionLabel>
-      <View style={styles.cardWrap}>
-        <Card padded={false}>
-          {YOUR_SPACE.map((row, i) => (
-            <ListRow
-              key={row.label}
-              label={row.label}
-              subtitle={row.subtitle}
-              divider={i < YOUR_SPACE.length - 1}
-              onPress={() => {}}
-            />
-          ))}
-        </Card>
-      </View>
+      <View style={styles.cardWrap}>{renderRows(YOUR_SPACE)}</View>
 
       <SectionLabel>{copy.profile.settings}</SectionLabel>
-      <View style={styles.cardWrap}>
-        <Card padded={false}>
-          {SETTINGS.map((row, i) => (
-            <ListRow
-              key={row.label}
-              label={row.label}
-              subtitle={row.subtitle}
-              divider={i < SETTINGS.length - 1}
-              onPress={() => {}}
-            />
-          ))}
-        </Card>
-      </View>
+      <View style={styles.cardWrap}>{renderRows(SETTINGS)}</View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   cardWrap: { paddingHorizontal: spacing.screen },
-  avatars: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.screen,
-    gap: spacing.xl,
-  },
+  avatars: { flexDirection: 'row', paddingHorizontal: spacing.screen, gap: spacing.xl },
   avatarItem: { alignItems: 'center', gap: spacing.xs },
   avatar: {
     width: 56,

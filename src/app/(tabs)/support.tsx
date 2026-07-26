@@ -1,6 +1,8 @@
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { MessageIcon, PhoneIcon } from '@/components/icons';
+import { MessageIcon, PauseIcon, PhoneIcon, PlayIcon } from '@/components/icons';
 import { Screen } from '@/components/Screen';
 import { Card } from '@/components/ui/Card';
 import { ListRow } from '@/components/ui/ListRow';
@@ -15,7 +17,10 @@ import { radii, spacing } from '@/theme/tokens';
 
 export default function SupportScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
   const now = new Date();
+  const [listen, setListen] = useState(false);
+  const [playing, setPlaying] = useState<string | null>(null);
 
   return (
     <Screen header={{ title: 'Support', subtitle: formatHeaderDateTime(now) }}>
@@ -76,15 +81,29 @@ export default function SupportScreen() {
       <SectionLabel>{copy.support.orgs}</SectionLabel>
       <View style={[styles.pad, styles.orgs]}>
         {LOSS_TYPES.map((loss) => (
-          <View key={loss} style={[styles.orgChip, { borderColor: colors.line }]}>
+          <Pressable
+            key={loss}
+            accessibilityRole="button"
+            accessibilityLabel={`${loss} loss organizations`}
+            onPress={() =>
+              router.push({ pathname: '/support/org/[loss]', params: { loss } })
+            }
+            style={[styles.orgChip, { borderColor: colors.line }]}
+          >
             <Text variant="body" color="amethystText">
               {loss}
             </Text>
-          </View>
+          </Pressable>
         ))}
       </View>
 
-      <SectionLabel>{copy.support.reading}</SectionLabel>
+      <View style={styles.readingHead}>
+        <SectionLabel>{copy.support.reading}</SectionLabel>
+        <View style={[styles.toggle, { borderColor: colors.line }]}>
+          <ReadListenTab label="Read" active={!listen} onPress={() => setListen(false)} />
+          <ReadListenTab label="Listen" active={listen} onPress={() => setListen(true)} />
+        </View>
+      </View>
       <View style={styles.pad}>
         <Card padded={false}>
           {READING.map((row, i) => (
@@ -93,6 +112,27 @@ export default function SupportScreen() {
               label={row.title}
               subtitle={'subtitle' in row ? (row.subtitle as string) : undefined}
               divider={i < READING.length - 1}
+              chevron={!listen}
+              trailing={
+                listen ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      playing === row.title ? `Pause ${row.title}` : `Listen to ${row.title}`
+                    }
+                    onPress={() =>
+                      setPlaying((p) => (p === row.title ? null : row.title))
+                    }
+                    style={[styles.play, { backgroundColor: colors.chipGreen }]}
+                  >
+                    {playing === row.title ? (
+                      <PauseIcon size={18} color={colors.forest} />
+                    ) : (
+                      <PlayIcon size={18} color={colors.forest} />
+                    )}
+                  </Pressable>
+                ) : undefined
+              }
               onPress={() => {}}
             />
           ))}
@@ -102,8 +142,48 @@ export default function SupportScreen() {
   );
 }
 
+function ReadListenTab({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={[styles.tab, active && { backgroundColor: colors.chipGreen }]}
+    >
+      <Text variant="bodySmall" color={active ? colors.forest : colors.textMuted}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: spacing.screen },
+  readingHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: spacing.screen,
+  },
+  toggle: { flexDirection: 'row', borderWidth: 1, borderRadius: radii.chip, overflow: 'hidden' },
+  tab: { minHeight: 32, paddingHorizontal: spacing.md, alignItems: 'center', justifyContent: 'center' },
+  play: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   searchWrap: { paddingTop: spacing.xl },
   crisisCard: {
     flexDirection: 'row',
