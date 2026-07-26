@@ -1,6 +1,7 @@
 export { Button, type ButtonProps, type ButtonVariant } from './Button';
 export { Card, type CardProps } from './Card';
 export { Chip, type ChipProps } from './Chip';
+export { EmptyState } from './EmptyState';
 export { EntryTag } from './EntryTag';
 export { ListRow, type ListRowProps } from './ListRow';
 export { Skeleton, type SkeletonProps } from './Skeleton';
