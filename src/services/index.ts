@@ -3,6 +3,7 @@ import { MockCompanionService, type CompanionService } from './companion';
 import { MockContentService, type ContentService } from './content';
 import { MockCrmService, type CrmService } from './crm';
 import { MockSafetyService, type SafetyService } from './safety';
+import { MockSubscriptionService, type SubscriptionService } from './subscription';
 import { MockVoiceService, type VoiceService } from './voice';
 
 /**
@@ -17,6 +18,7 @@ export const services: {
   companion: CompanionService;
   voice: VoiceService;
   content: ContentService;
+  subscription: SubscriptionService;
 } = {
   safety: new MockSafetyService(),
   auth: new MockAuthService(),
@@ -24,6 +26,7 @@ export const services: {
   companion: new MockCompanionService(),
   voice: new MockVoiceService(),
   content: new MockContentService(),
+  subscription: new MockSubscriptionService(),
 };
 
 export * from './safety';
@@ -32,3 +35,4 @@ export * from './crm';
 export * from './companion';
 export * from './voice';
 export * from './content';
+export * from './subscription';

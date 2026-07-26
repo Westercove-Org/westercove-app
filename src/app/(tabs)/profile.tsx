@@ -48,6 +48,9 @@ export default function ProfileScreen() {
 
   const go = (section: string) => {
     if (section === 'what-i-know') router.push('/profile/what-i-know');
+    else if (section === 'subscription') router.push('/subscription');
+    else if (section === 'export') router.push('/export');
+    else if (section === 'account') router.push('/account');
     else router.push({ pathname: '/profile/[section]', params: { section } });
   };
 
