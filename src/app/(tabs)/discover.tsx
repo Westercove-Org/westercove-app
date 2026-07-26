@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -16,13 +17,17 @@ import { radii, spacing } from '@/theme/tokens';
 
 export default function DiscoverScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
   const now = new Date();
   const [selected, setSelected] = useState<Book | null>(null);
 
   return (
     <Screen header={{ title: 'Discover', subtitle: formatHeaderDateTime(now) }}>
       <View style={styles.searchWrap}>
-        <SearchPill placeholder={copy.discover.search} />
+        <SearchPill
+          placeholder={copy.discover.search}
+          onPress={() => router.push({ pathname: '/search', params: { scope: 'discover' } })}
+        />
       </View>
 
       <SectionLabel>BOOKS</SectionLabel>

@@ -54,7 +54,10 @@ export default function HomeScreen() {
       />
 
       <View style={{ paddingHorizontal: spacing.screen, paddingTop: spacing.xl }}>
-        <SearchPill placeholder={copy.home.search} />
+        <SearchPill
+          placeholder={copy.home.search}
+          onPress={() => router.push({ pathname: '/search', params: { scope: 'global' } })}
+        />
       </View>
 
       <SectionLabel>{copy.home.recent}</SectionLabel>

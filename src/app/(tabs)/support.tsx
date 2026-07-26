@@ -75,7 +75,10 @@ export default function SupportScreen() {
       </View>
 
       <View style={[styles.pad, styles.searchWrap]}>
-        <SearchPill placeholder={copy.support.search} />
+        <SearchPill
+          placeholder={copy.support.search}
+          onPress={() => router.push({ pathname: '/search', params: { scope: 'support' } })}
+        />
       </View>
 
       <SectionLabel>{copy.support.orgs}</SectionLabel>
