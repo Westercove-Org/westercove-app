@@ -1,6 +1,8 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { secureStorage } from '@/lib/secureStorage';
 import { services } from '@/services';
 import { SafetyLevel } from '@/services/safety';
 import type { ConversationTurn, Entry } from './types';
@@ -91,7 +93,9 @@ function lovedOneName(): string | undefined {
   return useSessionStore.getState().session?.gateAnswers.lovedOneName;
 }
 
-export const useEntriesStore = create<EntriesState>((set, get) => ({
+export const useEntriesStore = create<EntriesState>()(
+  persist(
+    (set, get) => ({
   entries: seed(),
 
   async addEntry({ type, text, justHeard }) {
@@ -156,4 +160,12 @@ export const useEntriesStore = create<EntriesState>((set, get) => ({
   getEntry(id) {
     return get().entries.find((e) => e.id === id);
   },
-}));
+    }),
+    {
+      // Cached entries are readable offline; only the entries are persisted.
+      name: 'westercove.entries',
+      storage: createJSONStorage(() => secureStorage),
+      partialize: (s) => ({ entries: s.entries }),
+    },
+  ),
+);
