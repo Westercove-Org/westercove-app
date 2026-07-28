@@ -100,14 +100,12 @@ export const radii = {
 } as const;
 
 /**
- * Serif display faces (Source Serif 4) for the wordmark, greeting, and
- * screen titles; body/UI use the native system sans (SF / Roboto / system-ui)
- * by leaving fontFamily undefined, which the design system asks for.
+ * One native system font family (Design System v2 §3): San Francisco on iOS,
+ * Roboto on Android, system-ui on web. Size and weight carry the hierarchy;
+ * there is no separate display/serif face. Native is selected by leaving
+ * fontFamily undefined on the native platforms.
  */
 export const fonts = {
-  serifBold: 'SourceSerif4_700Bold',
-  serifSemiBold: 'SourceSerif4_600SemiBold',
-  serifRegular: 'SourceSerif4_400Regular',
   sans: Platform.select({ web: 'system-ui', default: undefined }) as
     | string
     | undefined,
@@ -125,8 +123,13 @@ export type TypographyVariant =
 
 /** Type scale (handoff §3.2). Color is applied by the Text component, not here. */
 export const typography: Record<TypographyVariant, TextStyle> = {
-  display: { fontFamily: fonts.serifBold, fontSize: 28, lineHeight: 34 },
-  screenTitle: { fontFamily: fonts.serifBold, fontSize: 22, lineHeight: 28 },
+  display: { fontFamily: fonts.sans, fontSize: 28, lineHeight: 34, fontWeight: '700' },
+  screenTitle: {
+    fontFamily: fonts.sans,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '700',
+  },
   sectionLabel: {
     fontFamily: fonts.sans,
     fontSize: 12,

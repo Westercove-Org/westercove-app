@@ -16,6 +16,7 @@ import {
   type EntryType,
 } from '@/features/journal/entryTypes';
 import { useEntriesStore } from '@/features/journal/entriesStore';
+import { useQuestionTimer } from '@/features/questions/useQuestionTimer';
 import { SafetyLevel } from '@/services/safety';
 import { services } from '@/services';
 import { useTheme } from '@/theme';
@@ -38,6 +39,9 @@ export function NewEntry() {
   const [mode, setMode] = useState<Mode>('thoughts');
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // Accumulate talk-time while composing a new entry too.
+  useQuestionTimer();
 
   const onMic = async () => {
     setListening(true);
@@ -176,8 +180,8 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.lg,
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
     textAlignVertical: 'top',
   },
   actions: {

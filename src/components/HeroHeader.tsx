@@ -16,7 +16,7 @@ export interface HeroHeaderProps {
 
 /**
  * The landscape hero at the top of every tab: an amethyst sky over grey hills
- * and green fields, with the wordmark and a serif title/greeting overlaid. A
+ * and green fields, with the wordmark and title/greeting overlaid. A
  * stylized SVG placeholder for the supplied day/night hero imagery (swapped
  * in Phase 4). The dark-mode moonlit variant lands with that imagery.
  */
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     justifyContent: 'space-between',
   },
-  wordmark: { fontFamily: fonts.serifSemiBold, fontSize: 16 },
+  wordmark: { fontFamily: fonts.sans, fontSize: 15, fontWeight: '700' },
   titleBlock: {},
   subtitle: { marginTop: 4 },
 });

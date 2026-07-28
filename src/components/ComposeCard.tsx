@@ -37,7 +37,7 @@ export function ComposeCard({
             onPress={onPressPrompt}
             style={styles.promptText}
           >
-            <Text variant="body" color="textMuted" style={styles.promptLabel}>
+            <Text variant="body" color="textMuted">
               {copy.home.prompt}
             </Text>
           </Pressable>
@@ -73,7 +73,6 @@ const styles = StyleSheet.create({
   wrap: { paddingHorizontal: spacing.screen, paddingTop: spacing.lg },
   promptRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   promptText: { flex: 1 },
-  promptLabel: { fontSize: 18 },
   pencil: {
     width: 44,
     height: 44,

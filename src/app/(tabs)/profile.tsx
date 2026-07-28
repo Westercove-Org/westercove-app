@@ -75,7 +75,7 @@ export default function ProfileScreen() {
         {LOVED_ONES.map((lo) => (
           <View key={lo.name} style={styles.avatarItem}>
             <View style={[styles.avatar, { backgroundColor: lo.color }]}>
-              <Text color="#FFFFFF" style={styles.avatarText}>
+              <Text color="onAccent" style={styles.avatarText}>
                 {lo.initials}
               </Text>
             </View>

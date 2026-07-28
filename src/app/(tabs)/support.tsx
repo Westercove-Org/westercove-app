@@ -38,10 +38,10 @@ export default function SupportScreen() {
           ]}
         >
           <View style={styles.iconCircleFilled}>
-            <PhoneIcon size={22} color="#FFFFFF" />
+            <PhoneIcon size={22} color={colors.onAccent} />
           </View>
           <View style={styles.crisisText}>
-            <Text color="#FFFFFF" style={styles.crisisTitle}>
+            <Text color="onAccent" style={styles.crisisTitle}>
               {copy.crisis.call988}
             </Text>
             <Text variant="bodySmall" color="rgba(255,255,255,0.9)">
@@ -205,6 +205,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.cardGap,
   },
   crisisText: { flex: 1 },
+  // Above the standard type scale on purpose: the in-content crisis card gets
+  // extra legibility emphasis (design system §9, AAA crisis surface).
   crisisTitle: { fontSize: 17, fontWeight: '700' },
   iconCircle: {
     width: 40,

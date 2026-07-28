@@ -30,7 +30,7 @@ export function EntryCard({ type, headline, timestamp, onPress }: EntryCardProps
             <EntryTag label={type} />
             <Text variant="meta">{timestamp}</Text>
           </View>
-          <Text style={styles.headline}>{headline}</Text>
+          <Text variant="cardTitle" style={styles.headline}>{headline}</Text>
         </Card>
       </Pressable>
     </View>
@@ -44,5 +44,5 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headline: { fontSize: 17, lineHeight: 23, fontWeight: '500', marginTop: spacing.sm },
+  headline: { marginTop: spacing.sm },
 });

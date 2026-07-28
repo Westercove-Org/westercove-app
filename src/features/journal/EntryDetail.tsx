@@ -11,6 +11,7 @@ import { Text } from '@/components/ui/Text';
 import { useSafetyRouter } from '@/features/safety/useSafetyRouter';
 import { InlineResourceCard } from '@/features/safety/InlineResourceCard';
 import { useEntriesStore } from '@/features/journal/entriesStore';
+import { useQuestionTimer } from '@/features/questions/useQuestionTimer';
 import { formatEntryTimestamp } from '@/lib/dateFormat';
 import { SafetyLevel } from '@/services/safety';
 import { useTheme } from '@/theme';
@@ -27,6 +28,9 @@ export function EntryDetail() {
 
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // Accumulate talk-time while this conversation screen is focused.
+  useQuestionTimer();
 
   if (!entry) {
     return (
@@ -142,7 +146,7 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headline: { marginTop: spacing.sm },
   thread: { paddingHorizontal: spacing.screen, paddingTop: spacing.md, gap: spacing.md, paddingBottom: spacing.lg },
-  userTurn: { fontSize: 16, lineHeight: 24 },
+  userTurn: {},
   companionTurn: {},
   companionLabel: { marginBottom: spacing.xs, letterSpacing: 0.6 },
   composeRow: {

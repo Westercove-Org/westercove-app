@@ -1,11 +1,5 @@
 import '@/global.css';
 
-import {
-  SourceSerif4_400Regular,
-  SourceSerif4_600SemiBold,
-  SourceSerif4_700Bold,
-} from '@expo-google-fonts/source-serif-4';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -15,22 +9,17 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthGuard } from '@/features/auth/useAuthGuard';
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { QuestionsOverlay } from '@/features/questions/QuestionsOverlay';
 import { useTheme, WestercoveThemeProvider } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded] = useFonts({
-    SourceSerif4_400Regular,
-    SourceSerif4_600SemiBold,
-    SourceSerif4_700Bold,
-  });
-
+  // The app uses only the native system font, so there is nothing to load —
+  // release the splash as soon as we mount.
   useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
-  }, [loaded]);
-
-  if (!loaded) return null;
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <SafeAreaProvider>
@@ -73,6 +62,9 @@ function RootNav() {
           options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
         />
       </Stack>
+      {/* Timer-driven profile questions overlay the whole app; it self-hides
+          until the talk-time timer marks a Day due. */}
+      <QuestionsOverlay />
     </>
   );
 }

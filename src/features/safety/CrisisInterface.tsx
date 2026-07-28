@@ -118,6 +118,8 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 20,
   },
+  // Above the standard type scale on purpose: crisis actions get extra
+  // legibility emphasis (design system §9, AAA crisis interface).
   buttonLabel: { fontSize: 17, fontWeight: '700' },
   softExit: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
 });
