@@ -3,19 +3,18 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { secureStorage } from '@/lib/secureStorage';
 import { services } from '@/services';
-import type { CreateAccountInput } from '@/services/auth';
-import type { Entitlement, GateAnswers, Session } from './types';
+import { SESSION_BASE, profileKey } from '@/features/profiles/profileKeys';
+import type { AuthUser, Entitlement, GateAnswers, Session } from './types';
 
 export type SessionStatus = 'unauthenticated' | 'needs-gate' | 'ready';
 
 interface SessionState {
-  hydrated: boolean;
+  /** The active profile's session (person + gate answers). Per-profile. */
   session: Session | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  beginAccount: (input: CreateAccountInput) => Promise<void>;
+  startBlankSession: (user: AuthUser) => void;
   completeGate: (answers: GateAnswers) => void;
   setEntitlement: (entitlement: Entitlement) => void;
-  signOut: () => void;
+  resetSession: () => void;
 }
 
 const emptyGate: GateAnswers = { mode: 'human', skipped: [] };
@@ -23,41 +22,16 @@ const emptyGate: GateAnswers = { mode: 'human', skipped: [] };
 export const useSessionStore = create<SessionState>()(
   persist(
     (set, get) => ({
-      hydrated: false,
       session: null,
 
-      async signIn(email, password) {
-        const result = await services.auth.signIn(email, password);
-        // A returning user is already past the day-zero gate.
+      // Seed a blank person for a freshly created test profile. Sign-in is
+      // browser-level (profilesStore); each profile carries its own gate state.
+      startBlankSession(user) {
         set({
           session: {
-            user: result.user,
-            entryPath: result.entryPath,
-            entitlement: result.entitlement,
-            sponsorOrganization: result.sponsorOrganization,
-            disclaimerAcked: true,
-            gateComplete: true,
-            gateAnswers: emptyGate,
-          },
-        });
-      },
-
-      async beginAccount(input) {
-        const result = await services.auth.createAccount(input);
-        // Signup writes a single CRM contact carrying lifecycle facts only.
-        await services.crm.createContact({
-          email: result.user.email,
-          firstName: result.user.firstName,
-          entryPath: result.entryPath,
-          entitlement: result.entitlement,
-          sponsorOrganization: result.sponsorOrganization,
-        });
-        set({
-          session: {
-            user: result.user,
-            entryPath: result.entryPath,
-            entitlement: result.entitlement,
-            sponsorOrganization: result.sponsorOrganization,
+            user,
+            entryPath: 'consumer_trial',
+            entitlement: 'trial_active',
             disclaimerAcked: true,
             gateComplete: false,
             gateAnswers: emptyGate,
@@ -78,31 +52,34 @@ export const useSessionStore = create<SessionState>()(
         void services.crm.updateEntitlement(s.user.email, entitlement);
       },
 
-      signOut() {
+      resetSession() {
         set({ session: null });
       },
     }),
     {
-      name: 'westercove.session',
+      // Dynamic per-profile key: bindProfileStores rebinds this before hydrating.
+      name: profileKey(SESSION_BASE, 'unbound'),
       storage: createJSONStorage(() => secureStorage),
       partialize: (s) => ({ session: s.session }),
-      onRehydrateStorage: () => (state) => {
-        // Mark hydration complete so the router guard can act.
-        useSessionStore.setState({ hydrated: true });
-        void state;
-      },
+      // The profiles store owns hydration timing and rebinds the key first.
+      skipHydration: true,
     },
   ),
 );
+
+/** Reset the session store to blank (used when switching/creating profiles). */
+export function resetSession() {
+  useSessionStore.getState().resetSession();
+}
+
+/** Seed a blank session for a new profile. */
+export function startBlankSession(user: AuthUser) {
+  useSessionStore.getState().startBlankSession(user);
+}
 
 /** Derived routing status from the session. */
 export function sessionStatus(session: Session | null): SessionStatus {
   if (!session) return 'unauthenticated';
   if (!session.gateComplete) return 'needs-gate';
   return 'ready';
-}
-
-/** True in every state where crisis resources must work — i.e. always. */
-export function crisisAlwaysAvailable(): boolean {
-  return true;
 }

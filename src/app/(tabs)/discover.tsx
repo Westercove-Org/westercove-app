@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { PadlockIcon } from '@/components/icons';
+import { CheckIcon, PadlockIcon, PlusIcon } from '@/components/icons';
 import { Screen } from '@/components/Screen';
 import { Card } from '@/components/ui/Card';
 import { SearchPill } from '@/components/ui/SearchPill';
@@ -10,6 +10,7 @@ import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { BookSummarySheet } from '@/features/discover/BookSummarySheet';
+import { useLibraryStore } from '@/features/discover/libraryStore';
 import { MOCK_BOOKS, type Book } from '@/features/discover/mockBooks';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { useTheme } from '@/theme';
@@ -20,9 +21,12 @@ export default function DiscoverScreen() {
   const router = useRouter();
   const now = new Date();
   const [selected, setSelected] = useState<Book | null>(null);
+  const bookIds = useLibraryStore((s) => s.bookIds);
+  const toggle = useLibraryStore((s) => s.toggle);
+  const addAll = useLibraryStore((s) => s.addAll);
 
   return (
-    <Screen header={{ title: 'Discover', subtitle: formatHeaderDateTime(now) }}>
+    <Screen header={{ title: 'Discover', subtitle: formatHeaderDateTime(now), image: 'meadow' }}>
       <View style={styles.searchWrap}>
         <SearchPill
           placeholder={copy.discover.search}
@@ -30,34 +34,73 @@ export default function DiscoverScreen() {
         />
       </View>
 
-      <SectionLabel>BOOKS</SectionLabel>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.booksRow}
-      >
-        {MOCK_BOOKS.map((book) => (
-          <Pressable
-            key={book.id}
-            accessibilityRole="button"
-            accessibilityLabel={`${book.title} by ${book.author}. Tap to fetch its summary.`}
-            onPress={() => setSelected(book)}
-            style={styles.book}
-          >
-            <View style={[styles.spine, { backgroundColor: book.spine }]}>
-              <Text color="#FFFFFF" style={styles.spineTitle}>
-                {book.title}
+      <View style={styles.libraryHeader}>
+        <SectionLabel>{copy.library.label}</SectionLabel>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={copy.library.addAll}
+          onPress={addAll}
+          hitSlop={8}
+        >
+          <Text variant="cardTitle" color="forest">
+            {copy.library.addAll}
+          </Text>
+        </Pressable>
+      </View>
+      <View style={styles.blockWrap}>
+        <Card>
+          <Text variant="bodySmall" color="textMuted">
+            {copy.library.intro}
+          </Text>
+        </Card>
+      </View>
+
+      <View style={styles.grid}>
+        {MOCK_BOOKS.map((book) => {
+          const added = bookIds.includes(book.id);
+          return (
+            <View key={book.id} style={styles.gridItem}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${book.title} by ${book.author}. Tap to read its summary.`}
+                onPress={() => setSelected(book)}
+              >
+                <View style={[styles.spine, { backgroundColor: book.spine }]}>
+                  <Text variant="meta" color="rgba(255,255,255,0.7)" style={styles.spineBrand}>
+                    WESTERCOVE
+                  </Text>
+                  <Text color="#FFFFFF" style={styles.spineTitle}>
+                    {book.title}
+                  </Text>
+                  <View style={styles.spineBase} />
+                </View>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: added }}
+                accessibilityLabel={`${added ? copy.library.added : copy.library.add}: ${book.title}`}
+                onPress={() => toggle(book.id)}
+                hitSlop={6}
+                style={[
+                  styles.addBtn,
+                  { backgroundColor: added ? colors.forest : 'rgba(255,255,255,0.9)' },
+                ]}
+              >
+                {added ? (
+                  <CheckIcon size={18} color="#FFFFFF" />
+                ) : (
+                  <PlusIcon size={18} color={book.spine} />
+                )}
+              </Pressable>
+              <Text variant="bodySmall" color="textMuted" style={styles.author}>
+                {book.author}
               </Text>
-              <View style={styles.spineBase} />
             </View>
-            <Text variant="bodySmall" color="textMuted" style={styles.author}>
-              {book.author}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+          );
+        })}
+      </View>
       <Text variant="bodySmall" color="textMuted" style={styles.tapHint}>
-        {copy.discover.tapBook}
+        {copy.library.tapHint}
       </Text>
 
       <SectionLabel>TRAINING / DEVELOPMENT</SectionLabel>
@@ -108,15 +151,39 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   searchWrap: { paddingHorizontal: spacing.screen, paddingTop: spacing.xl },
   blockWrap: { paddingHorizontal: spacing.screen },
-  booksRow: { paddingHorizontal: spacing.screen, gap: spacing.md },
-  book: { width: 132 },
+  libraryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.xl,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.md,
+    gap: spacing.md,
+  },
+  gridItem: { width: '47%', flexGrow: 1 },
+  addBtn: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   spine: {
-    height: 176,
+    height: 188,
     borderRadius: radii.avatar,
     padding: spacing.md,
     justifyContent: 'flex-start',
   },
-  spineTitle: { fontSize: 18, lineHeight: 22, fontWeight: '700' },
+  spineBrand: { letterSpacing: 1, marginBottom: spacing.sm },
+  spineTitle: { fontSize: 17, lineHeight: 21, fontWeight: '700' },
   spineBase: {
     position: 'absolute',
     left: 12,

@@ -1,10 +1,11 @@
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
-import { ChevronRightIcon, SendIcon } from '@/components/icons';
+import { ChevronRightIcon, PaperclipIcon, SendIcon } from '@/components/icons';
 import { Card } from '@/components/ui/Card';
 import { EntryTag } from '@/components/ui/EntryTag';
 import { Text } from '@/components/ui/Text';
@@ -91,6 +92,23 @@ export function EntryDetail() {
           ),
         )}
 
+        {entry.attachments?.length ? (
+          <View style={styles.attachments}>
+            {entry.attachments.map((a) =>
+              a.kind === 'image' ? (
+                <Image key={a.uri} source={{ uri: a.uri }} style={styles.attachImage} contentFit="cover" />
+              ) : (
+                <View key={a.uri} style={[styles.attachDoc, { borderColor: colors.line }]}>
+                  <PaperclipIcon size={18} color={colors.forest} />
+                  <Text variant="bodySmall" numberOfLines={1} style={styles.attachName}>
+                    {a.name ?? 'Document'}
+                  </Text>
+                </View>
+              ),
+            )}
+          </View>
+        ) : null}
+
         {entry.safetyLevel === SafetyLevel.Elevated ? <InlineResourceCard /> : null}
       </ScrollView>
 
@@ -149,6 +167,19 @@ const styles = StyleSheet.create({
   userTurn: {},
   companionTurn: {},
   companionLabel: { marginBottom: spacing.xs, letterSpacing: 0.6 },
+  attachments: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  attachImage: { width: 120, height: 120, borderRadius: 12 },
+  attachDoc: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    height: 48,
+    maxWidth: 220,
+  },
+  attachName: { flexShrink: 1 },
   composeRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',

@@ -85,6 +85,3 @@ let override: SafetyLevel | null = null;
 export function setSafetyOverride(level: SafetyLevel | null) {
   override = level;
 }
-export function getSafetyOverride(): SafetyLevel | null {
-  return override;
-}

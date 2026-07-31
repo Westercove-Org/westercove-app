@@ -10,9 +10,11 @@ import { spacing } from '@/theme/tokens';
  */
 export function HardDateCard({
   label,
+  detail,
   onPrepare,
 }: {
   label: string;
+  detail?: string;
   onPrepare: () => void;
 }) {
   return (
@@ -21,6 +23,11 @@ export function HardDateCard({
         <Text variant="cardTitle" color="amethystText">
           {label}
         </Text>
+        {detail ? (
+          <Text variant="bodySmall" color="amethystText" style={styles.body}>
+            {detail}
+          </Text>
+        ) : null}
         <Text variant="bodySmall" color="amethystText" style={styles.body}>
           We can move toward it together, at whatever pace is yours.
         </Text>

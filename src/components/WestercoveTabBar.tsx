@@ -1,11 +1,12 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  BookOpenIcon,
   CompassIcon,
-  HeartIcon,
   HomeIcon,
-  JournalIcon,
-  LeafIcon,
+  LifebuoyIcon,
+  UserIcon,
   type IconProps,
 } from '@/components/icons';
 import { useTheme } from '@/theme';
@@ -31,13 +32,13 @@ export interface TabBarProps {
 
 type TabConfig = { label: string; Icon: (p: IconProps) => React.ReactNode };
 
-/** Route-name → nav label + icon. No human-figure icons (brand rule). */
+/** Route-name → nav label + icon (Lovable/Lucide set). */
 const TABS: Record<string, TabConfig> = {
   index: { label: 'Home', Icon: HomeIcon },
-  journal: { label: 'Journal', Icon: JournalIcon },
+  journal: { label: 'Journal', Icon: BookOpenIcon },
   discover: { label: 'Discover', Icon: CompassIcon },
-  profile: { label: 'Profile', Icon: LeafIcon },
-  support: { label: 'Support', Icon: HeartIcon },
+  profile: { label: 'Profile', Icon: UserIcon },
+  support: { label: 'Support', Icon: LifebuoyIcon },
 };
 
 /**
@@ -48,13 +49,20 @@ const TABS: Record<string, TabConfig> = {
  */
 export function WestercoveTabBar({ state, navigation }: TabBarProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <View>
+      {/* Crisis pill sits above the tab bar (matches the Lovable demo). */}
+      <CrisisBanner bottomInset={false} />
       <View
         style={[
           styles.bar,
-          { backgroundColor: colors.card, borderTopColor: colors.line },
+          {
+            backgroundColor: colors.card,
+            borderTopColor: colors.line,
+            paddingBottom: insets.bottom + 8,
+          },
         ]}
       >
         {state.routes.map((route, index) => {
@@ -83,7 +91,18 @@ export function WestercoveTabBar({ state, navigation }: TabBarProps) {
               onPress={onPress}
               style={styles.tab}
             >
-              <config.Icon size={24} color={tint} strokeWidth={2} />
+              <View
+                style={[
+                  styles.iconWrap,
+                  focused && { backgroundColor: colors.emerald },
+                ]}
+              >
+                <config.Icon
+                  size={22}
+                  color={focused ? colors.onAccent : tint}
+                  strokeWidth={2}
+                />
+              </View>
               <Text
                 variant="meta"
                 color={tint}
@@ -95,7 +114,6 @@ export function WestercoveTabBar({ state, navigation }: TabBarProps) {
           );
         })}
       </View>
-      <CrisisBanner />
     </View>
   );
 }
@@ -105,14 +123,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 1,
     paddingTop: 8,
-    paddingBottom: 8,
   },
   tab: {
     flex: 1,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 4,
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   label: { fontSize: 11 },
   labelActive: { fontWeight: '700' },

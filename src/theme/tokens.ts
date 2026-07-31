@@ -36,39 +36,42 @@ export interface ThemeColors {
   onAccent: string;
 }
 
+// Palette follows the v6 demo: warm off-white surfaces, deep-plum primary +
+// crisis (NOT emerald — the demo's redesign moved off the green CTA), green
+// reserved as the secondary interactive accent (mic, links, chips).
 const light: ThemeColors = {
-  background: '#FFFFFF',
-  surfaceAlt: '#F4F6F1',
-  card: '#FFFFFF',
-  line: '#E0E5DB',
-  textPrimary: '#1C231B',
-  textMuted: '#5C6B58',
-  forest: '#338233',
-  emerald: '#0E5F18',
-  amethystText: '#3D2F5E',
-  amethystTint: '#EEF0F8',
-  chipGreen: '#EEF3E8',
+  background: '#F7F1EC',
+  surfaceAlt: '#F0E9E2',
+  card: '#FBF6F1',
+  line: '#E4DAD0',
+  textPrimary: '#241B2E',
+  textMuted: '#6B6270',
+  forest: '#2E7D46',
+  emerald: '#2A1B3D',
+  amethystText: '#2A1B3D',
+  amethystTint: '#EEE9F3',
+  chipGreen: '#EDE7E0',
   saffron: '#EDC531',
   onAccent: '#FFFFFF',
 };
 
 const dark: ThemeColors = {
-  background: '#121711',
-  surfaceAlt: '#1B211A',
-  card: '#1B211A',
-  line: '#2C352A',
-  textPrimary: '#EEF2E9',
-  textMuted: '#93A08F',
-  forest: '#6BBF6F',
-  emerald: '#0E5F18',
+  background: '#151019',
+  surfaceAlt: '#1F1826',
+  card: '#221A2A',
+  line: '#332B3C',
+  textPrimary: '#EFE9F0',
+  textMuted: '#A79FAE',
+  forest: '#6FCB88',
+  emerald: '#2A1B3D',
   amethystText: '#CBBDF0',
-  amethystTint: '#241D3A',
-  chipGreen: '#1F2B1F',
+  amethystTint: '#2A2136',
+  chipGreen: '#241D2E',
   saffron: '#EDC531',
   onAccent: '#FFFFFF',
 };
 
-export const palette = { light, dark } as const;
+const palette = { light, dark } as const;
 
 /** 4pt base spacing scale. Screen side padding is 20; stacked-card gap 12. */
 export const spacing = {
@@ -100,15 +103,19 @@ export const radii = {
 } as const;
 
 /**
- * One native system font family (Design System v2 §3): San Francisco on iOS,
- * Roboto on Android, system-ui on web. Size and weight carry the hierarchy;
- * there is no separate display/serif face. Native is selected by leaving
- * fontFamily undefined on the native platforms.
+ * Two families, matching the v6 demo: a serif for the wordmark, greetings and
+ * screen titles (Georgia-class), and the native sans for everything else. On
+ * native platforms the sans is left undefined so the system font is used.
  */
 export const fonts = {
   sans: Platform.select({ web: 'system-ui', default: undefined }) as
     | string
     | undefined,
+  serif: Platform.select({
+    web: 'Georgia, "Times New Roman", serif',
+    ios: 'Georgia',
+    default: 'serif',
+  }) as string | undefined,
 } as const;
 
 export type TypographyVariant =
@@ -123,12 +130,12 @@ export type TypographyVariant =
 
 /** Type scale (handoff §3.2). Color is applied by the Text component, not here. */
 export const typography: Record<TypographyVariant, TextStyle> = {
-  display: { fontFamily: fonts.sans, fontSize: 28, lineHeight: 34, fontWeight: '700' },
+  display: { fontFamily: fonts.serif, fontSize: 28, lineHeight: 36, fontWeight: '600' },
   screenTitle: {
-    fontFamily: fonts.sans,
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '700',
+    fontFamily: fonts.serif,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '600',
   },
   sectionLabel: {
     fontFamily: fonts.sans,
@@ -178,8 +185,6 @@ export function cardElevation(scheme: 'light' | 'dark'): ViewStyle {
   };
 }
 
-/** Layout breakpoint: at/above this width, use the web side-rail nav. */
-export const WIDE_BREAKPOINT = 1024;
 /** Content is centered and capped at this width on large screens. */
 export const MAX_CONTENT_WIDTH = 640;
 

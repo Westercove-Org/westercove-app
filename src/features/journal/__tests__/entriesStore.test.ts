@@ -35,6 +35,18 @@ describe('entriesStore', () => {
     expect(entry.safetyLevel).toBe(SafetyLevel.Critical);
   });
 
+  it('stores attachments on the entry when provided', async () => {
+    const { addEntry } = useEntriesStore.getState();
+    const { id } = await addEntry({
+      type: 'Memory',
+      text: 'A photo of her at the beach',
+      attachments: [{ kind: 'image', uri: 'file://beach.jpg', name: 'beach.jpg' }],
+    });
+    const entry = useEntriesStore.getState().getEntry(id)!;
+    expect(entry.attachments).toHaveLength(1);
+    expect(entry.attachments![0]).toMatchObject({ kind: 'image', uri: 'file://beach.jpg' });
+  });
+
   it('continueEntry appends a user turn and a companion turn for normal grief', async () => {
     const { addEntry, continueEntry } = useEntriesStore.getState();
     const { id } = await addEntry({ type: 'Journal', text: 'first thought' });

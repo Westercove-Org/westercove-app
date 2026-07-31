@@ -5,11 +5,11 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { useQuestionsStore } from '@/features/questions/questionsStore';
 import { useWhatIKnowStore } from '@/features/profile/whatIKnowStore';
 
 function seedSession() {
   useSessionStore.setState({
-    hydrated: true,
     session: {
       user: { email: 'a@b.com' },
       entryPath: 'consumer_trial',
@@ -30,6 +30,7 @@ function seedSession() {
 describe('What I Know store', () => {
   beforeEach(() => {
     seedSession();
+    useQuestionsStore.setState({ answers: {}, skipped: [], daysShown: 0, talkMs: 0 });
     useWhatIKnowStore.setState({ learned: [] });
     useWhatIKnowStore.getState().hydrateFromSession();
   });
@@ -51,5 +52,22 @@ describe('What I Know store', () => {
     const item = useWhatIKnowStore.getState().learned.find((i) => i.value === 'Sam')!;
     useWhatIKnowStore.getState().updateItem(item.id, 'Samuel');
     expect(useWhatIKnowStore.getState().learned.find((i) => i.id === item.id)!.value).toBe('Samuel');
+  });
+
+  it('surfaces conversational answers and retires answered prompts', () => {
+    useQuestionsStore.setState({
+      answers: { h12: 'Never say at least she is not suffering', h14: 'No survival statistics' },
+    });
+    useWhatIKnowStore.getState().hydrateFromSession();
+
+    const labels = useWhatIKnowStore.getState().learned.map((i) => i.label);
+    expect(labels).toContain('Never suggest');
+    expect(labels).toContain('Topics to avoid');
+
+    // The "topics you'd rather never see" prompt retires once h14 is answered.
+    const prompts = useWhatIKnowStore.getState().unanswered.map((u) => u.prompt);
+    expect(prompts.some((p) => /topics you would rather never see/i.test(p))).toBe(false);
+    // The faith prompt is still open (h13 unanswered).
+    expect(prompts.some((p) => /faith or spiritual/i.test(p))).toBe(true);
   });
 });

@@ -11,12 +11,9 @@
  * same way the day-zero gate does it (copy.gate.q4Pet.replace('[name]', loved)).
  */
 
-/** How much talk-time unlocks the next Day. 2 min for testing. */
-export const QUESTION_INTERVAL_MS = 2 * 60 * 1000; // PRODUCTION: 30 * 60 * 1000
+type QKind = 'text' | 'chips' | 'info'; // info = an offer that captures nothing
 
-export type QKind = 'text' | 'chips' | 'info'; // info = an offer that captures nothing
-
-export interface Question {
+interface Question {
   id: string;
   text: string;
   kind: QKind;
@@ -36,6 +33,12 @@ export const DAYS_HUMAN: DayBucket[] = [
   {
     label: 'Day 1',
     questions: [
+      {
+        id: 'h0',
+        kind: 'text',
+        text: 'Tell me about [name]. Who were they, beyond how they died?',
+        placeholder: 'Say as much or as little as you want…',
+      },
       {
         id: 'h9',
         kind: 'info',
@@ -174,6 +177,12 @@ export const DAYS_PET: DayBucket[] = [
   {
     label: 'Day 1',
     questions: [
+      {
+        id: 'p0',
+        kind: 'text',
+        text: 'Tell me about [name]. Who were they, beyond how they died?',
+        placeholder: 'Say as much or as little as you want…',
+      },
       {
         id: 'p9',
         kind: 'info',

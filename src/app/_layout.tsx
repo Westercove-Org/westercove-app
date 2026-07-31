@@ -8,8 +8,7 @@ import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthGuard } from '@/features/auth/useAuthGuard';
-import { useSessionStore } from '@/features/auth/sessionStore';
-import { QuestionsOverlay } from '@/features/questions/QuestionsOverlay';
+import { useProfilesStore } from '@/features/profiles/profilesStore';
 import { useTheme, WestercoveThemeProvider } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -32,7 +31,7 @@ export default function RootLayout() {
 
 function RootNav() {
   const { colors } = useTheme();
-  const hydrated = useSessionStore((s) => s.hydrated);
+  const hydrated = useProfilesStore((s) => s.hydrated);
   useAuthGuard();
 
   // Hold on a plain surface until the persisted session has rehydrated, so we
@@ -48,6 +47,7 @@ function RootNav() {
       <Stack
         screenOptions={{
           headerShown: false,
+          title: 'Westercove',
           contentStyle: { backgroundColor: colors.background },
         }}
       >
@@ -62,9 +62,6 @@ function RootNav() {
           options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
         />
       </Stack>
-      {/* Timer-driven profile questions overlay the whole app; it self-hides
-          until the talk-time timer marks a Day due. */}
-      <QuestionsOverlay />
     </>
   );
 }

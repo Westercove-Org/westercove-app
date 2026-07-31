@@ -11,7 +11,7 @@ import { spacing } from '@/theme/tokens';
 
 /** Metadata for each Profile / Settings section page. Content that a user
  * builds over time starts from a calm empty state that never nags. */
-export const SECTIONS: Record<string, { title: string; empty: string }> = {
+const SECTIONS: Record<string, { title: string; empty: string }> = {
   'loved-ones': {
     title: 'Loved-one profiles',
     empty: 'The people and pets you are grieving will live here, human or pet.',

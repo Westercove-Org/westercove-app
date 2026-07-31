@@ -6,57 +6,67 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
-import { useSessionStore } from '@/features/auth/sessionStore';
+import { useProfilesStore } from '@/features/profiles/profilesStore';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
+/**
+ * Welcome / sign-in. This is browser-level: any name and password continue (it
+ * is a demo, nothing is saved anywhere real). Both "Sign in" and "Create an
+ * account" do the same thing — sign in and drop into the day-zero gate for the
+ * first test profile.
+ */
 export default function SignInScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const signIn = useSessionStore((s) => s.signIn);
-  const [email, setEmail] = useState('');
+  const signIn = useProfilesStore((s) => s.signIn);
+  const createProfile = useProfilesStore((s) => s.createProfile);
+  const switchProfile = useProfilesStore((s) => s.switchProfile);
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
-  const [saveEmail, setSaveEmail] = useState(true);
+  const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const canSubmit = email.trim().length > 0 && password.length > 0;
+  const canSubmit = name.trim().length > 0 && password.length > 0;
 
-  const onSignIn = async () => {
+  const onContinue = async () => {
     if (!canSubmit || busy) return;
     setBusy(true);
-    await signIn(email.trim(), password);
-    // Guard redirects to the tab shell once the session is ready.
+    signIn({ email: name.trim(), firstName: name.trim() });
+    const { profiles, activeId } = useProfilesStore.getState();
+    // First time in this browser: begin the first test profile. Returning after
+    // a sign-out: land on the existing (or last active) profile.
+    if (profiles.length === 0) {
+      await createProfile();
+    } else if (!activeId) {
+      await switchProfile(profiles[0].id);
+    }
+    // The guard redirects to the gate or the tab shell from here.
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <HeroHeader
         variant="greeting"
+        image="valley"
         title={copy.signIn.title}
         subtitle={copy.signIn.subtitle}
       />
       <View style={styles.form}>
         <View style={[styles.field, { borderColor: colors.line }]}>
-          <Text variant="cardTitle" style={styles.fieldLabel}>
-            {copy.signIn.email}
-          </Text>
           <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder={copy.signIn.emailPlaceholder}
+            value={name}
+            onChangeText={setName}
+            placeholder={copy.signIn.namePlaceholder}
             placeholderTextColor={colors.textMuted}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            accessibilityLabel={copy.signIn.email}
+            autoCapitalize="words"
+            accessibilityLabel={copy.signIn.name}
             style={[styles.input, { color: colors.textPrimary }]}
           />
         </View>
 
         <View style={[styles.field, { borderColor: colors.line }]}>
-          <Text variant="cardTitle" style={styles.fieldLabel}>
-            {copy.signIn.password}
-          </Text>
           <TextInput
             value={password}
             onChangeText={setPassword}
@@ -79,28 +89,28 @@ export default function SignInScreen() {
 
         <Pressable
           accessibilityRole="switch"
-          accessibilityState={{ checked: saveEmail }}
-          accessibilityLabel={copy.signIn.saveEmail}
-          onPress={() => setSaveEmail((v) => !v)}
+          accessibilityState={{ checked: remember }}
+          accessibilityLabel={copy.signIn.rememberMe}
+          onPress={() => setRemember((v) => !v)}
           style={styles.saveRow}
         >
           <View
             style={[
               styles.switch,
-              { backgroundColor: saveEmail ? colors.forest : colors.line },
+              { backgroundColor: remember ? colors.forest : colors.line },
             ]}
           >
-            <View style={[styles.knob, saveEmail && styles.knobOn]} />
+            <View style={[styles.knob, remember && styles.knobOn]} />
           </View>
-          <Text variant="cardTitle">{copy.signIn.saveEmail}</Text>
+          <Text variant="cardTitle">{copy.signIn.rememberMe}</Text>
         </Pressable>
 
         <Button
           label={copy.signIn.signIn}
-          variant="amethyst"
+          variant="primary"
           loading={busy}
           disabled={!canSubmit}
-          onPress={onSignIn}
+          onPress={onContinue}
         />
 
         <Pressable accessibilityRole="button" style={styles.center} onPress={() => {}}>
@@ -120,18 +130,17 @@ export default function SignInScreen() {
         <Button
           label={copy.signIn.create}
           variant="secondary"
-          onPress={() => router.push('/disclaimer')}
+          loading={busy}
+          disabled={!canSubmit}
+          onPress={onContinue}
         />
-        <Text variant="bodySmall" color="textMuted" style={styles.center}>
-          {copy.signIn.createHint}
-        </Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  form: { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, gap: spacing.md },
+  form: { flex: 1, paddingHorizontal: spacing.screen, paddingTop: spacing.xl, gap: spacing.md },
   field: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -141,7 +150,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     minHeight: 56,
   },
-  fieldLabel: {},
   input: { flex: 1, fontSize: 15, minHeight: 48 },
   saveRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 44 },
   switch: { width: 48, height: 28, borderRadius: 14, padding: 2, justifyContent: 'center' },

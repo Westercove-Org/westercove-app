@@ -6,8 +6,6 @@ jest.mock('expo-secure-store', () => ({
 
 import { sessionStatus, useSessionStore } from '@/features/auth/sessionStore';
 import type { Session } from '@/features/auth/types';
-import { services } from '@/services';
-import { MockCrmService } from '@/services/crm';
 
 const readySession: Session = {
   user: { email: 'a@b.com' },
@@ -33,34 +31,23 @@ describe('sessionStatus', () => {
 describe('session store', () => {
   beforeEach(() => useSessionStore.setState({ session: null }));
 
-  it('beginAccount creates a session that still needs the gate, and writes one CRM contact', async () => {
-    const crm = services.crm as MockCrmService;
-    const before = crm.contacts.length;
-
-    await useSessionStore.getState().beginAccount({ entryPath: 'consumer_trial' });
-
+  it('startBlankSession seeds a person that still needs the gate', () => {
+    useSessionStore.getState().startBlankSession({ email: 'a@b.com', firstName: 'Sam' });
     const s = useSessionStore.getState().session;
     expect(s).not.toBeNull();
     expect(s!.gateComplete).toBe(false);
     expect(sessionStatus(s)).toBe('needs-gate');
-    expect(crm.contacts.length).toBe(before + 1);
   });
 
-  it('partner_license account gets a license entitlement', async () => {
-    await useSessionStore
-      .getState()
-      .beginAccount({ entryPath: 'partner_license', licenseCode: 'ABC' });
-    expect(useSessionStore.getState().session!.entitlement).toBe('license_active');
-  });
-
-  it('completeGate marks the session ready', async () => {
-    await useSessionStore.getState().beginAccount({ entryPath: 'consumer_trial' });
+  it('completeGate marks the session ready', () => {
+    useSessionStore.getState().startBlankSession({ email: 'a@b.com' });
     useSessionStore.getState().completeGate({ mode: 'human', skipped: [], callName: 'Sam' });
     expect(sessionStatus(useSessionStore.getState().session)).toBe('ready');
   });
 
-  it('signIn lands a returning user straight in the ready state (past the gate)', async () => {
-    await useSessionStore.getState().signIn('a@b.com', 'pw');
-    expect(sessionStatus(useSessionStore.getState().session)).toBe('ready');
+  it('resetSession clears the person back to unauthenticated', () => {
+    useSessionStore.getState().startBlankSession({ email: 'a@b.com' });
+    useSessionStore.getState().resetSession();
+    expect(sessionStatus(useSessionStore.getState().session)).toBe('unauthenticated');
   });
 });

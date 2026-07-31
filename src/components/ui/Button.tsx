@@ -10,7 +10,7 @@ import { useTheme } from '@/theme';
 import { radii } from '@/theme/tokens';
 import { Text } from './Text';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'amethyst';
+type ButtonVariant = 'primary' | 'secondary' | 'amethyst';
 
 export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
   label: string;

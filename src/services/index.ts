@@ -1,10 +1,12 @@
+import { Platform } from 'react-native';
+
 import { MockAuthService, type AuthService } from './auth';
 import { MockCompanionService, type CompanionService } from './companion';
 import { MockContentService, type ContentService } from './content';
 import { MockCrmService, type CrmService } from './crm';
 import { MockSafetyService, type SafetyService } from './safety';
 import { MockSubscriptionService, type SubscriptionService } from './subscription';
-import { MockVoiceService, type VoiceService } from './voice';
+import { MockVoiceService, NativeVoiceService, type VoiceService } from './voice';
 
 /**
  * The service registry. Every service is an interface with a Mock… impl now
@@ -24,7 +26,8 @@ export const services: {
   auth: new MockAuthService(),
   crm: new MockCrmService(),
   companion: new MockCompanionService(),
-  voice: new MockVoiceService(),
+  // Native speech-to-text on device; the mock stands in for web/Expo Go.
+  voice: Platform.OS === 'web' ? new MockVoiceService() : new NativeVoiceService(),
   content: new MockContentService(),
   subscription: new MockSubscriptionService(),
 };

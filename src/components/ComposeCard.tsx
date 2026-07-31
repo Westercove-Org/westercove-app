@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { MicIcon, PencilIcon } from '@/components/icons';
+import { MicIcon, PaperclipIcon, PencilIcon } from '@/components/icons';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
@@ -12,6 +12,7 @@ export interface ComposeCardProps {
   chips: readonly string[];
   onPressPrompt?: () => void;
   onPressMic?: () => void;
+  onPressAttach?: () => void;
   onPressChip?: (label: string) => void;
 }
 
@@ -24,6 +25,7 @@ export function ComposeCard({
   chips,
   onPressPrompt,
   onPressMic,
+  onPressAttach,
   onPressChip,
 }: ComposeCardProps) {
   const { colors } = useTheme();
@@ -49,6 +51,16 @@ export function ComposeCard({
           >
             <PencilIcon size={20} color={colors.forest} />
           </Pressable>
+          {onPressAttach ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Attach a photo or document"
+              onPress={onPressAttach}
+              style={[styles.pencil, { backgroundColor: colors.chipGreen }]}
+            >
+              <PaperclipIcon size={20} color={colors.forest} />
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Speak an entry"

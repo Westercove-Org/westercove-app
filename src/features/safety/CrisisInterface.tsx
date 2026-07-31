@@ -8,7 +8,7 @@ import { copy } from '@/constants/copy';
 import { callLine, textLine } from '@/lib/crisisLinks';
 
 /** Emerald crisis token, fixed across themes. White-on-emerald is AAA (≈7.5:1). */
-const EMERALD = '#0E5F18';
+const EMERALD = '#2A1B3D';
 
 /**
  * Level 4 (Critical Risk): a full-screen crisis interface that interrupts flow,
@@ -33,9 +33,6 @@ export function CrisisInterface() {
       ]}
     >
       <View style={styles.header}>
-        <Text variant="display" color="#FFFFFF" accessibilityRole="header">
-          {copy.safety.crisisTitle}
-        </Text>
         <Text variant="body" color="#FFFFFF" style={styles.body}>
           {copy.safety.crisisBody}
         </Text>

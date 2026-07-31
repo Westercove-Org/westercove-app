@@ -3,12 +3,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { secureStorage } from '@/lib/secureStorage';
-import {
-  DAYS_HUMAN,
-  DAYS_PET,
-  QUESTION_INTERVAL_MS,
-  type DayBucket,
-} from '@/constants/questions';
+import { QUESTIONS_BASE, profileKey } from '@/features/profiles/profileKeys';
+import { DAYS_HUMAN, DAYS_PET, type DayBucket } from '@/constants/questions';
 
 /**
  * State for the timer-driven profile questions. Talk-time accumulates while the
@@ -20,9 +16,9 @@ import {
  * which on web is localStorage — so answers survive a reload for testing.
  */
 
-export type PendingMode = 'dialog' | 'direct';
+type PendingMode = 'dialog' | 'direct';
 
-export interface Pending {
+interface Pending {
   dayIndex: number;
   mode: PendingMode;
 }
@@ -57,12 +53,12 @@ export function activeDays(): DayBucket[] {
 }
 
 /**
- * The highest Day index (0-based) unlocked by the accumulated talk-time, or -1
- * if none yet. Capped at the last available Day.
+ * The highest Day bucket index (0-based) unlocked at the given demo cadence
+ * stage. The first bucket is available immediately (stage 0), and each
+ * simulated journaling session unlocks one more. Capped at the last bucket.
  */
-export function dueDayIndex(talkMs: number, total: number): number {
-  const intervals = Math.floor(talkMs / QUESTION_INTERVAL_MS);
-  return Math.min(intervals, total) - 1;
+export function dueDayIndex(stage: number, total: number): number {
+  return Math.min(stage + 1, total) - 1;
 }
 
 export const useQuestionsStore = create<QuestionsState>()(
@@ -110,7 +106,8 @@ export const useQuestionsStore = create<QuestionsState>()(
       },
     }),
     {
-      name: 'westercove.questions',
+      // Dynamic per-profile key: bindProfileStores rebinds before hydration.
+      name: profileKey(QUESTIONS_BASE, 'unbound'),
       storage: createJSONStorage(() => secureStorage),
       // Only durable progress is persisted; pending/deferAfterNo are per-session.
       partialize: (s) => ({
@@ -119,6 +116,19 @@ export const useQuestionsStore = create<QuestionsState>()(
         answers: s.answers,
         skipped: s.skipped,
       }),
+      skipHydration: true,
     },
   ),
 );
+
+/** Reset question progress to blank (used when switching/creating profiles). */
+export function resetQuestions() {
+  useQuestionsStore.setState({
+    talkMs: 0,
+    daysShown: 0,
+    answers: {},
+    skipped: [],
+    pending: null,
+    deferAfterNo: false,
+  });
+}

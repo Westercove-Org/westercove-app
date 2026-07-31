@@ -10,7 +10,6 @@ import { fireEvent, renderWithProviders } from '@/test-utils';
 
 function seedNeedsGateSession() {
   useSessionStore.setState({
-    hydrated: true,
     session: {
       user: { email: 'a@b.com' },
       entryPath: 'consumer_trial',
@@ -32,7 +31,8 @@ describe('DayZeroGate', () => {
     expect(getByText('What would you like me to call you?')).toBeTruthy();
     expect(queryByRole('progressbar')).toBeNull();
     expect(queryByText(/%/)).toBeNull();
-    expect(queryByText(/step \d+ of \d+/i)).toBeNull();
+    // A step indicator ("Step 1 of 4") matches the v6 demo; only a completeness
+    // meter / percentage is forbidden.
   });
 
   it('"Save and continue later" completes the gate and makes the session ready', async () => {

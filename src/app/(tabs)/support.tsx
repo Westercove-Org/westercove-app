@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import * as Speech from 'expo-speech';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { MessageIcon, PauseIcon, PhoneIcon, PlayIcon } from '@/components/icons';
@@ -9,21 +10,49 @@ import { ListRow } from '@/components/ui/ListRow';
 import { SearchPill } from '@/components/ui/SearchPill';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Text } from '@/components/ui/Text';
-import { copy, LOSS_TYPES, READING } from '@/constants/copy';
+import { copy, LOSS_TYPES } from '@/constants/copy';
+import { ESSAYS } from '@/features/support/essays';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { callLine, textLine } from '@/lib/crisisLinks';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
+
+const SPEEDS = [0.75, 1, 1.25, 1.5] as const;
 
 export default function SupportScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const now = new Date();
   const [listen, setListen] = useState(false);
-  const [playing, setPlaying] = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [rate, setRate] = useState(1);
+
+  // Stop any playback when leaving Support or turning Listen off.
+  useEffect(() => () => void Speech.stop(), []);
+
+  const play = (id: string, body: string) => {
+    Speech.stop();
+    if (playingId === id) {
+      setPlayingId(null);
+      return;
+    }
+    Speech.speak(body, {
+      rate,
+      onDone: () => setPlayingId(null),
+      onStopped: () => setPlayingId(null),
+      onError: () => setPlayingId(null),
+    });
+    setPlayingId(id);
+  };
+
+  const setListenMode = (on: boolean) => {
+    Speech.stop();
+    setPlayingId(null);
+    setListen(on);
+  };
 
   return (
-    <Screen header={{ title: 'Support', subtitle: formatHeaderDateTime(now) }}>
+    <Screen header={{ title: 'Support', subtitle: formatHeaderDateTime(now), image: 'meadow' }}>
       <SectionLabel>{copy.support.needSomeone}</SectionLabel>
 
       <View style={styles.pad}>
@@ -33,7 +62,7 @@ export default function SupportScreen() {
           onPress={() => callLine('988')}
           style={({ pressed }) => [
             styles.crisisCard,
-            { backgroundColor: colors.emerald },
+            { backgroundColor: colors.forest },
             pressed && { opacity: 0.9 },
           ]}
         >
@@ -56,18 +85,18 @@ export default function SupportScreen() {
           onPress={() => textLine('741741', 'HOME')}
           style={({ pressed }) => [
             styles.crisisCardOutline,
-            { borderColor: colors.emerald, backgroundColor: colors.card },
+            { borderColor: colors.forest, backgroundColor: colors.card },
             pressed && { opacity: 0.9 },
           ]}
         >
           <View style={[styles.iconCircle, { backgroundColor: colors.chipGreen }]}>
-            <MessageIcon size={22} color={colors.emerald} />
+            <MessageIcon size={22} color={colors.forest} />
           </View>
           <View style={styles.crisisText}>
-            <Text color={colors.emerald} style={styles.crisisTitle}>
+            <Text color={colors.forest} style={styles.crisisTitle}>
               {copy.crisis.textHome}
             </Text>
-            <Text variant="bodySmall" color={colors.emerald}>
+            <Text variant="bodySmall" color={colors.forest}>
               {copy.crisis.textHomeSub}
             </Text>
           </View>
@@ -101,34 +130,49 @@ export default function SupportScreen() {
       </View>
 
       <View style={styles.readingHead}>
-        <SectionLabel>{copy.support.reading}</SectionLabel>
+        <SectionLabel>Essays</SectionLabel>
         <View style={[styles.toggle, { borderColor: colors.line }]}>
-          <ReadListenTab label="Read" active={!listen} onPress={() => setListen(false)} />
-          <ReadListenTab label="Listen" active={listen} onPress={() => setListen(true)} />
+          <ReadListenTab label="Read" active={!listen} onPress={() => setListenMode(false)} />
+          <ReadListenTab label="Listen" active={listen} onPress={() => setListenMode(true)} />
         </View>
       </View>
+      {listen ? (
+        <View style={[styles.pad, styles.speedRow]}>
+          <Text variant="bodySmall" color="textMuted">
+            Speed
+          </Text>
+          <View style={[styles.toggle, { borderColor: colors.line }]}>
+            {SPEEDS.map((s) => (
+              <ReadListenTab
+                key={s}
+                label={`${s}×`}
+                active={s === rate}
+                onPress={() => setRate(s)}
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
       <View style={styles.pad}>
         <Card padded={false}>
-          {READING.map((row, i) => (
+          {ESSAYS.map((essay, i) => (
             <ListRow
-              key={row.title}
-              label={row.title}
-              subtitle={'subtitle' in row ? (row.subtitle as string) : undefined}
-              divider={i < READING.length - 1}
+              key={essay.id}
+              label={essay.title}
+              subtitle={essay.subtitle}
+              divider={i < ESSAYS.length - 1}
               chevron={!listen}
               trailing={
                 listen ? (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={
-                      playing === row.title ? `Pause ${row.title}` : `Listen to ${row.title}`
+                      playingId === essay.id ? `Pause ${essay.title}` : `Listen to ${essay.title}`
                     }
-                    onPress={() =>
-                      setPlaying((p) => (p === row.title ? null : row.title))
-                    }
+                    onPress={() => play(essay.id, essay.body)}
                     style={[styles.play, { backgroundColor: colors.chipGreen }]}
                   >
-                    {playing === row.title ? (
+                    {playingId === essay.id ? (
                       <PauseIcon size={18} color={colors.forest} />
                     ) : (
                       <PlayIcon size={18} color={colors.forest} />
@@ -136,7 +180,9 @@ export default function SupportScreen() {
                   </Pressable>
                 ) : undefined
               }
-              onPress={() => {}}
+              onPress={() =>
+                router.push({ pathname: '/support/essay/[id]', params: { id: essay.id } })
+              }
             />
           ))}
         </Card>
@@ -179,6 +225,7 @@ const styles = StyleSheet.create({
     paddingRight: spacing.screen,
   },
   toggle: { flexDirection: 'row', borderWidth: 1, borderRadius: radii.chip, overflow: 'hidden' },
+  speedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.sm },
   tab: { minHeight: 32, paddingHorizontal: spacing.md, alignItems: 'center', justifyContent: 'center' },
   play: {
     width: 36,

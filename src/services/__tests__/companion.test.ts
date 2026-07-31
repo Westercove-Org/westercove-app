@@ -29,4 +29,24 @@ describe('MockCompanionService', () => {
     });
     expect(reply.response).toContain('Sam');
   });
+
+  it('reflects a fragment of the user’s own words back', async () => {
+    const reply = await svc.respond({
+      type: 'Memory',
+      text: 'She drew foxes on everything and narrated her whole life out loud',
+      lovedOneName: 'Lily',
+    });
+    expect(reply.response).toContain('Lily');
+    expect(reply.response.toLowerCase()).toContain('drew foxes');
+  });
+
+  it('never emits em dashes or exclamation points (brand voice)', async () => {
+    const reply = await svc.respond({
+      type: 'Journal',
+      text: 'It was wonderful — the best day! — and then it was not',
+      lovedOneName: 'Lily',
+    });
+    expect(reply.response).not.toMatch(/[—–!]/);
+    expect(reply.headline).not.toMatch(/[—–!]/);
+  });
 });

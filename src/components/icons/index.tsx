@@ -77,6 +77,34 @@ export function HeartIcon(props: IconProps) {
   );
 }
 
+export function BookOpenIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M12 6 C10 4.5 7 4 4 4.5 V18.5 C7 18 10 18.5 12 20 C14 18.5 17 18 20 18.5 V4.5 C17 4 14 4.5 12 6 Z" />
+      <Path d="M12 6 V20" />
+    </Base>
+  );
+}
+
+export function UserIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Circle cx={12} cy={8} r={4} />
+      <Path d="M5 20 A7 7 0 0 1 19 20" />
+    </Base>
+  );
+}
+
+export function LifebuoyIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Circle cx={12} cy={12} r={9} />
+      <Circle cx={12} cy={12} r={4} />
+      <Path d="M4.9 4.9 L9.2 9.2 M14.8 14.8 L19.1 19.1 M19.1 4.9 L14.8 9.2 M9.2 14.8 L4.9 19.1" />
+    </Base>
+  );
+}
+
 export function MicIcon(props: IconProps) {
   return (
     <Base {...props}>
@@ -146,10 +174,42 @@ export function MessageIcon(props: IconProps) {
   );
 }
 
+export function PaperclipIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M20 11.5 L11.5 20 A5 5 0 0 1 4.5 13 L13 4.5 A3.2 3.2 0 0 1 17.5 9 L9 17.5 A1.4 1.4 0 0 1 7 15.5 L14.5 8" />
+    </Base>
+  );
+}
+
 export function PlusIcon(props: IconProps) {
   return (
     <Base {...props}>
       <Path d="M12 5 V19 M5 12 H19" />
+    </Base>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M5 12.5 L10 17.5 L19 6.5" />
+    </Base>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M4 7 H20 M9 7 V5 A1 1 0 0 1 10 4 H14 A1 1 0 0 1 15 5 V7 M6 7 L7 20 A1 1 0 0 0 8 21 H16 A1 1 0 0 0 17 20 L18 7" />
+    </Base>
+  );
+}
+
+export function SignOutIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M14 4 H6 A1 1 0 0 0 5 5 V19 A1 1 0 0 0 6 20 H14 M14 12 H20 M20 12 L17 9 M20 12 L17 15" />
     </Base>
   );
 }

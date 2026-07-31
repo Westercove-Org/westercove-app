@@ -59,37 +59,69 @@ export const copy = {
   },
 
   disclaimerScreen: {
-    title: 'Before we begin',
-    body: 'Westercove is a wellness companion, not therapy, and it does not diagnose. It is here whenever you want it, and asks nothing of you when you do not.',
-    age: 'I am 18 or older and I agree to the Westercove Terms and Conditions.',
-    agree: 'I agree',
-  },
-
-  entryPath: {
-    title: 'How are you arriving?',
-    consumer: 'Start a free trial',
-    consumerSub: 'Through Westercove directly',
-    license: 'I have a license code',
-    licenseSub: 'From an employer or partner organization',
-    licensePrivacy:
-      'Your organization covers the cost. It cannot see anything you write.',
-    licensePlaceholder: 'Enter your license code',
-    continue: 'Continue',
+    title: 'Before you begin',
+    body: 'Westercove is a wellness companion, not therapy. It does not diagnose, and it is not a substitute for professional care.',
+    crisis:
+      'If you are in crisis, or if you are worried about yourself or someone else, please use the crisis line at the bottom of every screen.',
+    terms:
+      'By continuing, you confirm you are 18 or older and that you agree to our Terms and Privacy notice.',
+    continue: 'I understand, continue',
+    goBack: 'Go back',
   },
 
   signIn: {
     title: 'Welcome',
     subtitle: 'Sign in to continue',
-    email: 'Email',
-    emailPlaceholder: 'email address',
+    name: 'Your name',
+    namePlaceholder: 'Your name',
     password: 'Password',
-    passwordPlaceholder: 'Enter password',
-    saveEmail: 'Save email',
+    passwordPlaceholder: 'Password',
+    rememberMe: 'Remember me',
     signIn: 'Sign in',
     forgot: 'Forgot email or password?',
     newHere: 'New to Westercove',
     create: 'Create an account',
     createHint: 'Setting up takes a moment, with no long intake.',
+  },
+
+  testProfiles: {
+    label: 'TEST PROFILES',
+    intro:
+      'Each profile is a separate saved person. Use these to test different scenarios and switch between them anytime. Everything is saved in this browser.',
+    notSetUp: 'New test (not set up yet)',
+    startNew: 'Start a new test',
+    signOut: 'Sign out',
+    delete: 'Delete this test profile',
+  },
+
+  appearance: {
+    label: 'APPEARANCE',
+    system: 'System',
+    light: 'Light',
+    dark: 'Dark',
+    hint: 'Match your device, or pick a look.',
+  },
+
+  demoControls: {
+    label: 'DEMO CONTROLS',
+    intro:
+      'For the demo only. Each journaling session of about 8 minutes unlocks the next set of questions.',
+    stage: 'Cadence stage',
+    thisSession: 'This session',
+    simulate: 'Simulate a journaling session',
+    reset: 'Reset progress',
+    tone: 'COMPANION TONE',
+    currently: 'Currently',
+  },
+
+  library: {
+    label: 'YOUR LIBRARY',
+    addAll: 'Add all',
+    intro:
+      'Check the books you would like your companion to gently draw on. You can change these anytime. Until you choose any, your companion will draw softly on this whole list.',
+    tapHint: 'Tap a book to read its summary. Tap the circle to add or remove it from your library.',
+    add: 'Add to your library',
+    added: 'In your library',
   },
 
   gate: {
@@ -121,7 +153,6 @@ export const copy = {
       'If it helps, take one slow breath. Feel where you are sitting. You are here, and this moment will pass.',
     reachTrusted: 'Reach someone you trust',
     // Level 4 — full-screen crisis interface.
-    crisisTitle: 'You deserve support right now',
     crisisBody: 'Please reach out. Someone is ready to talk or text with you.',
     softExit: 'Return to a quiet screen',
   },

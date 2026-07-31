@@ -1,23 +1,30 @@
 {
   "expo": {
-    "name": "westercove-app",
+    "name": "Westercove",
     "slug": "westercove-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "westercoveapp",
+    "scheme": "westercove",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Westercove uses speech recognition to turn your voice into text you can edit before saving.",
+        "NSMicrophoneUsageDescription": "Westercove uses the microphone to transcribe what you speak into a journal entry."
+      },
+      "bundleIdentifier": "com.anonymous.westercove-app"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#F6EFE6",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -28,12 +35,24 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#F6EFE6",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 120,
+          "dark": {
+            "backgroundColor": "#151019",
+            "image": "./assets/images/splash-icon.png",
+            "imageWidth": 120
+          }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Westercove uses the microphone to transcribe what you speak into a journal entry.",
+          "speechRecognitionPermission": "Westercove uses speech recognition to turn your voice into text you can edit before saving."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

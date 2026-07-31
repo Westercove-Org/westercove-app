@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
+import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
-import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { useProfilesStore } from '@/features/profiles/profilesStore';
 import type { GateAnswers, GateMode } from '@/features/auth/types';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
@@ -15,22 +15,24 @@ import { radii, spacing } from '@/theme/tokens';
 type StepId = 'callName' | 'lovedOneName' | 'relationship' | 'species' | 'tone';
 
 const HUMAN_RELATIONSHIPS = [
-  'Spouse or partner',
-  'Child',
-  'Parent',
-  'Sibling',
-  'Grandparent',
-  'Grandchild',
-  'Friend',
-  'Someone else',
+  'My spouse or partner',
+  'My child',
+  'My parent',
+  'My sibling',
+  'My grandparent',
+  'My grandchild',
+  'My friend',
+  'A family member',
+  'Someone like family to me',
 ];
-const PET_OPTION = 'A pet or animal';
+const PET_OPTION = 'My pet or animal companion';
+const OTHER_OPTION = 'Other';
 const SPECIES = ['Dog', 'Cat', 'Bird', 'Horse', 'Other'];
-const TONES = [
-  'Gentle and warm',
-  'Plain and direct',
-  'Quiet and steady',
-  'Encouraging and hopeful',
+const TONES: { label: string; description: string }[] = [
+  { label: 'Gentle and warm', description: 'Soft, present, unhurried.' },
+  { label: 'Direct and plain', description: 'Clear, honest, no softening.' },
+  { label: 'Quiet and minimal', description: 'Short replies, lots of space.' },
+  { label: 'Spiritual', description: 'Room for the unseen and the sacred.' },
 ];
 
 function sequence(mode: GateMode): StepId[] {
@@ -44,15 +46,31 @@ function sequence(mode: GateMode): StepId[] {
 }
 
 /**
- * The day-zero gate: five questions, under two minutes, five taps. Navigation
- * is hidden for the duration, every step offers Skip and Save-and-continue-later,
- * and — a firm rule — there is NO progress bar and no completeness percentage
- * anywhere (handoff §4.4).
+ * The day-zero gate: a few gentle questions under two minutes. Navigation is
+ * hidden for the duration, every step offers Skip and Save-and-continue-later,
+ * and — a firm rule — there is NO progress bar and no completeness percentage.
+ * The "Step X of N" indicator counts taps, not completion.
  */
 export function DayZeroGate() {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const completeGate = useSessionStore((s) => s.completeGate);
+  const markActiveSetUp = useProfilesStore((s) => s.markActiveSetUp);
+  const profiles = useProfilesStore((s) => s.profiles);
+  const activeId = useProfilesStore((s) => s.activeId);
+  const switchProfile = useProfilesStore((s) => s.switchProfile);
+  const deleteProfile = useProfilesStore((s) => s.deleteProfile);
+
+  // Only an *additional* profile can be cancelled — there must be another,
+  // already-set-up profile to fall back to. First-run has no fallback.
+  const fallback = profiles.find((p) => p.id !== activeId && p.setUp);
+
+  const cancel = async () => {
+    if (!activeId || !fallback) return;
+    // Switch to the set-up profile first (its stores rehydrate → the auth guard
+    // routes to Home), then drop the blank profile we're abandoning.
+    await switchProfile(fallback.id);
+    await deleteProfile(activeId);
+  };
 
   const [answers, setAnswers] = useState<GateAnswers>({ mode: 'human', skipped: [] });
   const [stepId, setStepId] = useState<StepId>('callName');
@@ -61,7 +79,10 @@ export function DayZeroGate() {
   const index = steps.indexOf(stepId);
   const isLast = index === steps.length - 1;
 
-  const finish = (next: GateAnswers) => completeGate(next);
+  const finish = (next: GateAnswers) => {
+    markActiveSetUp(next.callName ?? '');
+    completeGate(next);
+  };
 
   const advance = (next: GateAnswers) => {
     setAnswers(next);
@@ -71,10 +92,11 @@ export function DayZeroGate() {
     else setStepId(seq[i + 1]);
   };
 
-  const skip = () => {
-    const next = { ...answers, skipped: [...answers.skipped, stepId] };
-    advance(next);
+  const back = () => {
+    if (index > 0) setStepId(steps[index - 1]);
   };
+
+  const skip = () => advance({ ...answers, skipped: [...answers.skipped, stepId] });
 
   const hasAnswer = (() => {
     switch (stepId) {
@@ -93,25 +115,20 @@ export function DayZeroGate() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <HeroHeader
+        variant="compact"
+        image="wildflowers"
+        title="Getting to know you"
+        subtitle={`Step ${index + 1} of ${steps.length}`}
+      />
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + spacing.huge,
           paddingHorizontal: spacing.screen,
+          paddingTop: spacing.xl,
           paddingBottom: spacing.xxl,
           flexGrow: 1,
         }}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={copy.gate.saveForLater}
-          onPress={() => finish(answers)}
-          style={styles.saveLater}
-        >
-          <Text variant="bodySmall" color="forest">
-            {copy.gate.saveForLater}
-          </Text>
-        </Pressable>
-
         <View style={styles.qBlock}>
           <GateStep
             stepId={stepId}
@@ -124,25 +141,82 @@ export function DayZeroGate() {
         </View>
 
         <View style={styles.footer}>
-          <Button
-            label={isLast ? copy.gate.done : copy.gate.next}
-            disabled={!hasAnswer}
-            onPress={() => advance(answers)}
-          />
+          <View style={styles.footerRow}>
+            {index > 0 ? (
+              <Button label="Back" variant="secondary" fullWidth={false} onPress={back} />
+            ) : fallback ? (
+              <Button
+                label="Cancel"
+                variant="secondary"
+                fullWidth={false}
+                onPress={() => void cancel()}
+              />
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
+            <Button
+              label={isLast ? copy.gate.done : copy.gate.next}
+              variant="primary"
+              fullWidth={false}
+              disabled={!hasAnswer}
+              onPress={() => advance(answers)}
+            />
+          </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={copy.gate.skip}
-            onPress={skip}
+            accessibilityLabel={copy.gate.saveForLater}
+            onPress={() => finish(answers)}
             style={styles.skip}
           >
             <Text variant="bodySmall" color="textMuted">
-              {copy.gate.skip}
+              {copy.gate.saveForLater}
             </Text>
           </Pressable>
         </View>
       </ScrollView>
       <CrisisBanner />
     </View>
+  );
+}
+
+/** A full-width selectable row (relationship, species, tone), matching the demo. */
+function SelectRow({
+  label,
+  description,
+  selected,
+  onPress,
+}: {
+  label: string;
+  description?: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={description ? `${label}. ${description}` : label}
+      onPress={onPress}
+      style={[
+        styles.row,
+        { borderColor: colors.line, backgroundColor: colors.card },
+        selected && { backgroundColor: colors.amethystText, borderColor: colors.amethystText },
+      ]}
+    >
+      <Text variant="cardTitle" color={selected ? 'onAccent' : 'textPrimary'}>
+        {label}
+      </Text>
+      {description ? (
+        <Text
+          variant="bodySmall"
+          color={selected ? 'onAccent' : 'textMuted'}
+          style={styles.rowSub}
+        >
+          {description}
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -158,7 +232,6 @@ function GateStep({
   onSelect: (next: GateAnswers) => void;
 }) {
   const { colors } = useTheme();
-  const loved = answers.lovedOneName?.trim() || 'them';
 
   if (stepId === 'callName' || stepId === 'lovedOneName') {
     const isName = stepId === 'callName';
@@ -173,7 +246,7 @@ function GateStep({
           placeholder={isName ? copy.gate.q1Placeholder : copy.gate.q2Placeholder}
           placeholderTextColor={colors.textMuted}
           accessibilityLabel={isName ? copy.gate.q1 : copy.gate.q2}
-          style={[styles.input, { borderColor: colors.line, color: colors.textPrimary }]}
+          style={[styles.input, { borderColor: colors.forest, color: colors.textPrimary }]}
         />
       </>
     );
@@ -185,21 +258,24 @@ function GateStep({
         <Text variant="display" accessibilityRole="header">
           {copy.gate.q3}
         </Text>
-        <View style={styles.chips}>
+        <View style={styles.rows}>
           {HUMAN_RELATIONSHIPS.map((r) => (
-            <Chip
+            <SelectRow
               key={r}
               label={r}
               selected={answers.relationship === r && answers.mode === 'human'}
               onPress={() => onSelect({ ...answers, relationship: r, mode: 'human' })}
             />
           ))}
-          <Chip
+          <SelectRow
             label={PET_OPTION}
             selected={answers.mode === 'pet'}
-            onPress={() =>
-              onSelect({ ...answers, relationship: PET_OPTION, mode: 'pet' })
-            }
+            onPress={() => onSelect({ ...answers, relationship: PET_OPTION, mode: 'pet' })}
+          />
+          <SelectRow
+            label={OTHER_OPTION}
+            selected={answers.relationship === OTHER_OPTION && answers.mode === 'human'}
+            onPress={() => onSelect({ ...answers, relationship: OTHER_OPTION, mode: 'human' })}
           />
         </View>
       </>
@@ -207,14 +283,15 @@ function GateStep({
   }
 
   if (stepId === 'species') {
+    const loved = answers.lovedOneName?.trim() || 'them';
     return (
       <>
         <Text variant="display" accessibilityRole="header">
           {copy.gate.q4Pet.replace('[name]', loved)}
         </Text>
-        <View style={styles.chips}>
+        <View style={styles.rows}>
           {SPECIES.map((sp) => (
-            <Chip
+            <SelectRow
               key={sp}
               label={sp}
               selected={answers.species === sp}
@@ -235,13 +312,14 @@ function GateStep({
       <Text variant="body" color="textMuted" style={styles.tonePrompt}>
         {copy.gate.tonePrompt}
       </Text>
-      <View style={styles.chips}>
+      <View style={styles.rows}>
         {TONES.map((t) => (
-          <Chip
-            key={t}
-            label={t}
-            selected={answers.tone === t}
-            onPress={() => onSelect({ ...answers, tone: t })}
+          <SelectRow
+            key={t.label}
+            label={t.label}
+            description={t.description}
+            selected={answers.tone === t.label}
+            onPress={() => onSelect({ ...answers, tone: t.label })}
           />
         ))}
       </View>
@@ -250,18 +328,27 @@ function GateStep({
 }
 
 const styles = StyleSheet.create({
-  saveLater: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center' },
-  qBlock: { flex: 1, gap: spacing.lg, marginTop: spacing.md },
+  qBlock: { flex: 1, gap: spacing.lg },
   input: {
     borderWidth: 1,
-    borderRadius: radii.inputPill,
+    borderRadius: radii.card,
     paddingHorizontal: spacing.lg,
-    minHeight: 52,
+    minHeight: 56,
     fontSize: 15,
     lineHeight: 22,
   },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  rows: { gap: spacing.sm },
+  row: {
+    borderWidth: 1,
+    borderRadius: radii.card,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    minHeight: 52,
+    justifyContent: 'center',
+  },
+  rowSub: { marginTop: 2 },
   tonePrompt: { marginTop: -spacing.sm },
-  footer: { gap: spacing.sm, marginTop: spacing.xxl },
+  footer: { gap: spacing.md, marginTop: spacing.xxl },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md },
   skip: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
 });

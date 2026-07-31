@@ -19,11 +19,12 @@ export default function JournalScreen() {
     router.push(type ? { pathname: '/entry/new', params: { type } } : '/entry/new');
 
   return (
-    <Screen header={{ title: 'Journal', subtitle: formatHeaderDateTime(now) }}>
+    <Screen header={{ title: 'Journal', subtitle: formatHeaderDateTime(now), image: 'dusk' }}>
       <ComposeCard
         chips={ENTRY_TYPES}
         onPressPrompt={() => compose()}
         onPressMic={() => compose()}
+        onPressAttach={() => compose()}
         onPressChip={(label) => compose(label)}
       />
       <SectionLabel>{copy.journal.entries}</SectionLabel>

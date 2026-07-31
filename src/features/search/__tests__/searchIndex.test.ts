@@ -5,6 +5,7 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 import { search } from '@/features/search/searchIndex';
+import { useEntriesStore } from '@/features/journal/entriesStore';
 
 describe('search index', () => {
   it('returns nothing for an empty query', () => {
@@ -21,7 +22,8 @@ describe('search index', () => {
     expect(search('glossary', 'support').some((x) => x.kind === 'reading')).toBe(true);
   });
 
-  it('global scope searches entries too', () => {
+  it('global scope searches entries too', async () => {
+    await useEntriesStore.getState().addEntry({ type: 'Memory', text: 'The lake house summers' });
     const r = search('lake house', 'global');
     expect(r.some((x) => x.kind === 'entry')).toBe(true);
   });

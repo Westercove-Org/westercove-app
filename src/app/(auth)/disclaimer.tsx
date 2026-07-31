@@ -1,93 +1,63 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useTheme } from '@/theme';
-import { radii, spacing } from '@/theme/tokens';
+import { spacing } from '@/theme/tokens';
 
-/** Disclaimer: wellness-companion-not-therapy, plus the 18+ and T&C acknowledgment. */
+/** Disclaimer: wellness-companion-not-therapy. No blocking checkbox — continuing
+ * confirms the 18+ / terms acknowledgment (matches the demo). */
 export default function DisclaimerScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const [agreed, setAgreed] = useState(false);
 
   return (
-    <View
-      style={[styles.screen, { paddingTop: insets.top + spacing.huge }]}
-    >
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <HeroHeader variant="compact" title={copy.disclaimerScreen.title} image="hills" />
       <View style={styles.content}>
-        <Text variant="display" accessibilityRole="header">
-          {copy.disclaimerScreen.title}
-        </Text>
-        <Text variant="body" color="textMuted" style={styles.body}>
+        <Text variant="body" style={styles.para}>
           {copy.disclaimerScreen.body}
         </Text>
+        <Text variant="body" style={styles.para}>
+          {copy.disclaimerScreen.crisis}
+        </Text>
+        <Text variant="body" color="textMuted" style={styles.para}>
+          {copy.disclaimerScreen.terms}
+        </Text>
 
-        <Pressable
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: agreed }}
-          accessibilityLabel={copy.disclaimerScreen.age}
-          onPress={() => setAgreed((v) => !v)}
-          style={styles.checkRow}
-        >
-          <View
-            style={[
-              styles.box,
-              { borderColor: colors.line },
-              agreed && { backgroundColor: colors.forest, borderColor: colors.forest },
-            ]}
+        <View style={styles.footer}>
+          <Button
+            label={copy.disclaimerScreen.continue}
+            variant="primary"
+            onPress={() => router.push('/sign-in')}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={copy.disclaimerScreen.goBack}
+            onPress={() => router.back()}
+            style={styles.back}
           >
-            {agreed ? (
-              <Text color={colors.onAccent} style={styles.tick}>
-                ✓
-              </Text>
-            ) : null}
-          </View>
-          <Text variant="body" style={styles.checkLabel}>
-            {copy.disclaimerScreen.age}
-          </Text>
-        </Pressable>
+            <Text variant="bodySmall" color="textMuted">
+              {copy.disclaimerScreen.goBack}
+            </Text>
+          </Pressable>
+        </View>
       </View>
-
-      <Button
-        label={copy.disclaimerScreen.agree}
-        disabled={!agreed}
-        onPress={() => router.push('/entry-path')}
-      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  content: {
     flex: 1,
     paddingHorizontal: spacing.screen,
-    paddingBottom: spacing.xxl,
-    justifyContent: 'space-between',
+    paddingTop: spacing.xl,
+    gap: spacing.lg,
   },
-  content: { gap: spacing.lg },
-  body: {},
-  checkRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    minHeight: 44,
-    marginTop: spacing.sm,
-  },
-  box: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  tick: { fontSize: 15, fontWeight: '700' },
-  checkLabel: { flex: 1 },
+  para: {},
+  footer: { marginTop: spacing.xl, gap: spacing.sm },
+  back: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
 });

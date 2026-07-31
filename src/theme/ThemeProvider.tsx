@@ -1,16 +1,10 @@
-import {
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { darkTheme, lightTheme, type Theme } from './tokens';
+import { useThemeStore, type ThemeMode } from './themeStore';
 
-/** User-facing theme control: follow the OS, or force a mode (Settings §6.4). */
-export type ThemeMode = 'system' | 'light' | 'dark';
+export type { ThemeMode };
 
 interface ThemeContextValue {
   theme: Theme;
@@ -22,17 +16,17 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function WestercoveThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
-  const [mode, setMode] = useState<ThemeMode>('system');
+  const mode = useThemeStore((s) => s.mode);
+  const setMode = useThemeStore((s) => s.setMode);
 
   const value = useMemo<ThemeContextValue>(() => {
-    const resolved =
-      mode === 'system' ? (systemScheme ?? 'light') : mode;
+    const resolved = mode === 'system' ? (systemScheme ?? 'light') : mode;
     return {
       theme: resolved === 'dark' ? darkTheme : lightTheme,
       mode,
       setMode,
     };
-  }, [mode, systemScheme]);
+  }, [mode, setMode, systemScheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

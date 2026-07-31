@@ -1,123 +1,56 @@
-import { useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MessageIcon, PhoneIcon } from '@/components/icons';
 import { copy } from '@/constants/copy';
 import { Text } from './ui/Text';
 
-/** Emerald crisis token, fixed across themes (crisis card stays emerald in dark). */
-const EMERALD = '#0E5F18';
+/** Deep-plum crisis fill, fixed across themes (matches the v6 demo banner). */
+const EMERALD = '#2A1B3D';
 const SAFFRON = '#EDC531';
 
-function smsUrl(number: string, body?: string): string {
-  if (!body) return `sms:${number}`;
-  const sep = Platform.OS === 'ios' ? '&' : '?';
-  return `sms:${number}${sep}body=${encodeURIComponent(body)}`;
-}
-
-function open(url: string) {
-  Linking.openURL(url).catch(() => {
-    /* If the platform can't handle tel:/sms:, fail quietly. */
-  });
-}
-
 /**
- * The persistent crisis banner. Full-bleed emerald, white text at AAA
- * contrast, beneath the tab bar on every primary screen and pre-auth. Never
- * dismissible, never gated by subscription. Collapsed shows one line; tapping
- * expands to explicit one-tap Call 988 / Text 988 / Text HOME 741741 actions,
- * each reading its full action to screen readers (handoff §4.2).
+ * The persistent crisis banner: a rounded plum pill, white text at AAA
+ * contrast, never dismissible and never gated by subscription. Tapping it goes
+ * straight to the full-screen `/crisis` interface where the person chooses to
+ * call or text — no inline panel. Rendered above the tab bar on primary
+ * screens (`bottomInset={false}`) and at the bottom edge of the gate / new-entry
+ * screens (default `bottomInset`, which adds the safe-area gap).
  */
-export function CrisisBanner() {
+export function CrisisBanner({ bottomInset = true }: { bottomInset?: boolean }) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [expanded, setExpanded] = useState(false);
 
-  return (
-    <View style={{ backgroundColor: EMERALD, paddingBottom: insets.bottom }}>
-      <View style={styles.topLine} />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={
-          expanded
-            ? 'Crisis resources, collapse'
-            : 'In crisis? Crisis resources. Tap to expand call and text options.'
-        }
-        onPress={() => setExpanded((v) => !v)}
-        style={styles.collapsedRow}
-      >
-        <Text color="#FFFFFF" style={styles.collapsedText}>
-          {copy.crisis.bannerLine}
-        </Text>
-      </Pressable>
-
-      {expanded ? (
-        <View style={styles.actions}>
-          <CrisisAction
-            icon={<PhoneIcon size={20} color="#FFFFFF" />}
-            label="Call 988"
-            hint="Suicide and Crisis Lifeline"
-            onPress={() => open('tel:988')}
-          />
-          <CrisisAction
-            icon={<MessageIcon size={20} color="#FFFFFF" />}
-            label="Text 988"
-            hint="Suicide and Crisis Lifeline"
-            onPress={() => open(smsUrl('988'))}
-          />
-          <CrisisAction
-            icon={<MessageIcon size={20} color="#FFFFFF" />}
-            label="Text HOME to 741741"
-            hint="Crisis Text Line"
-            onPress={() => open(smsUrl('741741', 'HOME'))}
-          />
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function CrisisAction({
-  icon,
-  label,
-  hint,
-  onPress,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  hint: string;
-  onPress: () => void;
-}) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${label}. ${hint}.`}
-      onPress={onPress}
-      style={({ pressed }) => [styles.action, pressed && { opacity: 0.75 }]}
+      accessibilityLabel="In crisis? Crisis resources. Tap to call or text."
+      onPress={() => router.push('/crisis')}
+      style={({ pressed }) => [
+        styles.pill,
+        { marginBottom: (bottomInset ? insets.bottom : 0) + 8 },
+        pressed && { opacity: 0.85 },
+      ]}
     >
-      {icon}
-      <Text color="#FFFFFF" style={styles.actionLabel}>
-        {label}
+      <Text color="#FFFFFF" style={styles.text}>
+        {copy.crisis.bannerLine}
       </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  topLine: { height: 2, backgroundColor: SAFFRON },
-  collapsedRow: {
+  pill: {
+    backgroundColor: EMERALD,
+    borderTopWidth: 2,
+    borderTopColor: SAFFRON,
+    borderRadius: 16,
+    marginHorizontal: 16,
+    marginTop: 8,
     minHeight: 44,
     paddingHorizontal: 20,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  collapsedText: { fontWeight: '600', fontSize: 13, lineHeight: 18 },
-  actions: { paddingHorizontal: 12, paddingBottom: 8, gap: 2 },
-  action: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 8,
-  },
-  actionLabel: { fontWeight: '600', fontSize: 15 },
+  text: { fontWeight: '600', fontSize: 13, lineHeight: 18, textAlign: 'center' },
 });

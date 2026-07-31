@@ -9,6 +9,8 @@ import { SearchPill } from '@/components/ui/SearchPill';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { HomeQuestionCard } from '@/features/questions/HomeQuestionCard';
+import { nextUpcoming, useHardDatesStore } from '@/features/dates/hardDatesStore';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { formatEntryTimestamp, formatHeaderDateTime } from '@/lib/dateFormat';
 import { spacing } from '@/theme/tokens';
@@ -34,6 +36,8 @@ export default function HomeScreen() {
   const now = new Date();
   const callName = useSessionStore((s) => s.session?.gateAnswers.callName);
   const entries = useEntriesStore((s) => s.entries);
+  const hardDates = useHardDatesStore((s) => s.dates);
+  const upcoming = nextUpcoming(hardDates, now);
 
   const compose = (type?: string) =>
     router.push(type ? { pathname: '/entry/new', params: { type } } : '/entry/new');
@@ -42,14 +46,18 @@ export default function HomeScreen() {
     <Screen
       header={{
         variant: 'greeting',
+        image: 'wildflowers',
         title: greeting(now, callName),
         subtitle: formatHeaderDateTime(now),
       }}
     >
+      <HomeQuestionCard />
+
       <ComposeCard
         chips={HOME_CHIPS}
         onPressPrompt={() => compose()}
         onPressMic={() => compose()}
+        onPressAttach={() => compose()}
         onPressChip={(label) => compose(label)}
       />
 
@@ -71,10 +79,22 @@ export default function HomeScreen() {
         />
       ))}
 
-      <HardDateCard
-        label="An anniversary is coming up soon"
-        onPrepare={() => compose('Anniversary')}
-      />
+      {upcoming ? (
+        <HardDateCard
+          label={`${upcoming.label} is coming up`}
+          detail={`${upcoming.when.toLocaleDateString(undefined, {
+            month: 'long',
+            day: 'numeric',
+          })} · ${
+            upcoming.daysAway === 0
+              ? 'today'
+              : upcoming.daysAway === 1
+                ? 'tomorrow'
+                : `in ${upcoming.daysAway} days`
+          }`}
+          onPrepare={() => compose('Anniversary')}
+        />
+      ) : null}
     </Screen>
   );
 }
