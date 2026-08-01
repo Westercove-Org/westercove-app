@@ -80,6 +80,10 @@ export function defaultSeedEntries(): Entry[] {
 
 const GUEST = '__guest__';
 
+/** Slot that holds a journal migrated from the old single-journal layout, so
+ * content written before per-account storage existed is never lost. */
+export const LEGACY_USER = '__legacy__';
+
 interface EntriesState {
   /** Whose journal is currently in `entries`. */
   activeUserId: string;
@@ -197,7 +201,23 @@ export const useEntriesStore = create<EntriesState>()(
       // offline); `entries` is rebuilt from the active user's slot on rehydrate.
       name: 'westercove.entries',
       storage: createJSONStorage(() => secureStorage),
+      version: 1,
       partialize: (s) => ({ byUser: s.byUser, activeUserId: s.activeUserId }),
+      // v0 stored one shared journal as `{ entries: [...] }`. Carry any such
+      // journal forward into a legacy slot rather than dropping it, so nothing
+      // written before per-account storage is deleted on upgrade.
+      migrate: (persisted, version) => {
+        const p = persisted as
+          | { entries?: Entry[]; byUser?: Record<string, Entry[]>; activeUserId?: string }
+          | undefined;
+        if (version < 1 && p && Array.isArray(p.entries) && !p.byUser) {
+          return {
+            byUser: { [LEGACY_USER]: p.entries },
+            activeUserId: LEGACY_USER,
+          } as { byUser: Record<string, Entry[]>; activeUserId: string };
+        }
+        return p as { byUser: Record<string, Entry[]>; activeUserId: string };
+      },
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         const list = state.byUser[state.activeUserId] ?? [];

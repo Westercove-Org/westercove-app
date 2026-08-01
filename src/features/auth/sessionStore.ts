@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { defaultSeedEntries } from '@/features/journal/entriesStore';
+import { defaultSeedEntries, LEGACY_USER, useEntriesStore } from '@/features/journal/entriesStore';
 import { secureStorage } from '@/lib/secureStorage';
 import { services } from '@/services';
 import type { CreateAccountInput } from '@/services/auth';
@@ -51,8 +51,12 @@ export const useSessionStore = create<SessionState>()(
             gateAnswers: emptyGate,
           },
         });
-        // Load this account's journal (seeding sample entries the first time).
-        activateUserStores(userId, defaultSeedEntries());
+        // Load this account's journal. A brand-new account starts with either a
+        // journal preserved from the old single-journal layout (so content
+        // entered before per-account storage reappears) or the sample entries.
+        const legacy = useEntriesStore.getState().byUser[LEGACY_USER];
+        const fallback = legacy && legacy.length > 0 ? legacy : defaultSeedEntries();
+        activateUserStores(userId, fallback);
       },
 
       signInDemo(personaId) {
