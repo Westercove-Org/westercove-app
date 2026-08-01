@@ -6,6 +6,7 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
+import { DEMO_PERSONAS } from '@/features/auth/demoPersonas';
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
@@ -14,6 +15,7 @@ export default function SignInScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const signIn = useSessionStore((s) => s.signIn);
+  const signInDemo = useSessionStore((s) => s.signInDemo);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -125,6 +127,22 @@ export default function SignInScreen() {
         <Text variant="bodySmall" color="textMuted" style={styles.center}>
           {copy.signIn.createHint}
         </Text>
+
+        <View style={styles.divider}>
+          <View style={[styles.line, { backgroundColor: colors.line }]} />
+          <Text variant="bodySmall" color="textMuted">
+            {copy.signIn.demo}
+          </Text>
+          <View style={[styles.line, { backgroundColor: colors.line }]} />
+        </View>
+        {DEMO_PERSONAS.map((persona) => (
+          <Button
+            key={persona.id}
+            label={`Continue as ${persona.fullName}`}
+            variant="secondary"
+            onPress={() => signInDemo(persona.id)}
+          />
+        ))}
       </View>
     </View>
   );

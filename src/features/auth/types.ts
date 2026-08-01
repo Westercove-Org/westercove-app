@@ -27,6 +27,9 @@ export interface GateAnswers {
 export interface AuthUser {
   email: string;
   firstName?: string;
+  /** Stable per-account id used to key that account's persisted content
+   * (journal, question progress). Falls back to the email when unset. */
+  id?: string;
 }
 
 export interface Session {

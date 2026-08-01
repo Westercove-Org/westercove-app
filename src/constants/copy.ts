@@ -90,6 +90,7 @@ export const copy = {
     newHere: 'New to Westercove',
     create: 'Create an account',
     createHint: 'Setting up takes a moment, with no long intake.',
+    demo: 'Demo accounts',
   },
 
   gate: {

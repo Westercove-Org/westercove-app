@@ -4,9 +4,16 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
+import { defaultSeedEntries, useEntriesStore } from '@/features/journal/entriesStore';
 import { search } from '@/features/search/searchIndex';
 
 describe('search index', () => {
+  // Entries are per-account and empty until someone signs in; put a signed-in
+  // user's journal in place so the global scope has entries to match.
+  beforeAll(() => {
+    useEntriesStore.getState().setActiveUser('search-test-user', defaultSeedEntries());
+  });
+
   it('returns nothing for an empty query', () => {
     expect(search('', 'global')).toEqual([]);
   });

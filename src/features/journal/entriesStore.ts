@@ -21,9 +21,9 @@ function daysAgo(days: number, hour: number, minute: number): string {
   return d.toISOString();
 }
 
-/** Seed entries from the hi-fi screens, each with a short body and a response
- * so opening one shows a conversation thread. */
-function seed(): Entry[] {
+/** Sample entries for a brand-new account that has no persona history of its
+ * own — the four threads from the hi-fi screens. */
+export function defaultSeedEntries(): Entry[] {
   const mk = (
     id: string,
     type: string,
@@ -78,8 +78,20 @@ function seed(): Entry[] {
   ];
 }
 
+const GUEST = '__guest__';
+
 interface EntriesState {
+  /** Whose journal is currently in `entries`. */
+  activeUserId: string;
+  /** Every account's journal, kept separate so switching users never mixes
+   * content and each person's entries survive a sign-out. */
+  byUser: Record<string, Entry[]>;
+  /** The active user's journal (a live view of `byUser[activeUserId]`). */
   entries: Entry[];
+  /** Point the store at an account, seeding its journal the first time only. */
+  setActiveUser: (userId: string, seed?: Entry[]) => void;
+  /** Detach from any account (sign-out); shows an empty journal. */
+  clearActiveUser: () => void;
   addEntry: (input: {
     type: string;
     text: string;
@@ -96,76 +108,101 @@ function lovedOneName(): string | undefined {
 export const useEntriesStore = create<EntriesState>()(
   persist(
     (set, get) => ({
-  entries: seed(),
+      activeUserId: GUEST,
+      byUser: {},
+      entries: [],
 
-  async addEntry({ type, text, justHeard }) {
-    // Safety runs on every submission, before response generation.
-    const { level } = services.safety.classify(text);
-    const at = new Date();
-    const turns: ConversationTurn[] = [turn('user', text, at)];
-    let headline: string;
+      setActiveUser(userId, seed) {
+        set((s) => {
+          const existing = s.byUser[userId];
+          const list = existing ?? seed ?? [];
+          const byUser = existing ? s.byUser : { ...s.byUser, [userId]: list };
+          return { activeUserId: userId, byUser, entries: list };
+        });
+      },
 
-    // Six Moves are suspended at Level 3/4 — the safety surface governs there.
-    if (level < SafetyLevel.High) {
-      const reply = await services.companion.respond({
-        text,
-        type,
-        lovedOneName: lovedOneName(),
-        justHeard,
-      });
-      turns.push(turn('companion', reply.response, at));
-      headline = reply.headline;
-    } else {
-      const reply = await services.companion.respond({ text, type, justHeard: true });
-      headline = reply.headline;
-    }
+      clearActiveUser() {
+        set({ activeUserId: GUEST, entries: get().byUser[GUEST] ?? [] });
+      },
 
-    const id = `e${Date.now()}`;
-    const entry: Entry = {
-      id,
-      type,
-      headline,
-      createdAt: at.toISOString(),
-      turns,
-      justHeard,
-      safetyLevel: level,
-    };
-    set((s) => ({ entries: [entry, ...s.entries] }));
-    return { id, level };
-  },
+      async addEntry({ type, text, justHeard }) {
+        // Safety runs on every submission, before response generation.
+        const { level } = services.safety.classify(text);
+        const at = new Date();
+        const turns: ConversationTurn[] = [turn('user', text, at)];
+        let headline: string;
 
-  async continueEntry(id, text) {
-    const { level } = services.safety.classify(text);
-    const at = new Date();
-    const userTurn = turn('user', text, at);
-    const extra: ConversationTurn[] = [userTurn];
-    if (level < SafetyLevel.High) {
-      const reply = await services.companion.respond({
-        text,
-        type: 'Journal',
-        lovedOneName: lovedOneName(),
-      });
-      extra.push(turn('companion', reply.response, at));
-    }
-    set((s) => ({
-      entries: s.entries.map((e) =>
-        e.id === id
-          ? { ...e, turns: [...e.turns, ...extra], safetyLevel: Math.max(e.safetyLevel, level) }
-          : e,
-      ),
-    }));
-    return level;
-  },
+        // Six Moves are suspended at Level 3/4 — the safety surface governs there.
+        if (level < SafetyLevel.High) {
+          const reply = await services.companion.respond({
+            text,
+            type,
+            lovedOneName: lovedOneName(),
+            justHeard,
+          });
+          turns.push(turn('companion', reply.response, at));
+          headline = reply.headline;
+        } else {
+          const reply = await services.companion.respond({ text, type, justHeard: true });
+          headline = reply.headline;
+        }
 
-  getEntry(id) {
-    return get().entries.find((e) => e.id === id);
-  },
+        const id = `e${Date.now()}`;
+        const entry: Entry = {
+          id,
+          type,
+          headline,
+          createdAt: at.toISOString(),
+          turns,
+          justHeard,
+          safetyLevel: level,
+        };
+        set((s) => {
+          const list = [entry, ...(s.byUser[s.activeUserId] ?? [])];
+          return { byUser: { ...s.byUser, [s.activeUserId]: list }, entries: list };
+        });
+        return { id, level };
+      },
+
+      async continueEntry(id, text) {
+        const { level } = services.safety.classify(text);
+        const at = new Date();
+        const userTurn = turn('user', text, at);
+        const extra: ConversationTurn[] = [userTurn];
+        if (level < SafetyLevel.High) {
+          const reply = await services.companion.respond({
+            text,
+            type: 'Journal',
+            lovedOneName: lovedOneName(),
+          });
+          extra.push(turn('companion', reply.response, at));
+        }
+        set((s) => {
+          const list = (s.byUser[s.activeUserId] ?? []).map((e) =>
+            e.id === id
+              ? { ...e, turns: [...e.turns, ...extra], safetyLevel: Math.max(e.safetyLevel, level) }
+              : e,
+          );
+          return { byUser: { ...s.byUser, [s.activeUserId]: list }, entries: list };
+        });
+        return level;
+      },
+
+      getEntry(id) {
+        return get().entries.find((e) => e.id === id);
+      },
     }),
     {
-      // Cached entries are readable offline; only the entries are persisted.
+      // Every account's journal is persisted together (one cache, readable
+      // offline); `entries` is rebuilt from the active user's slot on rehydrate.
       name: 'westercove.entries',
       storage: createJSONStorage(() => secureStorage),
-      partialize: (s) => ({ entries: s.entries }),
+      partialize: (s) => ({ byUser: s.byUser, activeUserId: s.activeUserId }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const list = state.byUser[state.activeUserId] ?? [];
+        useEntriesStore.setState({ entries: list });
+      },
     },
   ),
 );

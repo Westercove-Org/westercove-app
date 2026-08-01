@@ -11,6 +11,8 @@ import { services } from '@/services';
  * patterns in the flow. */
 export default function AccountScreen() {
   const email = useSessionStore((s) => s.session?.user.email);
+  const firstName = useSessionStore((s) => s.session?.user.firstName);
+  const signOut = useSessionStore((s) => s.signOut);
   const [deletesOn, setDeletesOn] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -27,9 +29,16 @@ export default function AccountScreen() {
           Signed in as
         </Text>
         <Text variant="cardTitle" style={{ marginTop: 4 }}>
-          {email ?? 'you@westercove.app'}
+          {firstName ?? email ?? 'you@westercove.app'}
         </Text>
+        {firstName ? (
+          <Text variant="bodySmall" color="textMuted" style={{ marginTop: 2 }}>
+            {email}
+          </Text>
+        ) : null}
       </Card>
+
+      <Button label="Sign out" variant="secondary" onPress={signOut} />
 
       {deletesOn ? (
         <Card>

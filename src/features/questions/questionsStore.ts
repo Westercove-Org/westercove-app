@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { secureStorage } from '@/lib/secureStorage';
+import { userScopedStorage } from '@/lib/userScopedStorage';
 import {
   DAYS_HUMAN,
   DAYS_PET,
@@ -16,9 +16,20 @@ import {
  * next Day bucket. `daysShown` is how many buckets have already been surfaced —
  * a new Day is "due" when the interval count exceeds it.
  *
- * Persisted with the same secureStorage pattern as the session/entries stores,
- * which on web is localStorage — so answers survive a reload for testing.
+ * Persisted per signed-in account via userScopedStorage (localStorage on web),
+ * so answers survive a reload and never leak between accounts.
  */
+
+/** Durable question progress reset to its empty state — used when switching
+ * accounts, before the incoming user's saved progress is rehydrated. */
+export const QUESTIONS_EMPTY = {
+  talkMs: 0,
+  daysShown: 0,
+  answers: {} as Record<string, string>,
+  skipped: [] as string[],
+  pending: null,
+  deferAfterNo: false,
+};
 
 export type PendingMode = 'dialog' | 'direct';
 
@@ -111,7 +122,7 @@ export const useQuestionsStore = create<QuestionsState>()(
     }),
     {
       name: 'westercove.questions',
-      storage: createJSONStorage(() => secureStorage),
+      storage: createJSONStorage(() => userScopedStorage),
       // Only durable progress is persisted; pending/deferAfterNo are per-session.
       partialize: (s) => ({
         talkMs: s.talkMs,
