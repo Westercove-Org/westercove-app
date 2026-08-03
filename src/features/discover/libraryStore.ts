@@ -3,7 +3,6 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { secureStorage } from '@/lib/secureStorage';
 import { LIBRARY_BASE, profileKey } from '@/features/profiles/profileKeys';
-import { MOCK_BOOKS } from './mockBooks';
 
 /**
  * The per-profile book library. A profile begins with no books chosen; until
@@ -16,7 +15,7 @@ interface LibraryState {
   add: (id: string) => void;
   remove: (id: string) => void;
   toggle: (id: string) => void;
-  addAll: () => void;
+  addAll: (ids: string[]) => void;
   has: (id: string) => boolean;
 }
 
@@ -41,8 +40,8 @@ export const useLibraryStore = create<LibraryState>()(
         );
       },
 
-      addAll() {
-        set({ bookIds: MOCK_BOOKS.map((b) => b.id) });
+      addAll(ids) {
+        set({ bookIds: [...ids] });
       },
 
       has(id) {

@@ -45,13 +45,14 @@ describe('libraryStore', () => {
     expect(useLibraryStore.getState().has('b3')).toBe(false);
   });
 
-  it('addAll adds every book in the catalog', () => {
-    useLibraryStore.getState().addAll();
-    expect(useLibraryStore.getState().bookIds).toEqual(MOCK_BOOKS.map((b) => b.id));
+  it('addAll adds every id it is given', () => {
+    const ids = MOCK_BOOKS.map((b) => b.id);
+    useLibraryStore.getState().addAll(ids);
+    expect(useLibraryStore.getState().bookIds).toEqual(ids);
   });
 
   it('resetLibrary clears the shelf', () => {
-    useLibraryStore.getState().addAll();
+    useLibraryStore.getState().addAll(['b1', 'b2']);
     resetLibrary();
     expect(useLibraryStore.getState().bookIds).toEqual([]);
   });

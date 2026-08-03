@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { CheckIcon, PadlockIcon, PlusIcon } from '@/components/icons';
@@ -11,8 +11,9 @@ import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { BookSummarySheet } from '@/features/discover/BookSummarySheet';
 import { useLibraryStore } from '@/features/discover/libraryStore';
-import { MOCK_BOOKS, type Book } from '@/features/discover/mockBooks';
+import { type Book } from '@/features/discover/mockBooks';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
+import { services } from '@/services';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
@@ -21,9 +22,20 @@ export default function DiscoverScreen() {
   const router = useRouter();
   const now = new Date();
   const [selected, setSelected] = useState<Book | null>(null);
+  const [catalog, setCatalog] = useState<Book[]>([]);
   const bookIds = useLibraryStore((s) => s.bookIds);
   const toggle = useLibraryStore((s) => s.toggle);
   const addAll = useLibraryStore((s) => s.addAll);
+
+  useEffect(() => {
+    let active = true;
+    services.content.listCatalog().then((books) => {
+      if (active) setCatalog(books);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <Screen header={{ title: 'Discover', subtitle: formatHeaderDateTime(now), image: 'meadow' }}>
@@ -39,7 +51,7 @@ export default function DiscoverScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={copy.library.addAll}
-          onPress={addAll}
+          onPress={() => addAll(catalog.map((b) => b.id))}
           hitSlop={8}
         >
           <Text variant="cardTitle" color="forest">
@@ -56,7 +68,7 @@ export default function DiscoverScreen() {
       </View>
 
       <View style={styles.grid}>
-        {MOCK_BOOKS.map((book) => {
+        {catalog.map((book) => {
           const added = bookIds.includes(book.id);
           return (
             <View key={book.id} style={styles.gridItem}>

@@ -9,7 +9,8 @@ export interface Book {
 // Spine palette cycles through plum / green / gold / deep-green, matching the
 // demo's book covers.
 const SPINES = ['#3D2F5E', '#2F6B33', '#B9902F', '#1F4D22'];
-const spine = (i: number) => SPINES[i % SPINES.length];
+/** Spine block color for the i-th book cover; cycles the palette. */
+export const spine = (i: number) => SPINES[i % SPINES.length];
 
 const TITLES: [string, string][] = [
   ['Bearing the Unbearable', 'Joanne Cacciatore, PhD'],

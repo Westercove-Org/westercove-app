@@ -121,7 +121,7 @@ describe('per-profile library', () => {
     expect(useLibraryStore.getState().has('b1')).toBe(true);
     useLibraryStore.getState().toggle('b1');
     expect(useLibraryStore.getState().has('b1')).toBe(false);
-    useLibraryStore.getState().addAll();
+    useLibraryStore.getState().addAll(['b1', 'b2', 'b3']);
     expect(useLibraryStore.getState().bookIds.length).toBeGreaterThan(1);
   });
 });

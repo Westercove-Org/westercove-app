@@ -2,10 +2,15 @@ import { Platform } from 'react-native';
 
 import { MockAuthService, type AuthService } from './auth';
 import { MockCompanionService, type CompanionService } from './companion';
-import { MockContentService, type ContentService } from './content';
+import { ApiContentService, MockContentService, type ContentService } from './content';
 import { MockCrmService, type CrmService } from './crm';
+import { apiConfigured } from './http';
 import { MockSafetyService, type SafetyService } from './safety';
-import { MockSubscriptionService, type SubscriptionService } from './subscription';
+import {
+  ApiSubscriptionService,
+  MockSubscriptionService,
+  type SubscriptionService,
+} from './subscription';
 import { MockVoiceService, NativeVoiceService, type VoiceService } from './voice';
 
 /**
@@ -28,8 +33,10 @@ export const services: {
   companion: new MockCompanionService(),
   // Native speech-to-text on device; the mock stands in for web/Expo Go.
   voice: Platform.OS === 'web' ? new MockVoiceService() : new NativeVoiceService(),
-  content: new MockContentService(),
-  subscription: new MockSubscriptionService(),
+  content: apiConfigured() ? new ApiContentService() : new MockContentService(),
+  subscription: apiConfigured()
+    ? new ApiSubscriptionService()
+    : new MockSubscriptionService(),
 };
 
 export * from './safety';
