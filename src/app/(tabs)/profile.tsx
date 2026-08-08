@@ -1,13 +1,18 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { PlusIcon } from '@/components/icons';
 import { Screen } from '@/components/Screen';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ListRow } from '@/components/ui/ListRow';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
+import { useSessionStore } from '@/features/auth/sessionStore';
+import { DemoControls } from '@/features/questions/DemoControls';
+import { TestProfiles } from '@/features/profile/TestProfiles';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
@@ -26,7 +31,7 @@ const YOUR_SPACE: Row[] = [
     section: 'what-i-know',
   },
   { label: 'Custom commands', subtitle: 'Define your own', section: 'custom-commands' },
-  { label: 'Export', section: 'export' },
+  { label: 'Download my journal', section: 'export' },
 ];
 
 const SETTINGS: Row[] = [
@@ -41,10 +46,19 @@ const LOVED_ONES = [
   { initials: 'B', name: 'Biscuit', color: '#338233' },
 ];
 
+/** Tones the companion-tone row cycles through. */
+const TONES = ['Gentle and warm', 'Plain and direct', 'Quiet and spare'];
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const now = new Date();
+
+  const fullName = useSessionStore((s) => s.session?.fullName ?? '');
+  const setFullName = useSessionStore((s) => s.setFullName);
+  const tone = useSessionStore((s) => s.session?.gateAnswers.tone ?? TONES[0]);
+  const updateGate = useSessionStore((s) => s.updateGate);
+  const [nameDraft, setNameDraft] = useState(fullName);
 
   const go = (section: string) => {
     if (section === 'what-i-know') router.push('/profile/what-i-know');
@@ -52,6 +66,11 @@ export default function ProfileScreen() {
     else if (section === 'export') router.push('/export');
     else if (section === 'account') router.push('/account');
     else router.push({ pathname: '/profile/[section]', params: { section } });
+  };
+
+  const cycleTone = () => {
+    const i = TONES.indexOf(tone);
+    updateGate({ tone: TONES[(i + 1) % TONES.length] });
   };
 
   const renderRows = (rows: Row[]) => (
@@ -70,6 +89,33 @@ export default function ProfileScreen() {
 
   return (
     <Screen header={{ title: 'Profile', subtitle: formatHeaderDateTime(now) }}>
+      <TestProfiles />
+
+      <SectionLabel>YOUR NAME</SectionLabel>
+      <View style={styles.cardWrap}>
+        <Card>
+          <Text variant="bodySmall" color="textMuted">
+            Your full name, first and last, as it should appear on your downloaded journal.
+            The companion still greets you by your first name.
+          </Text>
+          <TextInput
+            value={nameDraft}
+            onChangeText={setNameDraft}
+            placeholder="e.g. Patrice Ellison"
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel="Your full name"
+            style={[styles.input, { color: colors.textPrimary, borderColor: colors.line }]}
+          />
+          <View style={styles.saveRow}>
+            <Button
+              label="Save"
+              onPress={() => setFullName(nameDraft.trim())}
+              disabled={nameDraft.trim() === fullName}
+            />
+          </View>
+        </Card>
+      </View>
+
       <SectionLabel>{copy.profile.lovedOnes}</SectionLabel>
       <View style={styles.avatars}>
         {LOVED_ONES.map((lo) => (
@@ -85,9 +131,14 @@ export default function ProfileScreen() {
           </View>
         ))}
         <View style={styles.avatarItem}>
-          <View style={[styles.avatarAdd, { borderColor: colors.line }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add a loved one"
+            onPress={() => go('loved-ones')}
+            style={[styles.avatarAdd, { borderColor: colors.line }]}
+          >
             <PlusIcon size={22} color={colors.textMuted} />
-          </View>
+          </Pressable>
           <Text variant="meta" color="textMuted" style={styles.avatarName}>
             Add
           </Text>
@@ -97,6 +148,20 @@ export default function ProfileScreen() {
       <SectionLabel>{copy.profile.yourSpace}</SectionLabel>
       <View style={styles.cardWrap}>{renderRows(YOUR_SPACE)}</View>
 
+      <SectionLabel>COMPANION TONE</SectionLabel>
+      <View style={styles.cardWrap}>
+        <Card padded={false}>
+          <ListRow
+            label="Currently"
+            subtitle={tone}
+            chevron
+            onPress={cycleTone}
+          />
+        </Card>
+      </View>
+
+      <DemoControls />
+
       <SectionLabel>{copy.profile.settings}</SectionLabel>
       <View style={styles.cardWrap}>{renderRows(SETTINGS)}</View>
     </Screen>
@@ -105,6 +170,15 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   cardWrap: { paddingHorizontal: spacing.screen },
+  input: {
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: spacing.md,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  saveRow: { flexDirection: 'row', marginTop: spacing.md },
   avatars: { flexDirection: 'row', paddingHorizontal: spacing.screen, gap: spacing.xl },
   avatarItem: { alignItems: 'center', gap: spacing.xs },
   avatar: {
@@ -122,6 +196,8 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
+    textAlign: 'center',
+    lineHeight: 56,
   },
   avatarText: { fontSize: 18, fontWeight: '700' },
   avatarName: { marginTop: 2 },

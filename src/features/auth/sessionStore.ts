@@ -15,6 +15,8 @@ interface SessionState {
   beginAccount: (input: CreateAccountInput) => Promise<void>;
   completeGate: (answers: GateAnswers) => void;
   setEntitlement: (entitlement: Entitlement) => void;
+  setFullName: (fullName: string) => void;
+  updateGate: (partial: Partial<GateAnswers>) => void;
   signOut: () => void;
 }
 
@@ -76,6 +78,18 @@ export const useSessionStore = create<SessionState>()(
         if (!s) return;
         set({ session: { ...s, entitlement } });
         void services.crm.updateEntitlement(s.user.email, entitlement);
+      },
+
+      setFullName(fullName) {
+        const s = get().session;
+        if (!s) return;
+        set({ session: { ...s, fullName } });
+      },
+
+      updateGate(partial) {
+        const s = get().session;
+        if (!s) return;
+        set({ session: { ...s, gateAnswers: { ...s.gateAnswers, ...partial } } });
       },
 
       signOut() {

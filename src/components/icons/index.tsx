@@ -185,3 +185,19 @@ export function PaperclipIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M5 12.5 L10 17.5 L19 6.5" />
+    </Base>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M4 7 H20 M9 7 V5 A1 1 0 0 1 10 4 H14 A1 1 0 0 1 15 5 V7 M6 7 L7 20 A1 1 0 0 0 8 21 H16 A1 1 0 0 0 17 20 L18 7" />
+    </Base>
+  );
+}

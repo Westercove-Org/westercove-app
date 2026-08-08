@@ -37,4 +37,6 @@ export interface Session {
   disclaimerAcked: boolean;
   gateComplete: boolean;
   gateAnswers: GateAnswers;
+  /** Full name as it should appear on the downloaded journal (Profile). */
+  fullName?: string;
 }
