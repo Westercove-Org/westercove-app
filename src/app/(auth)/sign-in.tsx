@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { EyeIcon, PadlockIcon, PersonIcon } from '@/components/icons';
+import { EyeIcon, EyeOffIcon, PadlockIcon, PersonIcon } from '@/components/icons';
 import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
@@ -76,7 +76,11 @@ export default function SignInScreen() {
               onPress={() => setShowPw((v) => !v)}
               hitSlop={8}
             >
-              <EyeIcon size={20} color={colors.textMuted} />
+              {showPw ? (
+                <EyeOffIcon size={20} color={colors.textMuted} />
+              ) : (
+                <EyeIcon size={20} color={colors.textMuted} />
+              )}
             </Pressable>
           </View>
         </View>

@@ -219,3 +219,14 @@ export function EyeIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function EyeOffIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M4 5 L20 19" />
+      <Path d="M9.5 5.3 C 10.3 5.1 11.1 5 12 5 C 15 5 19 6.5 22 12 C 21.2 13.5 20.3 14.7 19.4 15.7" />
+      <Path d="M15.5 15.2 C 14.5 16 13.3 16.5 12 16.5 C 9 16.5 5 15 2 9.5 M6.2 7.7 C 4.7 8.7 3.3 10.2 2.4 12" />
+      <Path d="M9.9 9.9 A 3 3 0 0 0 14.1 14.1" />
+    </Base>
+  );
+}
