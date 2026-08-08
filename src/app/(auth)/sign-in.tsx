@@ -11,6 +11,8 @@ import { useSessionStore } from '@/features/auth/sessionStore';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
+const heroImage = require('../../../assets/images/westercove_hero_valley.jpg');
+
 export default function SignInScreen() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -33,9 +35,10 @@ export default function SignInScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <HeroHeader
-        variant="greeting"
+        variant="compact"
         title={copy.signIn.title}
         subtitle={copy.signIn.subtitle}
+        image={heroImage}
       />
       <ScrollView contentContainerStyle={styles.form}>
         <View style={styles.fieldBlock}>
