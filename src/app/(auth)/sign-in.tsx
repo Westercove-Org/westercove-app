@@ -131,7 +131,7 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  form: { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, gap: spacing.md },
+  form: { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: 72, gap: spacing.md },
   field: {
     flexDirection: 'row',
     alignItems: 'center',

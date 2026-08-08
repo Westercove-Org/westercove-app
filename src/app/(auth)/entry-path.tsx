@@ -118,7 +118,8 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     paddingHorizontal: spacing.screen,
-    paddingBottom: spacing.xxl,
+    // Clear the floating crisis pill overlaid at the bottom.
+    paddingBottom: 72,
     justifyContent: 'space-between',
   },
   content: { gap: spacing.md },

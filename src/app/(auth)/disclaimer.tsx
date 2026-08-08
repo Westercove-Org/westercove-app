@@ -56,7 +56,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: spacing.screen,
-    paddingBottom: spacing.lg,
+    // Clear the floating crisis pill overlaid at the bottom.
+    paddingBottom: 64,
     gap: spacing.sm,
   },
   goBack: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
