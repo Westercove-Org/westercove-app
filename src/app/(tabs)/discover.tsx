@@ -1,25 +1,83 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { PadlockIcon } from '@/components/icons';
+import { CheckIcon, PadlockIcon } from '@/components/icons';
 import { Screen } from '@/components/Screen';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SearchPill } from '@/components/ui/SearchPill';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { BookSummarySheet } from '@/features/discover/BookSummarySheet';
-import { MOCK_BOOKS, type Book } from '@/features/discover/mockBooks';
+import { useLibraryStore, type LibraryBook } from '@/features/discover/libraryStore';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
+
+function BookRow({
+  book,
+  onOpen,
+  trailing,
+}: {
+  book: LibraryBook;
+  onOpen: () => void;
+  trailing: React.ReactNode;
+}) {
+  return (
+    <View style={styles.bookRow}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${book.title} by ${book.author}. Read summary.`}
+        onPress={onOpen}
+        style={styles.bookMain}
+      >
+        <View style={[styles.cover, { backgroundColor: book.spine }]} />
+        <View style={styles.bookText}>
+          <Text variant="meta" color="textMuted" style={styles.brandTag}>
+            {book.source === 'own' ? 'YOUR BOOK' : 'WESTERCOVE'}
+          </Text>
+          <Text variant="cardTitle">{book.title}</Text>
+          <Text variant="bodySmall" color="textMuted">
+            by {book.author}
+          </Text>
+        </View>
+      </Pressable>
+      {trailing}
+    </View>
+  );
+}
 
 export default function DiscoverScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const now = new Date();
-  const [selected, setSelected] = useState<Book | null>(null);
+
+  const recommended = useLibraryStore((s) => s.recommended);
+  const myLibrary = useLibraryStore((s) => s.myLibrary);
+  const addToLibrary = useLibraryStore((s) => s.addToLibrary);
+  const addAll = useLibraryStore((s) => s.addAll);
+  const addOwnBook = useLibraryStore((s) => s.addOwnBook);
+
+  const [selected, setSelected] = useState<LibraryBook | null>(null);
+  const [title, setTitle] = useState('');
+  const [author, setAuthor] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const inLibrary = (id: string) => myLibrary.some((b) => b.id === id);
+
+  const onAddOwn = async () => {
+    if (!title.trim() || busy) return;
+    setBusy(true);
+    try {
+      await addOwnBook(title, author);
+      setTitle('');
+      setAuthor('');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Screen header={{ title: 'Discover', subtitle: formatHeaderDateTime(now) }}>
@@ -30,35 +88,94 @@ export default function DiscoverScreen() {
         />
       </View>
 
-      <SectionLabel>BOOKS</SectionLabel>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.booksRow}
-      >
-        {MOCK_BOOKS.map((book) => (
-          <Pressable
-            key={book.id}
-            accessibilityRole="button"
-            accessibilityLabel={`${book.title} by ${book.author}. Tap to fetch its summary.`}
-            onPress={() => setSelected(book)}
-            style={styles.book}
-          >
-            <View style={[styles.spine, { backgroundColor: book.spine }]}>
-              <Text color="#FFFFFF" style={styles.spineTitle}>
-                {book.title}
-              </Text>
-              <View style={styles.spineBase} />
-            </View>
-            <Text variant="bodySmall" color="textMuted" style={styles.author}>
-              {book.author}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-      <Text variant="bodySmall" color="textMuted" style={styles.tapHint}>
-        {copy.discover.tapBook}
-      </Text>
+      <SectionLabel>YOUR LIBRARY</SectionLabel>
+      <View style={styles.blockWrap}>
+        <Card>
+          <Text variant="body" color="textMuted">
+            A thoughtfully chosen library is a wonderful way to support your grief wellness
+            journey. Build your own from books that have been meaningful to you, use the
+            curated Westercove library, or combine both. Your companion gently draws on these
+            in your conversations.
+          </Text>
+        </Card>
+      </View>
+
+      {myLibrary.map((book) => (
+        <View key={book.id} style={styles.blockWrap}>
+          <Card padded={false}>
+            <BookRow
+              book={book}
+              onOpen={() => setSelected(book)}
+              trailing={<CheckIcon size={20} color={colors.forest} />}
+            />
+          </Card>
+        </View>
+      ))}
+
+      <View style={styles.blockWrap}>
+        <Card>
+          <Text variant="cardTitle">Add your own book</Text>
+          <Text variant="bodySmall" color="textMuted" style={styles.addSub}>
+            Enter the title and author, and your companion will write a short summary. It
+            joins your library, labeled as your own.
+          </Text>
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Title"
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel="Book title"
+            style={[styles.input, { color: colors.textPrimary, borderColor: colors.line }]}
+          />
+          <TextInput
+            value={author}
+            onChangeText={setAuthor}
+            placeholder="Author"
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel="Book author"
+            style={[styles.input, { color: colors.textPrimary, borderColor: colors.line }]}
+          />
+          <View style={styles.addBtn}>
+            <Button label="Add book" onPress={onAddOwn} loading={busy} disabled={!title.trim()} />
+          </View>
+        </Card>
+      </View>
+
+      <View style={styles.recHead}>
+        <SectionLabel>RECOMMENDED LIBRARY</SectionLabel>
+        <Pressable accessibilityRole="button" accessibilityLabel="Add all" onPress={addAll} hitSlop={8}>
+          <Text variant="tag" color="forest">
+            Add all
+          </Text>
+        </Pressable>
+      </View>
+      {recommended.map((book) => (
+        <View key={book.id} style={styles.blockWrap}>
+          <Card padded={false}>
+            <BookRow
+              book={book}
+              onOpen={() => setSelected(book)}
+              trailing={
+                inLibrary(book.id) ? (
+                  <CheckIcon size={20} color={colors.forest} />
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add ${book.title} to my library`}
+                    onPress={() => addToLibrary(book.id)}
+                    hitSlop={8}
+                    style={styles.addToLib}
+                  >
+                    <Text variant="bodySmall" color="forest">
+                      Add
+                    </Text>
+                  </Pressable>
+                )
+              }
+            />
+          </Card>
+        </View>
+      ))}
 
       <SectionLabel>TRAINING / DEVELOPMENT</SectionLabel>
       <View style={styles.blockWrap}>
@@ -107,31 +224,34 @@ export default function DiscoverScreen() {
 
 const styles = StyleSheet.create({
   searchWrap: { paddingHorizontal: spacing.screen, paddingTop: spacing.xl },
-  blockWrap: { paddingHorizontal: spacing.screen },
-  booksRow: { paddingHorizontal: spacing.screen, gap: spacing.md },
-  book: { width: 132 },
-  spine: {
-    height: 176,
-    borderRadius: radii.avatar,
+  blockWrap: { paddingHorizontal: spacing.screen, paddingTop: spacing.sm },
+  addSub: { marginTop: spacing.xs },
+  input: {
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderRadius: 12,
     padding: spacing.md,
-    justifyContent: 'flex-start',
+    fontSize: 15,
+    lineHeight: 22,
   },
-  spineTitle: { fontSize: 18, lineHeight: 22, fontWeight: '700' },
-  spineBase: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: 8,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+  addBtn: { flexDirection: 'row', marginTop: spacing.md },
+  recHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: spacing.screen,
   },
-  author: { marginTop: spacing.sm },
-  tapHint: {
-    paddingHorizontal: spacing.screen,
-    paddingTop: spacing.md,
-    fontStyle: 'italic',
+  bookRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.cardInner,
   },
+  bookMain: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
+  cover: { width: 36, height: 52, borderRadius: 4 },
+  bookText: { flex: 1 },
+  brandTag: { letterSpacing: 0.6, marginBottom: 2 },
+  addToLib: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm },
   trainingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   thumb: {
     width: 64,
