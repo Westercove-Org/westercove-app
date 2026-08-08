@@ -5,7 +5,6 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
-import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
@@ -110,7 +109,7 @@ export function DayZeroGate() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.body}>
         <View style={styles.qBlock}>
           {(stepId === 'callName' || stepId === 'lovedOneName') && (
             <>
@@ -215,33 +214,47 @@ export function DayZeroGate() {
               accessibilityRole="button"
               accessibilityLabel={copy.gate.back}
               onPress={back}
-              style={[styles.backBtn, { borderColor: colors.line }]}
+              style={[styles.secondaryBtn, { borderColor: colors.line }]}
             >
-              <Text variant="bodySmall">{copy.gate.back}</Text>
+              <Text variant="cardTitle">{copy.gate.back}</Text>
             </Pressable>
-          ) : (
-            <View />
-          )}
+          ) : null}
           {stepId === 'breed' && !answers.breed?.trim() ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={copy.gate.skip}
               onPress={() => advance(answers)}
-              style={[styles.backBtn, { borderColor: colors.line }]}
+              style={[styles.secondaryBtn, { borderColor: colors.line }]}
             >
-              <Text variant="bodySmall" color="textMuted">
+              <Text variant="cardTitle" color="textMuted">
                 {copy.gate.skip}
               </Text>
             </Pressable>
           ) : null}
           <View style={styles.grow} />
-          <Button
-            label={isLast ? copy.gate.done : copy.gate.next}
-            variant="amethyst"
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isLast ? copy.gate.done : copy.gate.next}
             disabled={!canContinue}
             onPress={() => advance(answers)}
-          />
+            style={({ pressed }) => [
+              styles.continueBtn,
+              { backgroundColor: colors.heading },
+              !canContinue && { opacity: 0.4 },
+              pressed && canContinue && { opacity: 0.9 },
+            ]}
+          >
+            <Text variant="cardTitle" color="onAccent" style={styles.continueText}>
+              {isLast ? copy.gate.done : copy.gate.next}
+            </Text>
+          </Pressable>
         </View>
+
+        {answers.tone ? (
+          <Text variant="bodySmall" color="textMuted" style={styles.chose}>
+            You chose: {answers.tone}
+          </Text>
+        ) : null}
       </ScrollView>
 
       <CrisisBanner />
@@ -299,13 +312,13 @@ const styles = StyleSheet.create({
   icon: { width: 24, height: 24 },
   wordmark: { width: 84, height: 15 },
   title: { marginBottom: 2 },
+  scroll: { flex: 1 },
   body: {
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.xl,
     paddingBottom: 96,
-    flexGrow: 1,
   },
-  qBlock: { flex: 1, gap: spacing.md },
+  qBlock: { gap: spacing.md },
   question: { fontSize: 24, lineHeight: 30 },
   input: {
     borderWidth: 1,
@@ -328,16 +341,25 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.xxl,
+    gap: spacing.md,
+    marginTop: spacing.xl,
   },
   grow: { flex: 1 },
-  backBtn: {
+  secondaryBtn: {
     borderWidth: 1,
     borderRadius: radii.card,
-    paddingHorizontal: spacing.lg,
-    minHeight: 44,
+    paddingHorizontal: spacing.xl,
+    minHeight: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  continueBtn: {
+    borderRadius: 28,
+    paddingHorizontal: spacing.xxl,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  continueText: { fontSize: 17 },
+  chose: { marginTop: spacing.md, textAlign: 'center' },
 });
