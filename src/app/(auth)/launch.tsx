@@ -12,10 +12,12 @@ const icon = require('../../../assets/images/westercove_icon.png');
 const wordmark = require('../../../assets/images/westercove_wordmark.png');
 
 // The launch scene is always the bright valley photo, so its text/CTA are fixed
-// dark amethyst on white regardless of the app's light/dark theme.
+// dark amethyst regardless of the app's light/dark theme.
 const AMETHYST = '#190933';
+const PARCHMENT = '#F6F1E7';
 
-/** Launch: a full-bleed valley at sunrise, the wordmark, and a single Begin path. */
+/** Launch: a full-bleed valley at sunrise; logo, tagline, and Begin anchored to
+ * the upper portion, matching the demo. */
 export default function LaunchScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -24,32 +26,35 @@ export default function LaunchScreen() {
     <View style={styles.screen}>
       <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" />
       <LinearGradient
-        colors={['rgba(246,241,231,0.3)', 'rgba(246,241,231,0)', 'rgba(246,241,231,0.2)']}
-        locations={[0, 0.45, 1]}
+        colors={['rgba(246,241,231,0.3)', 'rgba(246,241,231,0)', 'rgba(246,241,231,0.15)']}
+        locations={[0, 0.4, 1]}
         style={StyleSheet.absoluteFill}
       />
 
-      <View style={[styles.content, { paddingTop: insets.top }]}>
-        <View style={styles.brand} accessibilityRole="header" accessibilityLabel="Westercove">
+      <View style={[styles.content, { paddingTop: insets.top + 64 }]}>
+        <View
+          style={styles.brand}
+          accessibilityRole="header"
+          accessibilityLabel="Westercove"
+        >
           <Image source={icon} style={styles.icon} contentFit="contain" />
           <Image source={wordmark} style={styles.wordmark} contentFit="contain" />
-          <Text variant="display" color={AMETHYST} style={styles.tagline}>
-            {copy.launch.tagline}
-          </Text>
         </View>
 
-        <View style={styles.beginWrap}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={copy.launch.begin}
-            onPress={() => router.push('/disclaimer')}
-            style={({ pressed }) => [styles.begin, pressed && { opacity: 0.9 }]}
-          >
-            <Text variant="cardTitle" color="#FFFFFF">
-              {copy.launch.begin}
-            </Text>
-          </Pressable>
-        </View>
+        <Text variant="screenTitle" color={AMETHYST} style={styles.tagline}>
+          {copy.launch.tagline}
+        </Text>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={copy.launch.begin}
+          onPress={() => router.push('/disclaimer')}
+          style={({ pressed }) => [styles.begin, pressed && { opacity: 0.9 }]}
+        >
+          <Text color={PARCHMENT} style={styles.beginText}>
+            {copy.launch.begin}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -57,23 +62,25 @@ export default function LaunchScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 48,
-    paddingHorizontal: 32,
+  content: { flex: 1, alignItems: 'center', paddingHorizontal: 24 },
+  brand: { alignItems: 'center' },
+  icon: { width: 84, height: 84 },
+  wordmark: { width: 190, height: 34, marginTop: 16 },
+  tagline: {
+    textAlign: 'center',
+    fontSize: 21,
+    lineHeight: 29,
+    maxWidth: 300,
+    marginTop: 16,
   },
-  brand: { alignItems: 'center', gap: 16 },
-  icon: { width: 72, height: 64 },
-  wordmark: { width: 200, height: 36 },
-  tagline: { textAlign: 'center', maxWidth: 320 },
-  beginWrap: { alignSelf: 'stretch', paddingHorizontal: 24 },
   begin: {
     backgroundColor: AMETHYST,
-    minHeight: 52,
-    borderRadius: 26,
+    height: 54,
+    borderRadius: 27,
+    paddingHorizontal: 42,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 36,
   },
+  beginText: { fontSize: 17, fontWeight: '500' },
 });
