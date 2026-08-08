@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 test.describe('arrival', () => {
   test('unauthenticated visitors land on launch with the crisis banner', async ({ page }) => {
     await page.goto('/launch');
-    await expect(page.getByText('Westercove').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Westercove' }).first()).toBeVisible();
     await expect(page.getByText('Begin')).toBeVisible();
     await expect(page.getByText(/In crisis\? Call or text 988/)).toBeVisible();
   });

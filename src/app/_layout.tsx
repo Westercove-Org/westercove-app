@@ -1,5 +1,16 @@
 import '@/global.css';
 
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter';
+import {
+  SourceSerif4_400Regular,
+  SourceSerif4_600SemiBold,
+} from '@expo-google-fonts/source-serif-4';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -15,11 +26,22 @@ import { useTheme, WestercoveThemeProvider } from '@/theme';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  // The app uses only the native system font, so there is nothing to load —
-  // release the splash as soon as we mount.
+  // Source Serif 4 (display) + Inter (body/labels) drive all typography, so
+  // hold the splash until the faces are ready to avoid a flash of fallback text.
+  const [fontsLoaded, fontError] = useFonts({
+    SourceSerif4_400Regular,
+    SourceSerif4_600SemiBold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (fontsLoaded || fontError) SplashScreen.hideAsync();
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>
@@ -43,8 +65,8 @@ function RootNav() {
 
   return (
     <>
-      {/* Hero is dark at the top of every screen, so light status-bar content. */}
-      <StatusBar style="light" />
+      {/* Hero is a bright parchment photo, so dark status-bar content. */}
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerShown: false,

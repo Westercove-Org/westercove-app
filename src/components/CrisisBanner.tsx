@@ -6,8 +6,8 @@ import { MessageIcon, PhoneIcon } from '@/components/icons';
 import { copy } from '@/constants/copy';
 import { Text } from './ui/Text';
 
-/** Emerald crisis token, fixed across themes (crisis card stays emerald in dark). */
-const EMERALD = '#0E5F18';
+/** Amethyst-deep crisis strip (matches the reference), fixed across themes. */
+const CRISIS_BG = '#190933';
 const SAFFRON = '#EDC531';
 
 function smsUrl(number: string, body?: string): string {
@@ -23,7 +23,7 @@ function open(url: string) {
 }
 
 /**
- * The persistent crisis banner. Full-bleed emerald, white text at AAA
+ * The persistent crisis banner. Full-bleed amethyst, white text at AAA
  * contrast, beneath the tab bar on every primary screen and pre-auth. Never
  * dismissible, never gated by subscription. Collapsed shows one line; tapping
  * expands to explicit one-tap Call 988 / Text 988 / Text HOME 741741 actions,
@@ -34,7 +34,7 @@ export function CrisisBanner() {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <View style={{ backgroundColor: EMERALD, paddingBottom: insets.bottom }}>
+    <View style={{ backgroundColor: CRISIS_BG, paddingBottom: insets.bottom }}>
       <View style={styles.topLine} />
       <Pressable
         accessibilityRole="button"
