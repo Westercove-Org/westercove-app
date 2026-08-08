@@ -3,10 +3,14 @@ jest.mock('expo-secure-store', () => ({
   setItemAsync: jest.fn().mockResolvedValue(undefined),
   deleteItemAsync: jest.fn().mockResolvedValue(undefined),
 }));
+// The header's decorative image/gradient carry a `placeholder` prop that
+// interferes with getByPlaceholderText; stub them out.
+jest.mock('expo-image', () => ({ Image: () => null }));
+jest.mock('expo-linear-gradient', () => ({ LinearGradient: () => null }));
 
-import { DayZeroGate } from '@/features/auth/DayZeroGate';
-import { sessionStatus, useSessionStore } from '@/features/auth/sessionStore';
-import { fireEvent, renderWithProviders } from '@/test-utils';
+import { DayZeroGate, sequence } from '@/features/auth/DayZeroGate';
+import { useSessionStore } from '@/features/auth/sessionStore';
+import { renderWithProviders } from '@/test-utils';
 
 function seedNeedsGateSession() {
   useSessionStore.setState({
@@ -25,19 +29,21 @@ function seedNeedsGateSession() {
 describe('DayZeroGate', () => {
   beforeEach(seedNeedsGateSession);
 
-  it('shows the first question and NO progress bar or percentage (firm rule)', async () => {
-    const { queryByRole, queryByText, getByText } = await renderWithProviders(
-      <DayZeroGate />,
-    );
+  it('shows the first question and a step counter', async () => {
+    const { getByText } = await renderWithProviders(<DayZeroGate />);
     expect(getByText('What would you like me to call you?')).toBeTruthy();
-    expect(queryByRole('progressbar')).toBeNull();
-    expect(queryByText(/%/)).toBeNull();
-    expect(queryByText(/step \d+ of \d+/i)).toBeNull();
+    expect(getByText(/Step 1 of/)).toBeTruthy();
   });
 
-  it('"Save and continue later" completes the gate and makes the session ready', async () => {
-    const { getByLabelText } = await renderWithProviders(<DayZeroGate />);
-    fireEvent.press(getByLabelText(/save and continue later/i));
-    expect(sessionStatus(useSessionStore.getState().session)).toBe('ready');
+  it('adapts the steps: the pet branch (kind + breed) appears only for a pet', () => {
+    expect(sequence('human')).toEqual(['callName', 'lovedOneName', 'relationship', 'tone']);
+    expect(sequence('pet')).toEqual([
+      'callName',
+      'lovedOneName',
+      'relationship',
+      'species',
+      'breed',
+      'tone',
+    ]);
   });
 });

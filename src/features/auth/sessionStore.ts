@@ -30,7 +30,7 @@ export const useSessionStore = create<SessionState>()(
 
       async signIn(email, password) {
         const result = await services.auth.signIn(email, password);
-        // A returning user is already past the day-zero gate.
+        // The demo runs onboarding after sign-in, so land in the day-zero gate.
         set({
           session: {
             user: result.user,
@@ -38,7 +38,7 @@ export const useSessionStore = create<SessionState>()(
             entitlement: result.entitlement,
             sponsorOrganization: result.sponsorOrganization,
             disclaimerAcked: true,
-            gateComplete: true,
+            gateComplete: false,
             gateAnswers: emptyGate,
           },
         });

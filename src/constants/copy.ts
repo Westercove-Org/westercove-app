@@ -99,19 +99,24 @@ export const copy = {
   },
 
   gate: {
-    saveForLater: 'Save and continue later',
-    skip: 'Skip this question',
+    title: 'Getting to know you',
+    step: 'Step', // "Step X of N"
+    skip: 'Skip',
     next: 'Continue',
+    back: 'Back',
     done: 'Enter Westercove',
     q1: 'What would you like me to call you?',
     q1Placeholder: 'Your name',
-    q2: 'What is your loved one’s name?',
+    q2: 'What was their name?',
     q2Placeholder: 'Their name',
     q3: 'Who were they to you?',
-    q4Human: '', // species step is pet-only
-    q4Pet: 'What kind of animal were they?',
-    q5: 'How would you like me to be with you?',
-    tonePrompt: 'Tap what fits. You can change it anytime.',
+    q4Pet: 'What kind of animal was [name]?',
+    q4PetPlaceholder: 'Dog, cat, bird…',
+    q4Breed: 'If you would like to share it, what breed or mix were they?',
+    q4BreedHint: 'Optional. You can skip.',
+    q4BreedPlaceholder: 'Breed or mix',
+    q5: 'Everyone needs something different. How would you like me to be with you?',
+    tonePrompt: 'You can change this anytime.',
   },
 
   safety: {
