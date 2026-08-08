@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   gridItem: { width: '48%' },
   coverWrap: { position: 'relative' },
   cover: {
-    aspectRatio: 0.74,
+    aspectRatio: 1.15,
     borderRadius: radii.card,
     padding: spacing.md,
     justifyContent: 'space-between',
