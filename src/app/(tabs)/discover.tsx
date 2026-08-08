@@ -92,10 +92,12 @@ export default function DiscoverScreen() {
       <View style={styles.blockWrap}>
         <Card>
           <Text variant="body" color="textMuted">
-            A thoughtfully chosen library is a wonderful way to support your grief wellness
-            journey. Build your own from books that have been meaningful to you, use the
-            curated Westercove library, or combine both. Your companion gently draws on these
-            in your conversations.
+            A thoughtfully chosen library is a wonderful way to provide evidence based support
+            for your grief wellness journey. You may build your own personal library by adding
+            books that have been meaningful to you, use the curated Westercove library, or
+            combine both. Your companion will gently draw from these resources during your
+            conversations, and relevant insights may also appear in your downloaded journal.
+            Which would you prefer?
           </Text>
         </Card>
       </View>
