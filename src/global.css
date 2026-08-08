@@ -8,13 +8,11 @@
   --font-serif: SourceSerif4_400Regular, Lora, Georgia, 'Times New Roman', serif;
 }
 
-/* Replace the browser's default focus outline on inputs with a soft brand ring. */
+/* No focus ring/outline on inputs. */
 input:focus,
-textarea:focus {
-  outline: none;
-}
 input:focus-visible,
+textarea:focus,
 textarea:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(51, 130, 51, 0.35);
+  box-shadow: none;
 }
