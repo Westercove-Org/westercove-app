@@ -19,46 +19,48 @@ export default function DisclaimerScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <HeroHeader variant="compact" title={copy.disclaimerScreen.title} image={heroImage} />
 
-      <ScrollView contentContainerStyle={styles.body}>
-        <Text variant="body">{copy.disclaimerScreen.body1}</Text>
-        <Text variant="body">{copy.disclaimerScreen.body2}</Text>
-        <Text variant="body" color="textMuted">
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text variant="body" style={styles.para}>
+          {copy.disclaimerScreen.body1}
+        </Text>
+        <Text variant="body" style={styles.para}>
+          {copy.disclaimerScreen.body2}
+        </Text>
+        <Text variant="body" color="textMuted" style={styles.para}>
           {copy.disclaimerScreen.body3}
         </Text>
-      </ScrollView>
 
-      <View style={styles.footer}>
-        <Button
-          label={copy.disclaimerScreen.continue}
-          variant="amethyst"
-          onPress={() => router.push('/entry-path')}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={copy.disclaimerScreen.goBack}
-          onPress={() => router.back()}
-          style={styles.goBack}
-        >
-          <Text variant="body" color="textMuted">
-            {copy.disclaimerScreen.goBack}
-          </Text>
-        </Pressable>
-      </View>
+        <View style={styles.actions}>
+          <Button
+            label={copy.disclaimerScreen.continue}
+            variant="amethyst"
+            onPress={() => router.push('/entry-path')}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={copy.disclaimerScreen.goBack}
+            onPress={() => router.back()}
+            style={styles.goBack}
+          >
+            <Text variant="body" color="textMuted">
+              {copy.disclaimerScreen.goBack}
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  body: {
+  content: {
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.xl,
+    paddingBottom: 88,
     gap: spacing.lg,
   },
-  footer: {
-    paddingHorizontal: spacing.screen,
-    // Clear the floating crisis pill overlaid at the bottom.
-    paddingBottom: 64,
-    gap: spacing.sm,
-  },
+  // Larger body copy, matching the demo (17px).
+  para: { fontSize: 17, lineHeight: 27 },
+  actions: { marginTop: spacing.xl, gap: spacing.sm },
   goBack: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
 });
