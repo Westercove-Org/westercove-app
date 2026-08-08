@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 
 import { WestercoveTabBar } from '@/components/WestercoveTabBar';
+import { useTheme } from '@/theme';
 
 /**
  * The five-tab shell: Home, Journal, Discover, Profile, Support — with the
@@ -8,10 +9,14 @@ import { WestercoveTabBar } from '@/components/WestercoveTabBar';
  * custom tab bar). Support activates the fifth tab position (handoff §2).
  */
 export default function TabsLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       tabBar={(props) => <WestercoveTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        sceneStyle: { backgroundColor: colors.background },
+      }}
     >
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen name="journal" options={{ title: 'Journal' }} />

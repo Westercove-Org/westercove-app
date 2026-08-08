@@ -12,7 +12,12 @@ export default function AuthLayout() {
   const { colors } = useTheme();
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
       <CrisisBanner />
     </View>
   );
