@@ -4,11 +4,12 @@ import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useSessionStore } from '@/features/auth/sessionStore';
 import { useTheme } from '@/theme';
 import { DownloadIcon } from './icons';
 import { Text } from './ui/Text';
 
-const photo = require('../../assets/images/westercove_sunrise_mountains.jpg');
+const defaultPhoto = require('../../assets/images/westercove_sunrise_mountains.jpg');
 const icon = require('../../assets/images/westercove_icon.png');
 const wordmark = require('../../assets/images/westercove_wordmark.png');
 
@@ -19,6 +20,8 @@ export interface HeroHeaderProps {
   /** Small label under the title (e.g. "Home" on the greeting hero). */
   label?: string;
   subtitle?: string;
+  /** Hero photo (require()'d asset). Defaults to the sunrise image. */
+  image?: number;
 }
 
 /**
@@ -33,10 +36,13 @@ export function HeroHeader({
   title,
   label,
   subtitle,
+  image = defaultPhoto,
 }: HeroHeaderProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { scheme, colors } = useTheme();
+  // Download journal is a signed-in action; hide it on the pre-auth screens.
+  const signedIn = useSessionStore((s) => !!s.session);
   const height = (variant === 'greeting' ? 280 : 170) + insets.top;
 
   // Fade the photo into the page: mostly transparent at the top, solid
@@ -48,7 +54,7 @@ export function HeroHeader({
 
   return (
     <View style={[styles.container, { height, backgroundColor: colors.background }]}>
-      <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" />
+      <Image source={image} style={StyleSheet.absoluteFill} contentFit="cover" />
       <LinearGradient colors={fade} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} />
 
       <View style={[styles.overlay, { paddingTop: insets.top + 8 }]}>
@@ -57,17 +63,19 @@ export function HeroHeader({
             <Image source={icon} style={styles.icon} contentFit="contain" />
             <Image source={wordmark} style={styles.wordmark} contentFit="contain" />
           </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Download journal"
-            onPress={() => router.push('/export')}
-            style={[styles.download, { backgroundColor: colors.emerald }]}
-          >
-            <DownloadIcon size={16} color={colors.onAccent} />
-            <Text variant="tag" color="onAccent" style={styles.downloadText}>
-              Download journal
-            </Text>
-          </Pressable>
+          {signedIn ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Download journal"
+              onPress={() => router.push('/export')}
+              style={[styles.download, { backgroundColor: colors.emerald }]}
+            >
+              <DownloadIcon size={16} color={colors.onAccent} />
+              <Text variant="tag" color="onAccent" style={styles.downloadText}>
+                Download journal
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
         <View>
           <Text

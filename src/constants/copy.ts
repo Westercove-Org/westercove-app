@@ -53,16 +53,21 @@ export const copy = {
     'Westercove is a wellness companion, not therapy, and it does not diagnose.',
 
   launch: {
-    tagline: 'A quiet place, whenever you want it.',
+    tagline: 'Here for you when the world goes quiet.',
     begin: 'Begin',
     haveAccount: 'I already have an account',
   },
 
   disclaimerScreen: {
-    title: 'Before we begin',
-    body: 'Westercove is a wellness companion, not therapy, and it does not diagnose. It is here whenever you want it, and asks nothing of you when you do not.',
-    age: 'I am 18 or older and I agree to the Westercove Terms and Conditions.',
-    agree: 'I agree',
+    title: 'Before you begin',
+    body1:
+      'Westercove is a wellness companion, not therapy. It does not diagnose, and it is not a substitute for professional care.',
+    body2:
+      'If you are in crisis, or if you are worried about yourself or someone else, please use the crisis line at the bottom of every screen.',
+    body3:
+      'By continuing, you confirm you are 18 or older and that you agree to our Terms and Privacy notice.',
+    continue: 'I understand, continue',
+    goBack: 'Go back',
   },
 
   entryPath: {

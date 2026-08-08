@@ -10,10 +10,10 @@ test.describe('arrival', () => {
     await expect(page.getByText(/In crisis\? Call or text 988/)).toBeVisible();
   });
 
-  test('Begin leads into the disclaimer, which gates on 18+ and terms', async ({ page }) => {
+  test('Begin leads into the disclaimer, which confirms 18+ and terms', async ({ page }) => {
     await page.goto('/launch');
     await page.getByText('Begin').click();
-    await expect(page.getByText('Before we begin')).toBeVisible();
+    await expect(page.getByText('Before you begin')).toBeVisible();
     await expect(page.getByText(/wellness companion, not therapy/)).toBeVisible();
   });
 });
