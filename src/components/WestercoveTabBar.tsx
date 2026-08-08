@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   CompassIcon,
@@ -48,13 +49,20 @@ const TABS: Record<string, TabConfig> = {
  */
 export function WestercoveTabBar({ state, navigation }: TabBarProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <View>
+      {/* The crisis pill floats directly above the tab bar (demo layout). */}
+      <CrisisBanner atBottom={false} />
       <View
         style={[
           styles.bar,
-          { backgroundColor: colors.card, borderTopColor: colors.line },
+          {
+            backgroundColor: colors.card,
+            borderTopColor: colors.line,
+            paddingBottom: insets.bottom + 8,
+          },
         ]}
       >
         {state.routes.map((route, index) => {
@@ -95,7 +103,6 @@ export function WestercoveTabBar({ state, navigation }: TabBarProps) {
           );
         })}
       </View>
-      <CrisisBanner />
     </View>
   );
 }
