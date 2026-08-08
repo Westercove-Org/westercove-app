@@ -74,10 +74,14 @@ function BookCoverCard({
           )}
         </Pressable>
       </View>
-      <Text variant="meta" color="textMuted" style={styles.byLabel}>
-        by
-      </Text>
-      <Text variant="bodySmall">{book.author}</Text>
+      <View style={styles.meta}>
+        <Text variant="meta" color="textMuted">
+          by
+        </Text>
+        <Text variant="bodySmall" numberOfLines={2}>
+          {book.author}
+        </Text>
+      </View>
       {!inLibrary ? (
         <Pressable
           accessibilityRole="button"
@@ -311,7 +315,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  byLabel: { marginTop: spacing.sm },
+  // Reserve room for up to two author lines so the "Add" button aligns across
+  // the row regardless of author-name length.
+  meta: { marginTop: 6, minHeight: 52 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -320,7 +326,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radii.button,
     paddingVertical: spacing.sm,
-    marginTop: spacing.sm,
+    marginTop: 6,
   },
   trainingCard: { overflow: 'hidden' },
   trainingBanner: { height: 112, width: '100%' },
