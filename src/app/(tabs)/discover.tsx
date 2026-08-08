@@ -1,8 +1,10 @@
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { CheckIcon, PadlockIcon } from '@/components/icons';
+import { CheckIcon, PadlockIcon, PlusIcon } from '@/components/icons';
 import { Screen } from '@/components/Screen';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -16,35 +18,79 @@ import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
-function BookRow({
+const trainingPhoto = require('../../../assets/images/westercove_valley_green.jpg');
+
+/** Light text that reads on the dark cover blocks. */
+const COVER_TEXT = '#F6F1E7';
+
+/** A book cover card (2-up grid): colored cover with the wordmark + serif title,
+ *  author below, and an add/added control. */
+function BookCoverCard({
   book,
+  inLibrary,
   onOpen,
-  trailing,
+  onAdd,
 }: {
   book: LibraryBook;
+  inLibrary: boolean;
   onOpen: () => void;
-  trailing: React.ReactNode;
+  onAdd: () => void;
 }) {
+  const { colors } = useTheme();
   return (
-    <View style={styles.bookRow}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${book.title} by ${book.author}. Read summary.`}
-        onPress={onOpen}
-        style={styles.bookMain}
-      >
-        <View style={[styles.cover, { backgroundColor: book.spine }]} />
-        <View style={styles.bookText}>
-          <Text variant="meta" color="textMuted" style={styles.brandTag}>
+    <View style={styles.gridItem}>
+      <View style={styles.coverWrap}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${book.title} by ${book.author}. Read summary.`}
+          onPress={onOpen}
+          style={[styles.cover, { backgroundColor: book.spine }]}
+        >
+          <Text variant="meta" color={COVER_TEXT} style={styles.coverBrand}>
             {book.source === 'own' ? 'YOUR BOOK' : 'WESTERCOVE'}
           </Text>
-          <Text variant="cardTitle">{book.title}</Text>
-          <Text variant="bodySmall" color="textMuted">
-            by {book.author}
+          <Text variant="cardTitle" color={COVER_TEXT} style={styles.coverTitle}>
+            {book.title}
           </Text>
-        </View>
-      </Pressable>
-      {trailing}
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            inLibrary ? `${book.title} in your library` : `Add ${book.title} to my library`
+          }
+          onPress={onAdd}
+          hitSlop={6}
+          style={[
+            styles.coverAdd,
+            inLibrary
+              ? { backgroundColor: colors.forest }
+              : { backgroundColor: colors.card, borderColor: colors.line, borderWidth: 1 },
+          ]}
+        >
+          {inLibrary ? (
+            <CheckIcon size={16} color={colors.onAccent} />
+          ) : (
+            <PlusIcon size={16} color={colors.textPrimary} />
+          )}
+        </Pressable>
+      </View>
+      <Text variant="meta" color="textMuted" style={styles.byLabel}>
+        by
+      </Text>
+      <Text variant="bodySmall">{book.author}</Text>
+      {!inLibrary ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Add ${book.title} to my library`}
+          onPress={onAdd}
+          style={[styles.addBtn, { borderColor: colors.forest }]}
+        >
+          <PlusIcon size={14} color={colors.forest} />
+          <Text variant="bodySmall" color="forest">
+            Add to my library
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -66,6 +112,7 @@ export default function DiscoverScreen() {
   const [busy, setBusy] = useState(false);
 
   const inLibrary = (id: string) => myLibrary.some((b) => b.id === id);
+  const notAdded = recommended.filter((b) => !inLibrary(b.id));
 
   const onAddOwn = async () => {
     if (!title.trim() || busy) return;
@@ -98,21 +145,29 @@ export default function DiscoverScreen() {
             combine both. Your companion will gently draw from these resources during your
             conversations, and relevant insights may also appear in your downloaded journal.
             Which would you prefer?
+            {myLibrary.length > 0 ? (
+              <Text variant="body" color="forest">
+                {'\n'}
+                {myLibrary.length} in your library.
+              </Text>
+            ) : null}
           </Text>
         </Card>
       </View>
 
-      {myLibrary.map((book) => (
-        <View key={book.id} style={styles.blockWrap}>
-          <Card padded={false}>
-            <BookRow
+      {myLibrary.length > 0 ? (
+        <View style={[styles.blockWrap, styles.grid]}>
+          {myLibrary.map((book) => (
+            <BookCoverCard
+              key={book.id}
               book={book}
+              inLibrary
               onOpen={() => setSelected(book)}
-              trailing={<CheckIcon size={20} color={colors.forest} />}
+              onAdd={() => {}}
             />
-          </Card>
+          ))}
         </View>
-      ))}
+      ) : null}
 
       <View style={styles.blockWrap}>
         <Card>
@@ -137,7 +192,7 @@ export default function DiscoverScreen() {
             accessibilityLabel="Book author"
             style={[styles.input, { color: colors.textPrimary, borderColor: colors.line }]}
           />
-          <View style={styles.addBtn}>
+          <View style={styles.addOwnBtn}>
             <Button label="Add book" onPress={onAddOwn} loading={busy} disabled={!title.trim()} />
           </View>
         </Card>
@@ -151,48 +206,35 @@ export default function DiscoverScreen() {
           </Text>
         </Pressable>
       </View>
-      {recommended.map((book) => (
-        <View key={book.id} style={styles.blockWrap}>
-          <Card padded={false}>
-            <BookRow
-              book={book}
-              onOpen={() => setSelected(book)}
-              trailing={
-                inLibrary(book.id) ? (
-                  <CheckIcon size={20} color={colors.forest} />
-                ) : (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Add ${book.title} to my library`}
-                    onPress={() => addToLibrary(book.id)}
-                    hitSlop={8}
-                    style={styles.addToLib}
-                  >
-                    <Text variant="bodySmall" color="forest">
-                      Add
-                    </Text>
-                  </Pressable>
-                )
-              }
-            />
-          </Card>
-        </View>
-      ))}
+      <View style={[styles.blockWrap, styles.grid]}>
+        {notAdded.map((book) => (
+          <BookCoverCard
+            key={book.id}
+            book={book}
+            inLibrary={false}
+            onOpen={() => setSelected(book)}
+            onAdd={() => addToLibrary(book.id)}
+          />
+        ))}
+      </View>
 
       <SectionLabel>TRAINING / DEVELOPMENT</SectionLabel>
       <View style={styles.blockWrap}>
-        <Card>
-          <View style={styles.trainingRow}>
-            <View style={[styles.thumb, { backgroundColor: colors.surfaceAlt }]}>
-              <View style={styles.thumbSky} />
-              <View style={styles.thumbHills} />
-            </View>
-            <View style={styles.trainingText}>
-              <Text variant="cardTitle">{copy.discover.trainingTitle}</Text>
-              <Text variant="bodySmall" color="textMuted" style={styles.trainingSub}>
-                {copy.discover.trainingSub}
-              </Text>
-            </View>
+        <Card padded={false} style={styles.trainingCard}>
+          <View style={styles.trainingBanner}>
+            <Image source={trainingPhoto} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <LinearGradient
+              colors={['rgba(25,9,51,0.15)', 'rgba(25,9,51,0.45)']}
+              style={StyleSheet.absoluteFill}
+            />
+          </View>
+          <View style={styles.trainingText}>
+            <Text variant="screenTitle" style={styles.trainingTitle}>
+              {copy.discover.trainingTitle}
+            </Text>
+            <Text variant="bodySmall" color="textMuted">
+              {copy.discover.trainingSub}
+            </Text>
           </View>
         </Card>
       </View>
@@ -236,36 +278,54 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
-  addBtn: { flexDirection: 'row', marginTop: spacing.md },
+  addOwnBtn: { flexDirection: 'row', marginTop: spacing.md },
   recHead: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingRight: spacing.screen,
   },
-  bookRow: {
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: spacing.lg,
+  },
+  gridItem: { width: '48%' },
+  coverWrap: { position: 'relative' },
+  cover: {
+    aspectRatio: 0.74,
+    borderRadius: radii.card,
+    padding: spacing.md,
+    justifyContent: 'space-between',
+  },
+  coverBrand: { letterSpacing: 1.4 },
+  coverTitle: { fontSize: 15, lineHeight: 19 },
+  coverAdd: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  byLabel: { marginTop: spacing.sm },
+  addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.cardInner,
+    justifyContent: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: radii.button,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
   },
-  bookMain: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
-  cover: { width: 36, height: 52, borderRadius: 4 },
-  bookText: { flex: 1 },
-  brandTag: { letterSpacing: 0.6, marginBottom: 2 },
-  addToLib: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm },
-  trainingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  thumb: {
-    width: 64,
-    height: 64,
-    borderRadius: radii.avatar,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-  },
-  thumbSky: { position: 'absolute', top: 0, left: 0, right: 0, height: 40, backgroundColor: '#9DB4C0' },
-  thumbHills: { height: 26, backgroundColor: '#2F6B33' },
-  trainingText: { flex: 1 },
-  trainingSub: { marginTop: 2 },
+  trainingCard: { overflow: 'hidden' },
+  trainingBanner: { height: 112, width: '100%' },
+  trainingText: { padding: spacing.cardInner },
+  trainingTitle: { fontSize: 18, lineHeight: 24, marginBottom: 2 },
   communityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   communityText: { flex: 1 },
   badge: {
