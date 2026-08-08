@@ -1,9 +1,11 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme';
+import { DownloadIcon } from './icons';
 import { Text } from './ui/Text';
 
 const photo = require('../../assets/images/westercove_sunrise_mountains.jpg');
@@ -14,6 +16,8 @@ export interface HeroHeaderProps {
   /** Tall greeting hero (Home) vs. compact screen-title header (other tabs). */
   variant?: 'greeting' | 'compact';
   title: string;
+  /** Small label under the title (e.g. "Home" on the greeting hero). */
+  label?: string;
   subtitle?: string;
 }
 
@@ -24,10 +28,16 @@ export interface HeroHeaderProps {
  * dark amethyst over the bright photo (light) / cream over a darkened overlay
  * (dark mode).
  */
-export function HeroHeader({ variant = 'compact', title, subtitle }: HeroHeaderProps) {
+export function HeroHeader({
+  variant = 'compact',
+  title,
+  label,
+  subtitle,
+}: HeroHeaderProps) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { scheme, colors } = useTheme();
-  const height = (variant === 'greeting' ? 260 : 150) + insets.top;
+  const height = (variant === 'greeting' ? 280 : 170) + insets.top;
 
   // Fade the photo into the page: mostly transparent at the top, solid
   // background at the bottom edge so content below blends seamlessly.
@@ -42,9 +52,22 @@ export function HeroHeader({ variant = 'compact', title, subtitle }: HeroHeaderP
       <LinearGradient colors={fade} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} />
 
       <View style={[styles.overlay, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.brand} accessibilityRole="header" accessibilityLabel="Westercove">
-          <Image source={icon} style={styles.icon} contentFit="contain" />
-          <Image source={wordmark} style={styles.wordmark} contentFit="contain" />
+        <View style={styles.topRow}>
+          <View style={styles.brand} accessibilityRole="header" accessibilityLabel="Westercove">
+            <Image source={icon} style={styles.icon} contentFit="contain" />
+            <Image source={wordmark} style={styles.wordmark} contentFit="contain" />
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Download journal"
+            onPress={() => router.push('/export')}
+            style={[styles.download, { backgroundColor: colors.emerald }]}
+          >
+            <DownloadIcon size={16} color={colors.onAccent} />
+            <Text variant="tag" color="onAccent" style={styles.downloadText}>
+              Download journal
+            </Text>
+          </Pressable>
         </View>
         <View>
           <Text
@@ -53,6 +76,11 @@ export function HeroHeader({ variant = 'compact', title, subtitle }: HeroHeaderP
           >
             {title}
           </Text>
+          {label ? (
+            <Text variant="screenTitle" color="heading" style={styles.label}>
+              {label}
+            </Text>
+          ) : null}
           {subtitle ? (
             <Text variant="body" color="textMuted" style={styles.subtitle}>
               {subtitle}
@@ -72,8 +100,23 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     justifyContent: 'space-between',
   },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   icon: { width: 24, height: 22 },
   wordmark: { width: 84, height: 15 },
+  download: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  downloadText: { textTransform: 'none' },
+  label: { marginTop: 2 },
   subtitle: { marginTop: 4 },
 });

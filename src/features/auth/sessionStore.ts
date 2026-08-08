@@ -95,6 +95,17 @@ export const useSessionStore = create<SessionState>()(
   ),
 );
 
+/**
+ * The loved one's name for compose/questions ("For Lily", "[name]" tokens).
+ * Falls back to a seeded default so the flow reads naturally before the gate
+ * has captured a real name.
+ */
+export function lovedOneName(): string {
+  return (
+    useSessionStore.getState().session?.gateAnswers.lovedOneName?.trim() || 'Lily'
+  );
+}
+
 /** Derived routing status from the session. */
 export function sessionStatus(session: Session | null): SessionStatus {
   if (!session) return 'unauthenticated';

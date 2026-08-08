@@ -8,6 +8,7 @@ import {
   DAYS_PET,
   QUESTION_INTERVAL_MS,
   type DayBucket,
+  type Question,
 } from '@/constants/questions';
 
 /**
@@ -48,6 +49,33 @@ interface QuestionsState {
   markDayShown: () => void;
   setPending: (pending: Pending | null) => void;
   declinePending: () => void;
+  /** Demo control: advance one interval of talk-time, unlocking the next Day. */
+  simulateSession: () => void;
+  /** Demo control: wipe all question progress. */
+  resetProgress: () => void;
+}
+
+/**
+ * The next gentle question to surface inline on Home: the first unlocked,
+ * unanswered, un-skipped `text` question across all unlocked Day buckets (info
+ * and chip questions are handled by the overlay flow, not the Home card).
+ * Returns null when nothing is unlocked yet or everything is answered.
+ */
+export function nextHomeQuestion(
+  talkMs: number,
+  answers: Record<string, string>,
+  skipped: string[],
+): Question | null {
+  const days = activeDays();
+  const due = dueDayIndex(talkMs, days.length);
+  for (let d = 0; d <= due; d++) {
+    for (const q of days[d].questions) {
+      if (q.kind !== 'text') continue;
+      if (answers[q.id] || skipped.includes(q.id)) continue;
+      return q;
+    }
+  }
+  return null;
 }
 
 /** The active module's Day buckets, chosen from the day-zero gate answer. */
@@ -107,6 +135,14 @@ export const useQuestionsStore = create<QuestionsState>()(
       // "show directly on their return" path (no dialog next time).
       declinePending() {
         set({ pending: null, deferAfterNo: true });
+      },
+
+      simulateSession() {
+        set((s) => ({ talkMs: s.talkMs + QUESTION_INTERVAL_MS }));
+      },
+
+      resetProgress() {
+        set({ talkMs: 0, daysShown: 0, answers: {}, skipped: [], pending: null });
       },
     }),
     {

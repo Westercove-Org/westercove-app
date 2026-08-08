@@ -169,3 +169,19 @@ export function PauseIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function DownloadIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M12 4 V15 M7 10.5 L12 15.5 L17 10.5 M5 20 H19" />
+    </Base>
+  );
+}
+
+export function PaperclipIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M20 11.5 L11.5 20 A4.5 4.5 0 0 1 5 13.5 L13 5.5 A3 3 0 0 1 17.5 9.7 L9.7 17.5 A1.5 1.5 0 0 1 7.5 15.4 L15 8" />
+    </Base>
+  );
+}

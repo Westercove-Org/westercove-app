@@ -7,7 +7,7 @@ import { CrisisBanner } from '@/components/CrisisBanner';
 import { ChevronRightIcon, MicIcon, SendIcon } from '@/components/icons';
 import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
-import { useSessionStore } from '@/features/auth/sessionStore';
+import { lovedOneName } from '@/features/auth/sessionStore';
 import { useSafetyRouter } from '@/features/safety/useSafetyRouter';
 import {
   ENTRY_PLACEHOLDERS,
@@ -22,8 +22,6 @@ import { services } from '@/services';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
-type Mode = 'thoughts' | 'heard';
-
 export function NewEntry() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -31,12 +29,11 @@ export function NewEntry() {
   const params = useLocalSearchParams<{ type?: string }>();
   const addEntry = useEntriesStore((s) => s.addEntry);
   const routeSafety = useSafetyRouter();
-  const lovedOne = useSessionStore((s) => s.session?.gateAnswers.lovedOneName);
+  const lovedOne = lovedOneName();
 
   const initialType: EntryType = isEntryType(params.type) ? params.type : 'Journal';
   const [type, setType] = useState<EntryType>(initialType);
   const [text, setText] = useState('');
-  const [mode, setMode] = useState<Mode>('thoughts');
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -59,7 +56,7 @@ export function NewEntry() {
     const { id, level } = await addEntry({
       type,
       text: text.trim(),
-      justHeard: mode === 'heard',
+      justHeard: false,
     });
     // Land on the entry, then surface the safety interface on top for L3/L4.
     router.replace({ pathname: '/entry/[id]', params: { id } });
@@ -79,11 +76,9 @@ export function NewEntry() {
         </Pressable>
         <View>
           <Text variant="screenTitle">New entry</Text>
-          {lovedOne ? (
-            <Text variant="meta" color="textMuted">
-              For {lovedOne}
-            </Text>
-          ) : null}
+          <Text variant="meta" color="textMuted">
+            For {lovedOne}
+          </Text>
         </View>
       </View>
 
@@ -96,24 +91,6 @@ export function NewEntry() {
           <Chip key={t} label={t} selected={t === type} onPress={() => setType(t)} />
         ))}
       </ScrollView>
-
-      <View style={styles.modeRow}>
-        <Text variant="bodySmall" color="textMuted" style={styles.modePrompt}>
-          Would you like thoughts back, or does this just need to be heard?
-        </Text>
-        <View style={styles.modeChips}>
-          <Chip
-            label="Thoughts back"
-            selected={mode === 'thoughts'}
-            onPress={() => setMode('thoughts')}
-          />
-          <Chip
-            label="Just heard"
-            selected={mode === 'heard'}
-            onPress={() => setMode('heard')}
-          />
-        </View>
-      </View>
 
       <TextInput
         value={text}
@@ -173,9 +150,6 @@ const styles = StyleSheet.create({
   },
   back: { transform: [{ rotate: '180deg' }], minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   typeRow: { paddingHorizontal: spacing.screen, gap: spacing.sm, paddingVertical: spacing.sm },
-  modeRow: { paddingHorizontal: spacing.screen, paddingTop: spacing.sm, gap: spacing.sm },
-  modePrompt: {},
-  modeChips: { flexDirection: 'row', gap: spacing.sm },
   input: {
     flex: 1,
     paddingHorizontal: spacing.screen,
