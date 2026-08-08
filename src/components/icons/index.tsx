@@ -201,3 +201,21 @@ export function TrashIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function PersonIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Circle cx="12" cy="8" r="4" />
+      <Path d="M4 20 C 4 15.5 8 14 12 14 C 16 14 20 15.5 20 20" />
+    </Base>
+  );
+}
+
+export function EyeIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M2 12 C 5 6 9 4.5 12 4.5 C 15 4.5 19 6 22 12 C 19 18 15 19.5 12 19.5 C 9 19.5 5 18 2 12 Z" />
+      <Circle cx="12" cy="12" r="3" />
+    </Base>
+  );
+}

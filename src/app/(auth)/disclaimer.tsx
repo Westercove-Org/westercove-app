@@ -34,7 +34,7 @@ export default function DisclaimerScreen() {
           <Button
             label={copy.disclaimerScreen.continue}
             variant="amethyst"
-            onPress={() => router.push('/entry-path')}
+            onPress={() => router.push('/sign-in')}
           />
           <Pressable
             accessibilityRole="button"

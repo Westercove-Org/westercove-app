@@ -85,16 +85,17 @@ export const copy = {
   signIn: {
     title: 'Welcome',
     subtitle: 'Sign in to continue',
-    email: 'Email',
-    emailPlaceholder: 'email address',
+    email: 'Your name',
+    emailPlaceholder: 'Your name',
     password: 'Password',
-    passwordPlaceholder: 'Enter password',
-    saveEmail: 'Save email',
+    passwordPlaceholder: 'Password',
+    saveEmail: 'Remember me',
     signIn: 'Sign in',
     forgot: 'Forgot email or password?',
     newHere: 'New to Westercove',
     create: 'Create an account',
     createHint: 'Setting up takes a moment, with no long intake.',
+    back: 'Back',
   },
 
   gate: {
