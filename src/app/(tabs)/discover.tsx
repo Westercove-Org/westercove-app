@@ -19,6 +19,7 @@ import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
 const trainingPhoto = require('../../../assets/images/westercove_valley_green.jpg');
+const heroImage = require('../../../assets/images/westercove_wildflowers_purple.jpg');
 
 /** Light text that reads on the dark cover blocks. */
 const COVER_TEXT = '#F6F1E7';
@@ -131,7 +132,7 @@ export default function DiscoverScreen() {
   };
 
   return (
-    <Screen header={{ title: 'Discover', subtitle: formatHeaderDateTime(now) }}>
+    <Screen header={{ title: 'Discover', subtitle: formatHeaderDateTime(now), image: heroImage }}>
       <View style={styles.searchWrap}>
         <SearchPill
           placeholder={copy.discover.search}

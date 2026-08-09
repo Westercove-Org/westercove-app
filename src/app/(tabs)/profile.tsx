@@ -46,6 +46,8 @@ const LOVED_ONES = [
   { initials: 'B', name: 'Biscuit', color: '#338233' },
 ];
 
+const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
+
 /** Tones the companion-tone row cycles through. */
 const TONES = ['Gentle and warm', 'Plain and direct', 'Quiet and spare'];
 
@@ -88,7 +90,7 @@ export default function ProfileScreen() {
   );
 
   return (
-    <Screen header={{ title: 'Profile', subtitle: formatHeaderDateTime(now) }}>
+    <Screen header={{ title: 'Profile', subtitle: formatHeaderDateTime(now), image: heroImage }}>
       <TestProfiles />
 
       <SectionLabel>YOUR NAME</SectionLabel>

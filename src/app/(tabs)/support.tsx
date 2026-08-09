@@ -14,13 +14,15 @@ import { callLine, textLine } from '@/lib/crisisLinks';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
+const heroImage = require('../../../assets/images/westercove_hero_valley.jpg');
+
 export default function SupportScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const now = new Date();
 
   return (
-    <Screen header={{ title: 'Support', subtitle: formatHeaderDateTime(now) }}>
+    <Screen header={{ title: 'Support', subtitle: formatHeaderDateTime(now), image: heroImage }}>
       <SectionLabel>{copy.support.needSomeone}</SectionLabel>
 
       <View style={styles.pad}>

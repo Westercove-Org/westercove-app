@@ -14,6 +14,8 @@ import { useEntriesStore } from '@/features/journal/entriesStore';
 import { formatEntryTimestamp, formatHeaderDateTime } from '@/lib/dateFormat';
 import { spacing } from '@/theme/tokens';
 
+const heroImage = require('../../../assets/images/westercove_meadow_white.jpg');
+
 /** Filter chips over the journal list: "All" plus every entry type. */
 const FILTERS = ['All', ...ENTRY_TYPES] as const;
 
@@ -26,7 +28,7 @@ export default function JournalScreen() {
   const shown = filter === 'All' ? entries : entries.filter((e) => e.type === filter);
 
   return (
-    <Screen header={{ title: 'Journal', subtitle: formatHeaderDateTime(now) }}>
+    <Screen header={{ title: 'Journal', subtitle: formatHeaderDateTime(now), image: heroImage }}>
       <ComposeCard
         placeholder="Write your journal entry here…"
         attach
