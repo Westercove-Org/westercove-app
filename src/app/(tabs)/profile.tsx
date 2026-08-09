@@ -41,10 +41,7 @@ const SETTINGS: Row[] = [
   { label: 'Legal', subtitle: 'Terms, Privacy, Disclaimer', section: 'legal' },
 ];
 
-const LOVED_ONES = [
-  { initials: 'EC', name: 'Dad', color: '#3D2F5E' },
-  { initials: 'B', name: 'Biscuit', color: '#338233' },
-];
+const LOVED_ONES: { initials: string; name: string; color: string }[] = [];
 
 const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
 
