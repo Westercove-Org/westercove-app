@@ -53,16 +53,21 @@ export const copy = {
     'Westercove is a wellness companion, not therapy, and it does not diagnose.',
 
   launch: {
-    tagline: 'A quiet place, whenever you want it.',
+    tagline: 'Here for you when the world goes quiet.',
     begin: 'Begin',
     haveAccount: 'I already have an account',
   },
 
   disclaimerScreen: {
-    title: 'Before we begin',
-    body: 'Westercove is a wellness companion, not therapy, and it does not diagnose. It is here whenever you want it, and asks nothing of you when you do not.',
-    age: 'I am 18 or older and I agree to the Westercove Terms and Conditions.',
-    agree: 'I agree',
+    title: 'Before you begin',
+    body1:
+      'Westercove is a wellness companion, not therapy. It does not diagnose, and it is not a substitute for professional care.',
+    body2:
+      'If you are in crisis, or if you are worried about yourself or someone else, please use the crisis line at the bottom of every screen.',
+    body3:
+      'By continuing, you confirm you are 18 or older and that you agree to our Terms and Privacy notice.',
+    continue: 'I understand, continue',
+    goBack: 'Go back',
   },
 
   entryPath: {
@@ -80,32 +85,38 @@ export const copy = {
   signIn: {
     title: 'Welcome',
     subtitle: 'Sign in to continue',
-    email: 'Email',
-    emailPlaceholder: 'email address',
+    email: 'Your name',
+    emailPlaceholder: 'Your name',
     password: 'Password',
-    passwordPlaceholder: 'Enter password',
-    saveEmail: 'Save email',
+    passwordPlaceholder: 'Password',
+    saveEmail: 'Remember me',
     signIn: 'Sign in',
     forgot: 'Forgot email or password?',
     newHere: 'New to Westercove',
     create: 'Create an account',
     createHint: 'Setting up takes a moment, with no long intake.',
+    back: 'Back',
   },
 
   gate: {
-    saveForLater: 'Save and continue later',
-    skip: 'Skip this question',
+    title: 'Getting to know you',
+    step: 'Step', // "Step X of N"
+    skip: 'Skip',
     next: 'Continue',
+    back: 'Back',
     done: 'Enter Westercove',
     q1: 'What would you like me to call you?',
     q1Placeholder: 'Your name',
-    q2: 'What is your loved one’s name?',
+    q2: 'What was their name?',
     q2Placeholder: 'Their name',
     q3: 'Who were they to you?',
-    q4Human: '', // species step is pet-only
-    q4Pet: 'What kind of animal were they?',
-    q5: 'How would you like me to be with you?',
-    tonePrompt: 'Tap what fits. You can change it anytime.',
+    q4Pet: 'What kind of animal was [name]?',
+    q4PetPlaceholder: 'Dog, cat, bird…',
+    q4Breed: 'If you would like to share it, what breed or mix were they?',
+    q4BreedHint: 'Optional. You can skip.',
+    q4BreedPlaceholder: 'Breed or mix',
+    q5: 'Everyone needs something different. How would you like me to be with you?',
+    tonePrompt: 'You can change this anytime.',
   },
 
   safety: {

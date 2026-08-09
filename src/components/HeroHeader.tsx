@@ -1,87 +1,96 @@
-import { StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
-import { copy } from '@/constants/copy';
+import { useSessionStore } from '@/features/auth/sessionStore';
 import { useTheme } from '@/theme';
-import { fonts } from '@/theme/tokens';
+import { DownloadIcon } from './icons';
 import { Text } from './ui/Text';
+
+const defaultPhoto = require('../../assets/images/westercove_sunrise_mountains.jpg');
+const icon = require('../../assets/images/westercove_icon.png');
+const wordmark = require('../../assets/images/westercove_wordmark.png');
 
 export interface HeroHeaderProps {
   /** Tall greeting hero (Home) vs. compact screen-title header (other tabs). */
   variant?: 'greeting' | 'compact';
   title: string;
+  /** Small label under the title (e.g. "Home" on the greeting hero). */
+  label?: string;
   subtitle?: string;
+  /** Hero photo (require()'d asset). Defaults to the sunrise image. */
+  image?: number;
 }
 
 /**
- * The landscape hero at the top of every tab: an amethyst sky over grey hills
- * and green fields, with the wordmark and title/greeting overlaid. A
- * stylized SVG placeholder for the supplied day/night hero imagery (swapped
- * in Phase 4). The dark-mode moonlit variant lands with that imagery.
+ * The photographic hero at the top of every tab: a sunrise-over-the-mountains
+ * photo with a parchment gradient fading into the page, the Westercove
+ * icon + wordmark top-left, and the title/greeting overlaid. Title text is
+ * dark amethyst over the bright photo (light) / cream over a darkened overlay
+ * (dark mode).
  */
-export function HeroHeader({ variant = 'compact', title, subtitle }: HeroHeaderProps) {
+export function HeroHeader({
+  variant = 'compact',
+  title,
+  label,
+  subtitle,
+  image = defaultPhoto,
+}: HeroHeaderProps) {
   const insets = useSafeAreaInsets();
-  const { scheme } = useTheme();
-  const height = (variant === 'greeting' ? 260 : 150) + insets.top;
+  const router = useRouter();
+  const { scheme, colors } = useTheme();
+  // Download journal is a signed-in action; hide it on the pre-auth screens.
+  const signedIn = useSessionStore((s) => !!s.session);
+  const height = (variant === 'greeting' ? 280 : 170) + insets.top;
 
-  // Day palette (amethyst dusk over green fields) vs. dark-mode moonlit night.
-  const night = scheme === 'dark';
-  const skyTop = night ? '#0B0A1A' : '#241640';
-  const skyBottom = night ? '#1A1730' : '#443363';
-  const hills = night ? '#2A3140' : '#4C5563';
-  const fields = night ? '#14351A' : '#2F6B33';
-  const base = night ? '#0E260F' : '#1F4D22';
+  // Fade the photo into the page: mostly transparent at the top, solid
+  // background at the bottom edge so content below blends seamlessly.
+  const fade =
+    scheme === 'dark'
+      ? (['rgba(26,23,18,0.35)', 'rgba(26,23,18,0.72)', 'rgba(26,23,18,0.96)'] as const)
+      : (['rgba(246,241,231,0.18)', 'rgba(246,241,231,0.55)', 'rgba(246,241,231,0.96)'] as const);
 
   return (
-    <View style={[styles.container, { height }]}>
-      <Svg
-        style={StyleSheet.absoluteFill}
-        width="100%"
-        height="100%"
-        viewBox="0 0 390 300"
-        preserveAspectRatio="none"
-      >
-        <Defs>
-          <LinearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={skyTop} />
-            <Stop offset="1" stopColor={skyBottom} />
-          </LinearGradient>
-        </Defs>
-        <Rect x="0" y="0" width="390" height="300" fill="url(#sky)" />
-        {night ? <Circle cx="300" cy="70" r="26" fill="#E9E6D0" opacity={0.9} /> : null}
-        {/* distant hills */}
-        <Path
-          d="M0 205 C 90 178 150 214 240 198 S 360 186 390 202 L390 300 L0 300 Z"
-          fill={hills}
-          opacity={0.9}
-        />
-        {/* fields */}
-        <Path
-          d="M0 238 C 100 222 180 252 260 236 S 360 232 390 242 L390 300 L0 300 Z"
-          fill={fields}
-        />
-        <Rect x="0" y="278" width="390" height="22" fill={base} />
-      </Svg>
+    <View style={[styles.container, { height, backgroundColor: colors.background }]}>
+      <Image source={image} style={StyleSheet.absoluteFill} contentFit="cover" />
+      <LinearGradient colors={fade} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} />
 
       <View style={[styles.overlay, { paddingTop: insets.top + 8 }]}>
-        <Text
-          color="#FFFFFF"
-          style={styles.wordmark}
-          accessibilityRole="header"
-        >
-          {copy.wordmark}
-        </Text>
-        <View style={styles.titleBlock}>
+        <View style={styles.topRow}>
+          <View style={styles.brand} accessibilityRole="header" accessibilityLabel="Westercove">
+            <Image source={icon} style={styles.icon} contentFit="contain" />
+            <Image source={wordmark} style={styles.wordmark} contentFit="contain" />
+          </View>
+          {signedIn ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Download journal"
+              onPress={() => router.push('/export')}
+              style={[styles.download, { backgroundColor: colors.emerald }]}
+            >
+              <DownloadIcon size={16} color={colors.onAccent} />
+              <Text variant="tag" color="onAccent" style={styles.downloadText}>
+                Download journal
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+        <View>
           <Text
             variant={variant === 'greeting' ? 'display' : 'screenTitle'}
-            color="#FFFFFF"
             accessibilityRole="header"
           >
             {title}
           </Text>
+          {label ? (
+            <Text variant="screenTitle" color="heading" style={styles.label}>
+              {label}
+            </Text>
+          ) : null}
           {subtitle ? (
-            <Text variant="body" color="rgba(255,255,255,0.92)" style={styles.subtitle}>
+            <Text variant="body" color="textMuted" style={styles.subtitle}>
               {subtitle}
             </Text>
           ) : null}
@@ -99,7 +108,23 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     justifyContent: 'space-between',
   },
-  wordmark: { fontFamily: fonts.sans, fontSize: 15, fontWeight: '700' },
-  titleBlock: {},
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  icon: { width: 24, height: 22 },
+  wordmark: { width: 84, height: 15 },
+  download: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  downloadText: { textTransform: 'none' },
+  label: { marginTop: 2 },
   subtitle: { marginTop: 4 },
 });

@@ -8,6 +8,8 @@ export interface Organization {
 export interface ContentService {
   /** Fetch a book's summary so responses can meet the user inside its framework. */
   fetchBookSummary(bookId: string): Promise<string>;
+  /** Write a short summary for a book the user added themselves (title + author). */
+  generateBookSummary(title: string, author: string): Promise<string>;
   /** Organizations grouped by loss type. */
   organizationsFor(lossType: string): Promise<Organization[]>;
 }
@@ -27,6 +29,12 @@ export class MockContentService implements ContentService {
       SUMMARIES[bookId] ??
       'A gentle, grounded companion for this kind of loss, written with warmth for anyone looking for words when their own are hard to find.'
     );
+  }
+
+  async generateBookSummary(title: string, author: string): Promise<string> {
+    await new Promise((r) => setTimeout(r, 700));
+    const by = author ? ` by ${author}` : '';
+    return `${title}${by} — added to your library. Your companion will draw on this book in your conversations, and a short summary will appear in your downloaded journal.`;
   }
 
   async organizationsFor(lossType: string): Promise<Organization[]> {

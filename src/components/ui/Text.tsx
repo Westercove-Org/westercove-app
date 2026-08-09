@@ -11,8 +11,8 @@ export interface TextProps extends RNTextProps {
 
 /** Default color per type variant (design system §3). */
 const defaultColorFor: Record<TypographyVariant, keyof ThemeColors> = {
-  display: 'textPrimary',
-  screenTitle: 'textPrimary',
+  display: 'heading',
+  screenTitle: 'heading',
   sectionLabel: 'forest',
   cardTitle: 'textPrimary',
   body: 'textPrimary',

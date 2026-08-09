@@ -1,36 +1,52 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { ComposeCard } from '@/components/ComposeCard';
 import { EntryCard } from '@/components/EntryCard';
 import { Screen } from '@/components/Screen';
-import { SectionLabel } from '@/components/ui/SectionLabel';
+import { Chip } from '@/components/ui/Chip';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { SectionLabel } from '@/components/ui/SectionLabel';
 import { copy } from '@/constants/copy';
 import { ENTRY_TYPES } from '@/features/journal/entryTypes';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { formatEntryTimestamp, formatHeaderDateTime } from '@/lib/dateFormat';
+import { spacing } from '@/theme/tokens';
+
+const heroImage = require('../../../assets/images/westercove_meadow_white.jpg');
+
+/** Filter chips over the journal list: "All" plus every entry type. */
+const FILTERS = ['All', ...ENTRY_TYPES] as const;
 
 export default function JournalScreen() {
   const router = useRouter();
   const now = new Date();
   const entries = useEntriesStore((s) => s.entries);
+  const [filter, setFilter] = useState<string>('All');
 
-  const compose = (type?: string) =>
-    router.push(type ? { pathname: '/entry/new', params: { type } } : '/entry/new');
+  const shown = filter === 'All' ? entries : entries.filter((e) => e.type === filter);
 
   return (
-    <Screen header={{ title: 'Journal', subtitle: formatHeaderDateTime(now) }}>
+    <Screen header={{ title: 'Journal', subtitle: formatHeaderDateTime(now), image: heroImage }}>
       <ComposeCard
-        chips={ENTRY_TYPES}
-        onPressPrompt={() => compose()}
-        onPressMic={() => compose()}
-        onPressChip={(label) => compose(label)}
+        placeholder="Write your journal entry here…"
+        attach
+        onPressPrompt={() => router.push('/entry/new')}
+        onPressMic={() => router.push('/entry/new')}
       />
+
+      <View style={styles.filters}>
+        {FILTERS.map((f) => (
+          <Chip key={f} label={f} selected={f === filter} onPress={() => setFilter(f)} />
+        ))}
+      </View>
+
       <SectionLabel>{copy.journal.entries}</SectionLabel>
-      {entries.length === 0 ? (
+      {shown.length === 0 ? (
         <EmptyState message={copy.journal.empty} />
       ) : (
-        entries.map((entry) => (
+        shown.map((entry) => (
           <EntryCard
             key={entry.id}
             type={entry.type}
@@ -43,3 +59,13 @@ export default function JournalScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  filters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+  },
+});

@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useTheme } from '@/theme';
-import { radii, spacing } from '@/theme/tokens';
+import { spacing } from '@/theme/tokens';
 import { Text } from './Text';
 
 export interface ChipProps {
@@ -27,8 +27,8 @@ export function Chip({ label, selected = false, onPress, leading }: ChipProps) {
       style={({ pressed }) => [
         styles.chip,
         {
-          backgroundColor: selected ? colors.forest : colors.card,
-          borderColor: colors.line,
+          backgroundColor: selected ? colors.heading : colors.card,
+          borderColor: selected ? colors.heading : colors.line,
         },
         pressed && onPress ? { opacity: 0.7 } : null,
       ]}
@@ -36,7 +36,7 @@ export function Chip({ label, selected = false, onPress, leading }: ChipProps) {
       {leading ? <View style={styles.leading}>{leading}</View> : null}
       <Text
         variant="body"
-        color={selected ? colors.onAccent : colors.forest}
+        color={selected ? colors.onAccent : colors.textPrimary}
         style={styles.label}
       >
         {label}
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: radii.chip,
+    borderRadius: 999,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     gap: spacing.xs,

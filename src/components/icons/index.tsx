@@ -169,3 +169,74 @@ export function PauseIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function DownloadIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M12 4 V15 M7 10.5 L12 15.5 L17 10.5 M5 20 H19" />
+    </Base>
+  );
+}
+
+export function PaperclipIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M20 11.5 L11.5 20 A4.5 4.5 0 0 1 5 13.5 L13 5.5 A3 3 0 0 1 17.5 9.7 L9.7 17.5 A1.5 1.5 0 0 1 7.5 15.4 L15 8" />
+    </Base>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M5 12.5 L10 17.5 L19 6.5" />
+    </Base>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M4 7 H20 M9 7 V5 A1 1 0 0 1 10 4 H14 A1 1 0 0 1 15 5 V7 M6 7 L7 20 A1 1 0 0 0 8 21 H16 A1 1 0 0 0 17 20 L18 7" />
+    </Base>
+  );
+}
+
+export function PersonIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Circle cx="12" cy="8" r="4" />
+      <Path d="M4 20 C 4 15.5 8 14 12 14 C 16 14 20 15.5 20 20" />
+    </Base>
+  );
+}
+
+export function LifeBuoyIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Circle cx="12" cy="12" r="10" />
+      <Circle cx="12" cy="12" r="4" />
+      <Path d="M4.93 4.93 L9.17 9.17 M14.83 14.83 L19.07 19.07 M14.83 9.17 L19.07 4.93 M9.17 14.83 L4.93 19.07" />
+    </Base>
+  );
+}
+
+export function EyeIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M2 12 C 5 6 9 4.5 12 4.5 C 15 4.5 19 6 22 12 C 19 18 15 19.5 12 19.5 C 9 19.5 5 18 2 12 Z" />
+      <Circle cx="12" cy="12" r="3" />
+    </Base>
+  );
+}
+
+export function EyeOffIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M4 5 L20 19" />
+      <Path d="M9.5 5.3 C 10.3 5.1 11.1 5 12 5 C 15 5 19 6.5 22 12 C 21.2 13.5 20.3 14.7 19.4 15.7" />
+      <Path d="M15.5 15.2 C 14.5 16 13.3 16.5 12 16.5 C 9 16.5 5 15 2 9.5 M6.2 7.7 C 4.7 8.7 3.3 10.2 2.4 12" />
+      <Path d="M9.9 9.9 A 3 3 0 0 0 14.1 14.1" />
+    </Base>
+  );
+}

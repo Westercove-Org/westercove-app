@@ -1,5 +1,16 @@
 import '@/global.css';
 
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter';
+import {
+  SourceSerif4_400Regular,
+  SourceSerif4_600SemiBold,
+} from '@expo-google-fonts/source-serif-4';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -9,17 +20,28 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthGuard } from '@/features/auth/useAuthGuard';
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { QuestionsOverlay } from '@/features/questions/QuestionsOverlay';
+import { useQuestionsStore } from '@/features/questions/questionsStore';
 import { useTheme, WestercoveThemeProvider } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  // The app uses only the native system font, so there is nothing to load —
-  // release the splash as soon as we mount.
+  // Source Serif 4 (display) + Inter (body/labels) drive all typography, so
+  // hold the splash until the faces are ready to avoid a flash of fallback text.
+  const [fontsLoaded, fontError] = useFonts({
+    SourceSerif4_400Regular,
+    SourceSerif4_600SemiBold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (fontsLoaded || fontError) SplashScreen.hideAsync();
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>
@@ -35,6 +57,11 @@ function RootNav() {
   const hydrated = useSessionStore((s) => s.hydrated);
   useAuthGuard();
 
+  // Count one app-open session so the Home check-in un-snoozes each open.
+  useEffect(() => {
+    useQuestionsStore.getState().startSession();
+  }, []);
+
   // Hold on a plain surface until the persisted session has rehydrated, so we
   // don't flash the tab shell before the guard can redirect.
   if (!hydrated) {
@@ -43,8 +70,8 @@ function RootNav() {
 
   return (
     <>
-      {/* Hero is dark at the top of every screen, so light status-bar content. */}
-      <StatusBar style="light" />
+      {/* Hero is a bright parchment photo, so dark status-bar content. */}
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -62,9 +89,6 @@ function RootNav() {
           options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
         />
       </Stack>
-      {/* Timer-driven profile questions overlay the whole app; it self-hides
-          until the talk-time timer marks a Day due. */}
-      <QuestionsOverlay />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { secureStorage } from '@/lib/secureStorage';
+import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
 import type { CreateAccountInput } from '@/services/auth';
 import type { Entitlement, GateAnswers, Session } from './types';
@@ -15,7 +15,13 @@ interface SessionState {
   beginAccount: (input: CreateAccountInput) => Promise<void>;
   completeGate: (answers: GateAnswers) => void;
   setEntitlement: (entitlement: Entitlement) => void;
+  setFullName: (fullName: string) => void;
+  updateGate: (partial: Partial<GateAnswers>) => void;
   signOut: () => void;
+  /** Reset to a fresh (unonboarded) session for a new test profile. */
+  resetForProfile: () => void;
+  /** Start a signed-in-but-not-onboarded session (new test profile → onboarding). */
+  beginOnboardingSession: () => void;
 }
 
 const emptyGate: GateAnswers = { mode: 'human', skipped: [] };
@@ -28,7 +34,7 @@ export const useSessionStore = create<SessionState>()(
 
       async signIn(email, password) {
         const result = await services.auth.signIn(email, password);
-        // A returning user is already past the day-zero gate.
+        // The demo runs onboarding after sign-in, so land in the day-zero gate.
         set({
           session: {
             user: result.user,
@@ -36,7 +42,7 @@ export const useSessionStore = create<SessionState>()(
             entitlement: result.entitlement,
             sponsorOrganization: result.sponsorOrganization,
             disclaimerAcked: true,
-            gateComplete: true,
+            gateComplete: false,
             gateAnswers: emptyGate,
           },
         });
@@ -78,13 +84,42 @@ export const useSessionStore = create<SessionState>()(
         void services.crm.updateEntitlement(s.user.email, entitlement);
       },
 
+      setFullName(fullName) {
+        const s = get().session;
+        if (!s) return;
+        set({ session: { ...s, fullName } });
+      },
+
+      updateGate(partial) {
+        const s = get().session;
+        if (!s) return;
+        set({ session: { ...s, gateAnswers: { ...s.gateAnswers, ...partial } } });
+      },
+
       signOut() {
         set({ session: null });
+      },
+
+      resetForProfile() {
+        set({ session: null });
+      },
+
+      beginOnboardingSession() {
+        set({
+          session: {
+            user: { email: '' },
+            entryPath: 'consumer_trial',
+            entitlement: 'trial_active',
+            disclaimerAcked: true,
+            gateComplete: false,
+            gateAnswers: emptyGate,
+          },
+        });
       },
     }),
     {
       name: 'westercove.session',
-      storage: createJSONStorage(() => secureStorage),
+      storage: createJSONStorage(() => scopedStorage('session')),
       partialize: (s) => ({ session: s.session }),
       onRehydrateStorage: () => (state) => {
         // Mark hydration complete so the router guard can act.
@@ -94,6 +129,17 @@ export const useSessionStore = create<SessionState>()(
     },
   ),
 );
+
+/**
+ * The loved one's name for compose/questions ("For Lily", "[name]" tokens).
+ * Falls back to a seeded default so the flow reads naturally before the gate
+ * has captured a real name.
+ */
+export function lovedOneName(): string {
+  return (
+    useSessionStore.getState().session?.gateAnswers.lovedOneName?.trim() || 'Lily'
+  );
+}
 
 /** Derived routing status from the session. */
 export function sessionStatus(session: Session | null): SessionStatus {

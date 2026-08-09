@@ -3,17 +3,25 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/Text';
-import type { Book } from '@/features/discover/mockBooks';
 import { services } from '@/services';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
+
+/** Minimal book shape the sheet needs (works for MOCK_BOOKS and LibraryBook). */
+export interface SummaryBook {
+  id: string;
+  title: string;
+  author: string;
+  /** When present (own books), shown directly instead of fetching by id. */
+  summary?: string;
+}
 
 /**
  * Tap-to-fetch book summary: a bottom sheet with a loading state, then the
  * fetched summary so the companion's responses can meet the reader inside that
  * book's framework (journey map §4).
  */
-export function BookSummarySheet({ book, onClose }: { book: Book | null; onClose: () => void }) {
+export function BookSummarySheet({ book, onClose }: { book: SummaryBook | null; onClose: () => void }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [summary, setSummary] = useState<string | null>(null);
@@ -21,10 +29,14 @@ export function BookSummarySheet({ book, onClose }: { book: Book | null; onClose
   useEffect(() => {
     let active = true;
     if (book) {
-      setSummary(null);
-      services.content.fetchBookSummary(book.id).then((s) => {
-        if (active) setSummary(s);
-      });
+      if (book.summary) {
+        setSummary(book.summary);
+      } else {
+        setSummary(null);
+        services.content.fetchBookSummary(book.id).then((s) => {
+          if (active) setSummary(s);
+        });
+      }
     }
     return () => {
       active = false;

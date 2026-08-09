@@ -1,13 +1,15 @@
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
-import { ChevronRightIcon, MicIcon, SendIcon } from '@/components/icons';
+import { ChevronRightIcon, DownloadIcon, MicIcon, SendIcon } from '@/components/icons';
 import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
-import { useSessionStore } from '@/features/auth/sessionStore';
+import { lovedOneName } from '@/features/auth/sessionStore';
 import { useSafetyRouter } from '@/features/safety/useSafetyRouter';
 import {
   ENTRY_PLACEHOLDERS,
@@ -22,7 +24,7 @@ import { services } from '@/services';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
-type Mode = 'thoughts' | 'heard';
+const heroImage = require('../../../assets/images/westercove_meadow_white.jpg');
 
 export function NewEntry() {
   const router = useRouter();
@@ -31,12 +33,11 @@ export function NewEntry() {
   const params = useLocalSearchParams<{ type?: string }>();
   const addEntry = useEntriesStore((s) => s.addEntry);
   const routeSafety = useSafetyRouter();
-  const lovedOne = useSessionStore((s) => s.session?.gateAnswers.lovedOneName);
+  const lovedOne = lovedOneName();
 
   const initialType: EntryType = isEntryType(params.type) ? params.type : 'Journal';
   const [type, setType] = useState<EntryType>(initialType);
   const [text, setText] = useState('');
-  const [mode, setMode] = useState<Mode>('thoughts');
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -56,107 +57,108 @@ export function NewEntry() {
   const onSend = async () => {
     if (!text.trim() || busy) return;
     setBusy(true);
-    const { id, level } = await addEntry({
-      type,
-      text: text.trim(),
-      justHeard: mode === 'heard',
-    });
-    // Land on the entry, then surface the safety interface on top for L3/L4.
+    const { id, level } = await addEntry({ type, text: text.trim(), justHeard: false });
     router.replace({ pathname: '/entry/[id]', params: { id } });
     if (level >= SafetyLevel.High) routeSafety({ level });
   };
 
+  const canSend = !!text.trim() && !busy;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => router.back()}
-          style={styles.back}
-        >
-          <ChevronRightIcon size={24} color={colors.textPrimary} strokeWidth={2} />
-        </Pressable>
-        <View>
-          <Text variant="screenTitle">New entry</Text>
-          {lovedOne ? (
-            <Text variant="meta" color="textMuted">
-              For {lovedOne}
+        <Image source={heroImage} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <LinearGradient
+          colors={['rgba(246,241,231,0.2)', 'rgba(246,241,231,0)', 'rgba(246,241,231,0.94)']}
+          locations={[0, 0.4, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.headerTop}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            onPress={() => router.back()}
+            style={styles.back}
+          >
+            <View style={styles.backChevron}>
+              <ChevronRightIcon size={20} color={colors.heading} strokeWidth={2} />
+            </View>
+            <Text variant="bodySmall" color="heading">
+              Back
             </Text>
-          ) : null}
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Download journal"
+            onPress={() => router.push('/export')}
+            style={[styles.download, { backgroundColor: colors.emerald }]}
+          >
+            <DownloadIcon size={16} color={colors.onAccent} />
+            <Text variant="tag" color="onAccent" style={styles.downloadText}>
+              Download journal
+            </Text>
+          </Pressable>
         </View>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.typeRow}
-      >
-        {ENTRY_TYPES.map((t) => (
-          <Chip key={t} label={t} selected={t === type} onPress={() => setType(t)} />
-        ))}
-      </ScrollView>
-
-      <View style={styles.modeRow}>
-        <Text variant="bodySmall" color="textMuted" style={styles.modePrompt}>
-          Would you like thoughts back, or does this just need to be heard?
+        <Text variant="screenTitle" style={styles.title} accessibilityRole="header">
+          New entry
         </Text>
-        <View style={styles.modeChips}>
-          <Chip
-            label="Thoughts back"
-            selected={mode === 'thoughts'}
-            onPress={() => setMode('thoughts')}
-          />
-          <Chip
-            label="Just heard"
-            selected={mode === 'heard'}
-            onPress={() => setMode('heard')}
-          />
+        <Text variant="body" color="heading">
+          For {lovedOne}
+        </Text>
+        <Text variant="bodySmall" color="textMuted" style={styles.desc}>
+          Write as much or as little as you like. You can keep journaling, or tap Home when you
+          are ready.
+        </Text>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.body}>
+        <View style={styles.chips}>
+          {ENTRY_TYPES.map((t) => (
+            <Chip key={t} label={t} selected={t === type} onPress={() => setType(t)} />
+          ))}
         </View>
-      </View>
 
-      <TextInput
-        value={text}
-        onChangeText={setText}
-        placeholder={ENTRY_PLACEHOLDERS[type]}
-        placeholderTextColor={colors.textMuted}
-        multiline
-        accessibilityLabel="Write your entry"
-        style={[styles.input, { color: colors.textPrimary }]}
-      />
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder={ENTRY_PLACEHOLDERS[type]}
+          placeholderTextColor={colors.textMuted}
+          multiline
+          accessibilityLabel="Write your entry"
+          style={[styles.input, { color: colors.textPrimary, borderColor: colors.line }]}
+        />
 
-      <View style={[styles.actions, { paddingBottom: spacing.md }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={listening ? 'Listening' : 'Speak your entry'}
-          onPress={onMic}
-          style={[
-            styles.mic,
-            { backgroundColor: listening ? colors.emerald : colors.surfaceAlt },
-          ]}
-        >
-          <MicIcon size={22} color={listening ? colors.onAccent : colors.forest} />
-        </Pressable>
-        {listening ? (
-          <Text variant="bodySmall" color="forest">
-            Listening…
-          </Text>
-        ) : null}
-        <View style={{ flex: 1 }} />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Save entry"
-          disabled={!text.trim() || busy}
-          onPress={onSend}
-          style={[
-            styles.send,
-            { backgroundColor: colors.emerald },
-            (!text.trim() || busy) && { opacity: 0.4 },
-          ]}
-        >
-          <SendIcon size={22} color={colors.onAccent} />
-        </Pressable>
-      </View>
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={listening ? 'Listening' : 'Speak your entry'}
+            onPress={onMic}
+            style={[
+              styles.mic,
+              { backgroundColor: listening ? colors.emerald : colors.forest },
+            ]}
+          >
+            <MicIcon size={22} color={colors.onAccent} />
+          </Pressable>
+          <View style={styles.grow} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Save entry"
+            disabled={!canSend}
+            onPress={onSend}
+            style={[
+              styles.save,
+              { backgroundColor: colors.heading },
+              !canSend && { opacity: 0.4 },
+            ]}
+          >
+            <SendIcon size={18} color={colors.onAccent} />
+            <Text variant="cardTitle" color="onAccent">
+              {busy ? 'Saving…' : 'Save'}
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
 
       <CrisisBanner />
     </View>
@@ -165,32 +167,54 @@ export function NewEntry() {
 
 const styles = StyleSheet.create({
   header: {
+    overflow: 'hidden',
+    paddingHorizontal: spacing.screen,
+    paddingBottom: spacing.lg,
+  },
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
   },
-  back: { transform: [{ rotate: '180deg' }], minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  typeRow: { paddingHorizontal: spacing.screen, gap: spacing.sm, paddingVertical: spacing.sm },
-  modeRow: { paddingHorizontal: spacing.screen, paddingTop: spacing.sm, gap: spacing.sm },
-  modePrompt: {},
-  modeChips: { flexDirection: 'row', gap: spacing.sm },
-  input: {
-    flex: 1,
+  back: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44 },
+  backChevron: { transform: [{ rotate: '180deg' }] },
+  download: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  downloadText: { textTransform: 'none' },
+  title: { marginBottom: 2 },
+  desc: { marginTop: spacing.sm, maxWidth: 340 },
+  body: {
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.lg,
-    fontSize: 15,
-    lineHeight: 22,
+    paddingBottom: 96,
+    gap: spacing.lg,
+  },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  input: {
+    minHeight: 240,
+    borderWidth: 1,
+    borderRadius: radii.card,
+    padding: spacing.lg,
+    fontSize: 17,
+    lineHeight: 25,
     textAlignVertical: 'top',
   },
-  actions: {
+  actions: { flexDirection: 'row', alignItems: 'center' },
+  grow: { flex: 1 },
+  mic: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  save: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.screen,
-    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    minHeight: 48,
+    borderRadius: 24,
   },
-  mic: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  send: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
 });

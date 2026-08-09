@@ -1,11 +1,11 @@
 import { useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ComposeCard } from '@/components/ComposeCard';
 import { EntryCard } from '@/components/EntryCard';
-import { HardDateCard } from '@/components/HardDateCard';
+import { GentleQuestionCard } from '@/components/GentleQuestionCard';
 import { Screen } from '@/components/Screen';
-import { SearchPill } from '@/components/ui/SearchPill';
+import { Chip } from '@/components/ui/Chip';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
@@ -13,7 +13,7 @@ import { useEntriesStore } from '@/features/journal/entriesStore';
 import { formatEntryTimestamp, formatHeaderDateTime } from '@/lib/dateFormat';
 import { spacing } from '@/theme/tokens';
 
-/** Home quick-access command chips, as shown on the Home hero screen. */
+/** Home quick-access command chips, below the gentle-question card. */
 const HOME_CHIPS = [
   'Memory',
   'Struggle',
@@ -43,21 +43,18 @@ export default function HomeScreen() {
       header={{
         variant: 'greeting',
         title: greeting(now, callName),
+        label: 'Home',
         subtitle: formatHeaderDateTime(now),
       }}
     >
-      <ComposeCard
-        chips={HOME_CHIPS}
-        onPressPrompt={() => compose()}
-        onPressMic={() => compose()}
-        onPressChip={(label) => compose(label)}
-      />
+      <ComposeCard onPressPrompt={() => compose()} onPressMic={() => compose()} />
 
-      <View style={{ paddingHorizontal: spacing.screen, paddingTop: spacing.xl }}>
-        <SearchPill
-          placeholder={copy.home.search}
-          onPress={() => router.push({ pathname: '/search', params: { scope: 'global' } })}
-        />
+      <GentleQuestionCard />
+
+      <View style={styles.chips}>
+        {HOME_CHIPS.map((label) => (
+          <Chip key={label} label={label} onPress={() => compose(label)} />
+        ))}
       </View>
 
       <SectionLabel>{copy.home.recent}</SectionLabel>
@@ -70,11 +67,16 @@ export default function HomeScreen() {
           onPress={() => router.push({ pathname: '/entry/[id]', params: { id: entry.id } })}
         />
       ))}
-
-      <HardDateCard
-        label="An anniversary is coming up soon"
-        onPrepare={() => compose('Anniversary')}
-      />
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+  },
+});

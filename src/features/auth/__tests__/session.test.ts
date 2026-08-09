@@ -59,8 +59,8 @@ describe('session store', () => {
     expect(sessionStatus(useSessionStore.getState().session)).toBe('ready');
   });
 
-  it('signIn lands a returning user straight in the ready state (past the gate)', async () => {
+  it('signIn routes into onboarding (needs-gate), matching the demo', async () => {
     await useSessionStore.getState().signIn('a@b.com', 'pw');
-    expect(sessionStatus(useSessionStore.getState().session)).toBe('ready');
+    expect(sessionStatus(useSessionStore.getState().session)).toBe('needs-gate');
   });
 });

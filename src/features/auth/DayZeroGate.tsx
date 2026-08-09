@@ -1,53 +1,61 @@
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
-import { Button } from '@/components/ui/Button';
-import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { useProfilesStore } from '@/features/profile/profilesStore';
 import type { GateAnswers, GateMode } from '@/features/auth/types';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
-type StepId = 'callName' | 'lovedOneName' | 'relationship' | 'species' | 'tone';
+const meadow = require('../../../assets/images/westercove_meadow_white.jpg');
+const icon = require('../../../assets/images/westercove_icon.png');
+const wordmark = require('../../../assets/images/westercove_wordmark.png');
 
-const HUMAN_RELATIONSHIPS = [
-  'Spouse or partner',
-  'Child',
-  'Parent',
-  'Sibling',
-  'Grandparent',
-  'Grandchild',
-  'Friend',
-  'Someone else',
+type StepId = 'callName' | 'lovedOneName' | 'relationship' | 'species' | 'breed' | 'tone';
+
+const PET_OPTION = 'My pet or animal companion';
+const RELATIONSHIPS = [
+  'My spouse or partner',
+  'My child',
+  'My parent',
+  'My sibling',
+  'My grandparent',
+  'My grandchild',
+  'My friend',
+  'A family member',
+  'Someone like family to me',
+  PET_OPTION,
+  'Other',
 ];
-const PET_OPTION = 'A pet or animal';
-const SPECIES = ['Dog', 'Cat', 'Bird', 'Horse', 'Other'];
-const TONES = [
-  'Gentle and warm',
-  'Plain and direct',
-  'Quiet and steady',
-  'Encouraging and hopeful',
+const TONES: { label: string; desc: string }[] = [
+  { label: 'Gentle and warm', desc: 'Soft, present, unhurried.' },
+  { label: 'Direct and plain', desc: 'Clear, honest, no softening.' },
+  { label: 'Quiet and minimal', desc: 'Short replies, lots of space.' },
+  { label: 'Spiritual', desc: 'Room for the unseen and the sacred.' },
 ];
 
-function sequence(mode: GateMode): StepId[] {
+/** Step order for the onboarding — the pet branch (kind + breed) is inserted
+ * only when the loved one is a pet. */
+export function sequence(mode: GateMode): StepId[] {
   return [
     'callName',
     'lovedOneName',
     'relationship',
-    ...(mode === 'pet' ? (['species'] as StepId[]) : []),
+    ...(mode === 'pet' ? (['species', 'breed'] as StepId[]) : []),
     'tone',
   ];
 }
 
 /**
- * The day-zero gate: five questions, under two minutes, five taps. Navigation
- * is hidden for the duration, every step offers Skip and Save-and-continue-later,
- * and — a firm rule — there is NO progress bar and no completeness percentage
- * anywhere (handoff §4.4).
+ * Day-zero onboarding: one gentle question per card, matching the demo. The pet
+ * branch (kind + breed) appears only when the loved one is a pet, and the kind
+ * question uses the entered name. No progress bar percentage — just "Step X of N".
  */
 export function DayZeroGate() {
   const { colors } = useTheme();
@@ -58,210 +66,306 @@ export function DayZeroGate() {
   const [stepId, setStepId] = useState<StepId>('callName');
 
   const steps = sequence(answers.mode);
-  const index = steps.indexOf(stepId);
-  const isLast = index === steps.length - 1;
-
-  const finish = (next: GateAnswers) => completeGate(next);
+  const index = Math.max(0, steps.indexOf(stepId));
+  const total = steps.length;
+  const isLast = index === total - 1;
+  const them = answers.lovedOneName?.trim() || 'them';
 
   const advance = (next: GateAnswers) => {
-    setAnswers(next);
     const seq = sequence(next.mode);
     const i = seq.indexOf(stepId);
-    if (i >= seq.length - 1) finish(next);
-    else setStepId(seq[i + 1]);
-  };
-
-  const skip = () => {
-    const next = { ...answers, skipped: [...answers.skipped, stepId] };
-    advance(next);
-  };
-
-  const hasAnswer = (() => {
-    switch (stepId) {
-      case 'callName':
-        return !!answers.callName?.trim();
-      case 'lovedOneName':
-        return !!answers.lovedOneName?.trim();
-      case 'relationship':
-        return !!answers.relationship;
-      case 'species':
-        return !!answers.species;
-      case 'tone':
-        return !!answers.tone;
+    if (i >= seq.length - 1) {
+      completeGate(next);
+      // Label this test profile with the name the user chose.
+      useProfilesStore.getState().setActiveName(next.callName?.trim() ?? '');
+    } else {
+      setStepId(seq[i + 1]);
     }
-  })();
+  };
+
+  const back = () => {
+    const i = steps.indexOf(stepId);
+    if (i > 0) setStepId(steps[i - 1]);
+  };
+
+  const setText = (field: 'callName' | 'lovedOneName' | 'species' | 'breed', value: string) =>
+    setAnswers((a) => ({ ...a, [field]: value }));
+
+  // Continue is only gated on the relationship step (a choice is required).
+  const canContinue = stepId !== 'relationship' || !!answers.relationship;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + spacing.huge,
-          paddingHorizontal: spacing.screen,
-          paddingBottom: spacing.xxl,
-          flexGrow: 1,
-        }}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={copy.gate.saveForLater}
-          onPress={() => finish(answers)}
-          style={styles.saveLater}
-        >
-          <Text variant="bodySmall" color="forest">
-            {copy.gate.saveForLater}
-          </Text>
-        </Pressable>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+        <Image source={meadow} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <LinearGradient
+          colors={['rgba(246,241,231,0.2)', 'rgba(246,241,231,0)', 'rgba(246,241,231,0.9)']}
+          locations={[0, 0.4, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.brand} accessibilityRole="header" accessibilityLabel="Westercove">
+          <Image source={icon} style={styles.icon} contentFit="contain" />
+          <Image source={wordmark} style={styles.wordmark} contentFit="contain" />
+        </View>
+        <Text variant="screenTitle" accessibilityRole="header" style={styles.title}>
+          {copy.gate.title}
+        </Text>
+        <Text variant="bodySmall" color="textMuted">
+          {copy.gate.step} {index + 1} of {total}
+        </Text>
+      </View>
 
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.body}>
         <View style={styles.qBlock}>
-          <GateStep
-            stepId={stepId}
-            answers={answers}
-            onChangeText={(field, value) =>
-              setAnswers((a) => ({ ...a, [field]: value }))
-            }
-            onSelect={(next) => setAnswers(next)}
-          />
+          {(stepId === 'callName' || stepId === 'lovedOneName') && (
+            <>
+              <Text variant="screenTitle" style={styles.question} accessibilityRole="header">
+                {stepId === 'callName' ? copy.gate.q1 : copy.gate.q2}
+              </Text>
+              <TextInput
+                autoFocus
+                value={(stepId === 'callName' ? answers.callName : answers.lovedOneName) ?? ''}
+                onChangeText={(t) => setText(stepId, t)}
+                placeholder={stepId === 'callName' ? copy.gate.q1Placeholder : copy.gate.q2Placeholder}
+                placeholderTextColor={colors.textMuted}
+                style={[styles.input, { borderColor: colors.line, color: colors.textPrimary }]}
+              />
+            </>
+          )}
+
+          {stepId === 'relationship' && (
+            <>
+              <Text variant="screenTitle" style={styles.question} accessibilityRole="header">
+                {copy.gate.q3}
+              </Text>
+              <View style={styles.options}>
+                {RELATIONSHIPS.map((r) => (
+                  <OptionButton
+                    key={r}
+                    label={r}
+                    selected={answers.relationship === r}
+                    onPress={() =>
+                      setAnswers((a) => ({
+                        ...a,
+                        relationship: r,
+                        mode: r === PET_OPTION ? 'pet' : 'human',
+                      }))
+                    }
+                  />
+                ))}
+              </View>
+            </>
+          )}
+
+          {stepId === 'species' && (
+            <>
+              <Text variant="screenTitle" style={styles.question} accessibilityRole="header">
+                {copy.gate.q4Pet.replace('[name]', them)}
+              </Text>
+              <TextInput
+                autoFocus
+                value={answers.species ?? ''}
+                onChangeText={(t) => setText('species', t)}
+                placeholder={copy.gate.q4PetPlaceholder}
+                placeholderTextColor={colors.textMuted}
+                style={[styles.input, { borderColor: colors.line, color: colors.textPrimary }]}
+              />
+            </>
+          )}
+
+          {stepId === 'breed' && (
+            <>
+              <Text variant="screenTitle" style={styles.question} accessibilityRole="header">
+                {copy.gate.q4Breed}
+              </Text>
+              <Text variant="bodySmall" color="textMuted">
+                {copy.gate.q4BreedHint}
+              </Text>
+              <TextInput
+                value={answers.breed ?? ''}
+                onChangeText={(t) => setText('breed', t)}
+                placeholder={copy.gate.q4BreedPlaceholder}
+                placeholderTextColor={colors.textMuted}
+                style={[styles.input, { borderColor: colors.line, color: colors.textPrimary }]}
+              />
+            </>
+          )}
+
+          {stepId === 'tone' && (
+            <>
+              <Text variant="screenTitle" style={styles.question} accessibilityRole="header">
+                {copy.gate.q5}
+              </Text>
+              <Text variant="bodySmall" color="textMuted">
+                {copy.gate.tonePrompt}
+              </Text>
+              <View style={styles.options}>
+                {TONES.map((t) => (
+                  <OptionButton
+                    key={t.label}
+                    label={t.label}
+                    desc={t.desc}
+                    selected={answers.tone === t.label}
+                    onPress={() => setAnswers((a) => ({ ...a, tone: t.label }))}
+                  />
+                ))}
+              </View>
+            </>
+          )}
         </View>
 
         <View style={styles.footer}>
-          <Button
-            label={isLast ? copy.gate.done : copy.gate.next}
-            disabled={!hasAnswer}
-            onPress={() => advance(answers)}
-          />
+          {index > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.gate.back}
+              onPress={back}
+              style={[styles.secondaryBtn, { borderColor: colors.line }]}
+            >
+              <Text variant="cardTitle">{copy.gate.back}</Text>
+            </Pressable>
+          ) : null}
+          {stepId === 'breed' && !answers.breed?.trim() ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.gate.skip}
+              onPress={() => advance(answers)}
+              style={[styles.secondaryBtn, { borderColor: colors.line }]}
+            >
+              <Text variant="cardTitle" color="textMuted">
+                {copy.gate.skip}
+              </Text>
+            </Pressable>
+          ) : null}
+          <View style={styles.grow} />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={copy.gate.skip}
-            onPress={skip}
-            style={styles.skip}
+            accessibilityLabel={isLast ? copy.gate.done : copy.gate.next}
+            disabled={!canContinue}
+            onPress={() => advance(answers)}
+            style={({ pressed }) => [
+              styles.continueBtn,
+              { backgroundColor: colors.heading },
+              !canContinue && { opacity: 0.4 },
+              pressed && canContinue && { opacity: 0.9 },
+            ]}
           >
-            <Text variant="bodySmall" color="textMuted">
-              {copy.gate.skip}
+            <Text variant="cardTitle" color="onAccent" style={styles.continueText}>
+              {isLast ? copy.gate.done : copy.gate.next}
             </Text>
           </Pressable>
         </View>
+
+        {answers.tone ? (
+          <Text variant="bodySmall" color="textMuted" style={styles.chose}>
+            You chose: {answers.tone}
+          </Text>
+        ) : null}
       </ScrollView>
+
       <CrisisBanner />
     </View>
   );
 }
 
-function GateStep({
-  stepId,
-  answers,
-  onChangeText,
-  onSelect,
+function OptionButton({
+  label,
+  desc,
+  selected,
+  onPress,
 }: {
-  stepId: StepId;
-  answers: GateAnswers;
-  onChangeText: (field: 'callName' | 'lovedOneName', value: string) => void;
-  onSelect: (next: GateAnswers) => void;
+  label: string;
+  desc?: string;
+  selected: boolean;
+  onPress: () => void;
 }) {
   const { colors } = useTheme();
-  const loved = answers.lovedOneName?.trim() || 'them';
-
-  if (stepId === 'callName' || stepId === 'lovedOneName') {
-    const isName = stepId === 'callName';
-    return (
-      <>
-        <Text variant="display" accessibilityRole="header">
-          {isName ? copy.gate.q1 : copy.gate.q2}
-        </Text>
-        <TextInput
-          value={(isName ? answers.callName : answers.lovedOneName) ?? ''}
-          onChangeText={(t) => onChangeText(isName ? 'callName' : 'lovedOneName', t)}
-          placeholder={isName ? copy.gate.q1Placeholder : copy.gate.q2Placeholder}
-          placeholderTextColor={colors.textMuted}
-          accessibilityLabel={isName ? copy.gate.q1 : copy.gate.q2}
-          style={[styles.input, { borderColor: colors.line, color: colors.textPrimary }]}
-        />
-      </>
-    );
-  }
-
-  if (stepId === 'relationship') {
-    return (
-      <>
-        <Text variant="display" accessibilityRole="header">
-          {copy.gate.q3}
-        </Text>
-        <View style={styles.chips}>
-          {HUMAN_RELATIONSHIPS.map((r) => (
-            <Chip
-              key={r}
-              label={r}
-              selected={answers.relationship === r && answers.mode === 'human'}
-              onPress={() => onSelect({ ...answers, relationship: r, mode: 'human' })}
-            />
-          ))}
-          <Chip
-            label={PET_OPTION}
-            selected={answers.mode === 'pet'}
-            onPress={() =>
-              onSelect({ ...answers, relationship: PET_OPTION, mode: 'pet' })
-            }
-          />
-        </View>
-      </>
-    );
-  }
-
-  if (stepId === 'species') {
-    return (
-      <>
-        <Text variant="display" accessibilityRole="header">
-          {copy.gate.q4Pet.replace('[name]', loved)}
-        </Text>
-        <View style={styles.chips}>
-          {SPECIES.map((sp) => (
-            <Chip
-              key={sp}
-              label={sp}
-              selected={answers.species === sp}
-              onPress={() => onSelect({ ...answers, species: sp })}
-            />
-          ))}
-        </View>
-      </>
-    );
-  }
-
-  // tone
   return (
-    <>
-      <Text variant="display" accessibilityRole="header">
-        {copy.gate.q5}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={desc ? `${label}. ${desc}` : label}
+      onPress={onPress}
+      style={[
+        styles.option,
+        { borderColor: selected ? colors.heading : colors.line },
+        selected && { backgroundColor: colors.heading },
+      ]}
+    >
+      <Text variant="cardTitle" color={selected ? 'onAccent' : 'textPrimary'}>
+        {label}
       </Text>
-      <Text variant="body" color="textMuted" style={styles.tonePrompt}>
-        {copy.gate.tonePrompt}
-      </Text>
-      <View style={styles.chips}>
-        {TONES.map((t) => (
-          <Chip
-            key={t}
-            label={t}
-            selected={answers.tone === t}
-            onPress={() => onSelect({ ...answers, tone: t })}
-          />
-        ))}
-      </View>
-    </>
+      {desc ? (
+        <Text
+          variant="bodySmall"
+          color={selected ? 'onAccent' : 'textMuted'}
+          style={styles.optionDesc}
+        >
+          {desc}
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  saveLater: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center' },
-  qBlock: { flex: 1, gap: spacing.lg, marginTop: spacing.md },
+  header: {
+    overflow: 'hidden',
+    paddingHorizontal: spacing.screen,
+    paddingBottom: spacing.lg,
+  },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.xxl },
+  icon: { width: 24, height: 24 },
+  wordmark: { width: 84, height: 15 },
+  title: { marginBottom: 2 },
+  scroll: { flex: 1 },
+  body: {
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.xl,
+    paddingBottom: 96,
+  },
+  qBlock: { gap: spacing.md },
+  question: { fontSize: 24, lineHeight: 30 },
   input: {
     borderWidth: 1,
-    borderRadius: radii.inputPill,
+    borderRadius: radii.card,
     paddingHorizontal: spacing.lg,
-    minHeight: 52,
-    fontSize: 15,
-    lineHeight: 22,
+    minHeight: 56,
+    fontSize: 17,
+    lineHeight: 24,
   },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  tonePrompt: { marginTop: -spacing.sm },
-  footer: { gap: spacing.sm, marginTop: spacing.xxl },
-  skip: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  options: { gap: spacing.sm, marginTop: spacing.xs },
+  option: {
+    borderWidth: 1,
+    borderRadius: radii.card,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  optionDesc: { marginTop: 2 },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.xl,
+  },
+  grow: { flex: 1 },
+  secondaryBtn: {
+    borderWidth: 1,
+    borderRadius: radii.card,
+    paddingHorizontal: spacing.xl,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  continueBtn: {
+    borderRadius: 28,
+    paddingHorizontal: spacing.xxl,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  continueText: { fontSize: 17 },
+  chose: { marginTop: spacing.md, textAlign: 'center' },
 });

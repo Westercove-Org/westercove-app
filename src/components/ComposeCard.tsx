@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { MicIcon, PencilIcon } from '@/components/icons';
+import { MicIcon, PaperclipIcon, PencilIcon } from '@/components/icons';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
@@ -9,19 +9,25 @@ import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
 
 export interface ComposeCardProps {
-  chips: readonly string[];
+  /** Command chips under the prompt. Omit for a chip-less compose pill. */
+  chips?: readonly string[];
+  /** Prompt placeholder text (defaults to "What are you feeling?"). */
+  placeholder?: string;
+  /** Show a paperclip (attach) control instead of the pencil (Journal). */
+  attach?: boolean;
   onPressPrompt?: () => void;
   onPressMic?: () => void;
   onPressChip?: (label: string) => void;
 }
 
 /**
- * The compose surface: the "What are you feeling?" prompt with a pencil
- * (type) control and a forest mic (voice) control, above a wrap of command
- * chips. Voice capture and command behavior are wired in Phase 3.
+ * The compose surface: a prompt with a pencil (or paperclip) control and a
+ * forest mic control, optionally above a wrap of command chips.
  */
 export function ComposeCard({
   chips,
+  placeholder = copy.home.prompt,
+  attach = false,
   onPressPrompt,
   onPressMic,
   onPressChip,
@@ -33,21 +39,25 @@ export function ComposeCard({
         <View style={styles.promptRow}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={copy.home.prompt}
+            accessibilityLabel={placeholder}
             onPress={onPressPrompt}
             style={styles.promptText}
           >
             <Text variant="body" color="textMuted">
-              {copy.home.prompt}
+              {placeholder}
             </Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Write an entry"
+            accessibilityLabel={attach ? 'Attach to entry' : 'Write an entry'}
             onPress={onPressPrompt}
             style={[styles.pencil, { backgroundColor: colors.chipGreen }]}
           >
-            <PencilIcon size={20} color={colors.forest} />
+            {attach ? (
+              <PaperclipIcon size={20} color={colors.forest} />
+            ) : (
+              <PencilIcon size={20} color={colors.forest} />
+            )}
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -59,11 +69,13 @@ export function ComposeCard({
           </Pressable>
         </View>
 
-        <View style={styles.chips}>
-          {chips.map((label) => (
-            <Chip key={label} label={label} onPress={() => onPressChip?.(label)} />
-          ))}
-        </View>
+        {chips && chips.length > 0 ? (
+          <View style={styles.chips}>
+            {chips.map((label) => (
+              <Chip key={label} label={label} onPress={() => onPressChip?.(label)} />
+            ))}
+          </View>
+        ) : null}
       </Card>
     </View>
   );

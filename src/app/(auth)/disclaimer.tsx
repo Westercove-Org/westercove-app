@@ -1,93 +1,66 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useTheme } from '@/theme';
-import { radii, spacing } from '@/theme/tokens';
+import { spacing } from '@/theme/tokens';
 
-/** Disclaimer: wellness-companion-not-therapy, plus the 18+ and T&C acknowledgment. */
+const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
+
+/** Disclaimer: wellness-companion-not-therapy; continuing confirms 18+ and terms. */
 export default function DisclaimerScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const [agreed, setAgreed] = useState(false);
 
   return (
-    <View
-      style={[styles.screen, { paddingTop: insets.top + spacing.huge }]}
-    >
-      <View style={styles.content}>
-        <Text variant="display" accessibilityRole="header">
-          {copy.disclaimerScreen.title}
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <HeroHeader variant="compact" title={copy.disclaimerScreen.title} image={heroImage} />
+
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text variant="body" style={styles.para}>
+          {copy.disclaimerScreen.body1}
         </Text>
-        <Text variant="body" color="textMuted" style={styles.body}>
-          {copy.disclaimerScreen.body}
+        <Text variant="body" style={styles.para}>
+          {copy.disclaimerScreen.body2}
+        </Text>
+        <Text variant="body" color="textMuted" style={styles.para}>
+          {copy.disclaimerScreen.body3}
         </Text>
 
-        <Pressable
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: agreed }}
-          accessibilityLabel={copy.disclaimerScreen.age}
-          onPress={() => setAgreed((v) => !v)}
-          style={styles.checkRow}
-        >
-          <View
-            style={[
-              styles.box,
-              { borderColor: colors.line },
-              agreed && { backgroundColor: colors.forest, borderColor: colors.forest },
-            ]}
+        <View style={styles.actions}>
+          <Button
+            label={copy.disclaimerScreen.continue}
+            variant="amethyst"
+            onPress={() => router.push('/sign-in')}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={copy.disclaimerScreen.goBack}
+            onPress={() => router.back()}
+            style={styles.goBack}
           >
-            {agreed ? (
-              <Text color={colors.onAccent} style={styles.tick}>
-                ✓
-              </Text>
-            ) : null}
-          </View>
-          <Text variant="body" style={styles.checkLabel}>
-            {copy.disclaimerScreen.age}
-          </Text>
-        </Pressable>
-      </View>
-
-      <Button
-        label={copy.disclaimerScreen.agree}
-        disabled={!agreed}
-        onPress={() => router.push('/entry-path')}
-      />
+            <Text variant="body" color="textMuted">
+              {copy.disclaimerScreen.goBack}
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
+  content: {
     paddingHorizontal: spacing.screen,
-    paddingBottom: spacing.xxl,
-    justifyContent: 'space-between',
+    paddingTop: spacing.xl,
+    paddingBottom: 88,
+    gap: spacing.lg,
   },
-  content: { gap: spacing.lg },
-  body: {},
-  checkRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    minHeight: 44,
-    marginTop: spacing.sm,
-  },
-  box: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  tick: { fontSize: 15, fontWeight: '700' },
-  checkLabel: { flex: 1 },
+  // Larger body copy, matching the demo (17px).
+  para: { fontSize: 17, lineHeight: 27 },
+  actions: { marginTop: spacing.xl, gap: spacing.sm },
+  goBack: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
 });

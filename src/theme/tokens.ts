@@ -2,9 +2,10 @@ import { Platform, type TextStyle, type ViewStyle } from 'react-native';
 
 /**
  * Westercove design tokens — the single source of truth for color, type,
- * spacing, radii, and elevation. Values are lifted verbatim from the
- * official Design System v2 and Developer Handoff Spec v2, not the earlier
- * Lovable demo. Both light and dark ship for every color token.
+ * spacing, radii, and elevation. The light palette and typography are lifted
+ * from the current Lovable reference (warm parchment, Source Serif 4 headings,
+ * Inter body); the dark palette is a warm-dark derivative. Both light and dark
+ * ship for every color token.
  */
 
 export interface ThemeColors {
@@ -34,38 +35,44 @@ export interface ThemeColors {
   saffron: string;
   /** Text/icon color on emerald and forest fills. */
   onAccent: string;
+  /** Serif display headings (deep amethyst in the reference). */
+  heading: string;
 }
 
 const light: ThemeColors = {
-  background: '#FFFFFF',
-  surfaceAlt: '#F4F6F1',
-  card: '#FFFFFF',
-  line: '#E0E5DB',
-  textPrimary: '#1C231B',
-  textMuted: '#5C6B58',
+  background: '#F6F1E7',
+  surfaceAlt: '#EDE4D0',
+  card: '#FBF7EE',
+  line: '#E1D6BE',
+  textPrimary: '#313E47',
+  textMuted: '#6A7078',
   forest: '#338233',
   emerald: '#0E5F18',
-  amethystText: '#3D2F5E',
+  amethystText: '#26114E',
   amethystTint: '#EEF0F8',
   chipGreen: '#EEF3E8',
   saffron: '#EDC531',
   onAccent: '#FFFFFF',
+  heading: '#190933',
 };
 
+// Warm-dark derivative — the reference ships light-only, so these are designed
+// to keep the parchment character legible at night.
 const dark: ThemeColors = {
-  background: '#121711',
-  surfaceAlt: '#1B211A',
-  card: '#1B211A',
-  line: '#2C352A',
-  textPrimary: '#EEF2E9',
-  textMuted: '#93A08F',
+  background: '#1A1712',
+  surfaceAlt: '#241F18',
+  card: '#221D16',
+  line: '#3A3226',
+  textPrimary: '#EDE4D0',
+  textMuted: '#A89F8D',
   forest: '#6BBF6F',
   emerald: '#0E5F18',
-  amethystText: '#CBBDF0',
-  amethystTint: '#241D3A',
-  chipGreen: '#1F2B1F',
+  amethystText: '#CBB8F0',
+  amethystTint: '#2A2140',
+  chipGreen: '#24301F',
   saffron: '#EDC531',
   onAccent: '#FFFFFF',
+  heading: '#CBB8F0',
 };
 
 export const palette = { light, dark } as const;
@@ -100,15 +107,18 @@ export const radii = {
 } as const;
 
 /**
- * One native system font family (Design System v2 §3): San Francisco on iOS,
- * Roboto on Android, system-ui on web. Size and weight carry the hierarchy;
- * there is no separate display/serif face. Native is selected by leaving
- * fontFamily undefined on the native platforms.
+ * Two families, loaded via expo-font in the root layout (see _layout.tsx):
+ * Source Serif 4 for display/headings, Inter for body and labels. Custom
+ * fonts on native carry weight in the family name (fontWeight is ignored for
+ * non-system faces on Android), so each weight is its own face here.
  */
 export const fonts = {
-  sans: Platform.select({ web: 'system-ui', default: undefined }) as
-    | string
-    | undefined,
+  serif: 'SourceSerif4_400Regular',
+  serifSemibold: 'SourceSerif4_600SemiBold',
+  sans: 'Inter_400Regular',
+  sansMedium: 'Inter_500Medium',
+  sansSemibold: 'Inter_600SemiBold',
+  sansBold: 'Inter_700Bold',
 } as const;
 
 export type TypographyVariant =
@@ -121,17 +131,24 @@ export type TypographyVariant =
   | 'meta'
   | 'tag';
 
-/** Type scale (handoff §3.2). Color is applied by the Text component, not here. */
+/** Type scale. Color is applied by the Text component, not here. */
 export const typography: Record<TypographyVariant, TextStyle> = {
-  display: { fontFamily: fonts.sans, fontSize: 28, lineHeight: 34, fontWeight: '700' },
+  display: {
+    fontFamily: fonts.serif,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '400',
+    letterSpacing: -0.3,
+  },
   screenTitle: {
-    fontFamily: fonts.sans,
+    fontFamily: fonts.serif,
     fontSize: 22,
     lineHeight: 28,
-    fontWeight: '700',
+    fontWeight: '400',
+    letterSpacing: -0.2,
   },
   sectionLabel: {
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansBold,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '700',
@@ -139,7 +156,7 @@ export const typography: Record<TypographyVariant, TextStyle> = {
     textTransform: 'uppercase',
   },
   cardTitle: {
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemibold,
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '600',
@@ -152,7 +169,7 @@ export const typography: Record<TypographyVariant, TextStyle> = {
     fontWeight: '400',
   },
   meta: { fontFamily: fonts.sans, fontSize: 11, lineHeight: 14, fontWeight: '400' },
-  tag: { fontFamily: fonts.sans, fontSize: 11, lineHeight: 14, fontWeight: '700' },
+  tag: { fontFamily: fonts.sansBold, fontSize: 11, lineHeight: 14, fontWeight: '700' },
 };
 
 /**

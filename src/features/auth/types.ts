@@ -18,7 +18,10 @@ export interface GateAnswers {
   lovedOneName?: string;
   relationship?: string;
   mode: GateMode;
+  /** Free-text animal kind (pet path), e.g. "Dog". */
   species?: string;
+  /** Optional breed/mix (pet path). */
+  breed?: string;
   tone?: string;
   /** Question ids the user skipped (they retire to the What I Know page). */
   skipped: string[];
@@ -37,4 +40,6 @@ export interface Session {
   disclaimerAcked: boolean;
   gateComplete: boolean;
   gateAnswers: GateAnswers;
+  /** Full name as it should appear on the downloaded journal (Profile). */
+  fullName?: string;
 }

@@ -20,6 +20,8 @@ interface WhatIKnowState {
   unanswered: UnansweredQuestion[];
   /** Rebuild the learned list from the current session's gate answers + seeds. */
   hydrateFromSession: () => void;
+  /** Append a line the companion learned from a cadence answer. */
+  addLearnedLine: (line: string) => void;
   updateItem: (id: string, value: string) => void;
   deleteItem: (id: string) => void;
 }
@@ -60,6 +62,14 @@ export const useWhatIKnowStore = create<WhatIKnowState>((set) => ({
     if (g?.species) fromGate.push({ id: 'g-species', label: 'Kind of companion', value: g.species, source: 'gate' });
     if (g?.tone) fromGate.push({ id: 'g-tone', label: 'How to be with you', value: g.tone, source: 'gate' });
     set({ learned: [...fromGate, ...SEED_CONVERSATION] });
+  },
+
+  addLearnedLine(line) {
+    const value = line.trim();
+    if (!value) return;
+    set((s) => ({
+      learned: [...s.learned, { id: `l-${Date.now()}`, label: value, value: '', source: 'conversation' }],
+    }));
   },
 
   updateItem(id, value) {
