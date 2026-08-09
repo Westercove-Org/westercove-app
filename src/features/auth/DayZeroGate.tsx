@@ -8,6 +8,7 @@ import { CrisisBanner } from '@/components/CrisisBanner';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { useProfilesStore } from '@/features/profile/profilesStore';
 import type { GateAnswers, GateMode } from '@/features/auth/types';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
@@ -73,8 +74,13 @@ export function DayZeroGate() {
   const advance = (next: GateAnswers) => {
     const seq = sequence(next.mode);
     const i = seq.indexOf(stepId);
-    if (i >= seq.length - 1) completeGate(next);
-    else setStepId(seq[i + 1]);
+    if (i >= seq.length - 1) {
+      completeGate(next);
+      // Label this test profile with the name the user chose.
+      useProfilesStore.getState().setActiveName(next.callName?.trim() ?? '');
+    } else {
+      setStepId(seq[i + 1]);
+    }
   };
 
   const back = () => {

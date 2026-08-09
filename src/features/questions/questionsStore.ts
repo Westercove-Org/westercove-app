@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { secureStorage } from '@/lib/secureStorage';
+import { scopedStorage } from '@/features/profile/activeProfile';
 import {
   DAYS_HUMAN,
   DAYS_PET,
@@ -53,6 +53,8 @@ interface QuestionsState {
   simulateSession: () => void;
   /** Demo control: wipe all question progress. */
   resetProgress: () => void;
+  /** Reset to a fresh cadence for a new test profile. */
+  resetForProfile: () => void;
 }
 
 /**
@@ -144,10 +146,21 @@ export const useQuestionsStore = create<QuestionsState>()(
       resetProgress() {
         set({ talkMs: 0, daysShown: 0, answers: {}, skipped: [], pending: null });
       },
+
+      resetForProfile() {
+        set({
+          talkMs: 0,
+          daysShown: 0,
+          answers: {},
+          skipped: [],
+          pending: null,
+          deferAfterNo: false,
+        });
+      },
     }),
     {
       name: 'westercove.questions',
-      storage: createJSONStorage(() => secureStorage),
+      storage: createJSONStorage(() => scopedStorage('questions')),
       // Only durable progress is persisted; pending/deferAfterNo are per-session.
       partialize: (s) => ({
         talkMs: s.talkMs,

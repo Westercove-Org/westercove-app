@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { secureStorage } from '@/lib/secureStorage';
+import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
 
 export interface LibraryBook {
@@ -62,6 +62,8 @@ interface LibraryState {
   addAll: () => void;
   addOwnBook: (title: string, author: string) => Promise<void>;
   inLibrary: (id: string) => boolean;
+  /** Reset the user's library for a new test profile. */
+  resetForProfile: () => void;
 }
 
 export const useLibraryStore = create<LibraryState>()(
@@ -100,10 +102,14 @@ export const useLibraryStore = create<LibraryState>()(
           ],
         }));
       },
+
+      resetForProfile() {
+        set({ myLibrary: [] });
+      },
     }),
     {
       name: 'westercove.library',
-      storage: createJSONStorage(() => secureStorage),
+      storage: createJSONStorage(() => scopedStorage('library')),
       // Recommended catalog is static code; only persist the user's library.
       partialize: (s) => ({ myLibrary: s.myLibrary }),
     },

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { secureStorage } from '@/lib/secureStorage';
+import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
 import { SafetyLevel } from '@/services/safety';
 import type { ConversationTurn, Entry } from './types';
@@ -87,6 +87,8 @@ interface EntriesState {
   }) => Promise<{ id: string; level: SafetyLevel }>;
   continueEntry: (id: string, text: string) => Promise<SafetyLevel>;
   getEntry: (id: string) => Entry | undefined;
+  /** Reset to seed data (used when switching to a fresh test profile). */
+  resetForProfile: () => void;
 }
 
 function lovedOneName(): string | undefined {
@@ -160,11 +162,15 @@ export const useEntriesStore = create<EntriesState>()(
   getEntry(id) {
     return get().entries.find((e) => e.id === id);
   },
+
+  resetForProfile() {
+    set({ entries: seed() });
+  },
     }),
     {
       // Cached entries are readable offline; only the entries are persisted.
       name: 'westercove.entries',
-      storage: createJSONStorage(() => secureStorage),
+      storage: createJSONStorage(() => scopedStorage('entries')),
       partialize: (s) => ({ entries: s.entries }),
     },
   ),

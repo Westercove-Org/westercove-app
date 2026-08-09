@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { secureStorage } from '@/lib/secureStorage';
+import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
 import type { CreateAccountInput } from '@/services/auth';
 import type { Entitlement, GateAnswers, Session } from './types';
@@ -18,6 +18,10 @@ interface SessionState {
   setFullName: (fullName: string) => void;
   updateGate: (partial: Partial<GateAnswers>) => void;
   signOut: () => void;
+  /** Reset to a fresh (unonboarded) session for a new test profile. */
+  resetForProfile: () => void;
+  /** Start a signed-in-but-not-onboarded session (new test profile → onboarding). */
+  beginOnboardingSession: () => void;
 }
 
 const emptyGate: GateAnswers = { mode: 'human', skipped: [] };
@@ -95,10 +99,27 @@ export const useSessionStore = create<SessionState>()(
       signOut() {
         set({ session: null });
       },
+
+      resetForProfile() {
+        set({ session: null });
+      },
+
+      beginOnboardingSession() {
+        set({
+          session: {
+            user: { email: '' },
+            entryPath: 'consumer_trial',
+            entitlement: 'trial_active',
+            disclaimerAcked: true,
+            gateComplete: false,
+            gateAnswers: emptyGate,
+          },
+        });
+      },
     }),
     {
       name: 'westercove.session',
-      storage: createJSONStorage(() => secureStorage),
+      storage: createJSONStorage(() => scopedStorage('session')),
       partialize: (s) => ({ session: s.session }),
       onRehydrateStorage: () => (state) => {
         // Mark hydration complete so the router guard can act.

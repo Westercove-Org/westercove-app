@@ -17,7 +17,7 @@ import { useProfilesStore } from './profilesStore';
 export function TestProfiles() {
   const router = useRouter();
   const { colors } = useTheme();
-  const personas = useProfilesStore((s) => s.personas);
+  const profiles = useProfilesStore((s) => s.profiles);
   const activeId = useProfilesStore((s) => s.activeId);
   const switchTo = useProfilesStore((s) => s.switchTo);
   const createNew = useProfilesStore((s) => s.createNew);
@@ -33,7 +33,7 @@ export function TestProfiles() {
           switch between them anytime. Everything is saved in this browser.
         </Text>
 
-        {personas.map((p) => {
+        {profiles.map((p) => {
           const active = p.id === activeId;
           return (
             <View
@@ -45,17 +45,20 @@ export function TestProfiles() {
             >
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Switch to ${p.name}`}
-                onPress={() => switchTo(p.id)}
+                accessibilityLabel={`Switch to ${p.name || 'new test'}`}
+                onPress={async () => {
+                  await switchTo(p.id);
+                  router.replace('/');
+                }}
                 style={styles.personaMain}
               >
                 <View style={[styles.avatar, { backgroundColor: colors.heading }]}>
                   <Text color="onAccent" style={styles.avatarText}>
-                    {p.setup ? p.name.charAt(0).toUpperCase() : '?'}
+                    {p.name ? p.name.charAt(0).toUpperCase() : '?'}
                   </Text>
                 </View>
                 <Text variant="cardTitle">
-                  {p.setup ? p.name : 'New test (not set up yet)'}
+                  {p.name || 'New test (not set up yet)'}
                 </Text>
               </Pressable>
               {active ? (
@@ -77,7 +80,10 @@ export function TestProfiles() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Start a new test"
-          onPress={createNew}
+          onPress={async () => {
+            await createNew();
+            router.replace('/');
+          }}
           style={[styles.newRow, { borderColor: colors.line }]}
         >
           <PlusIcon size={20} color={colors.textPrimary} />
