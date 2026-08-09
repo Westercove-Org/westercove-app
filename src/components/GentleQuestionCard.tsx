@@ -1,63 +1,161 @@
-import { useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
-import { lovedOneName } from '@/features/auth/sessionStore';
-import { nextHomeQuestion, useQuestionsStore } from '@/features/questions/questionsStore';
+import { useSessionStore } from '@/features/auth/sessionStore';
+import { hasCheckin, nextQuestion } from '@/features/questions/cadence';
+import { cadenceState, useQuestionsStore } from '@/features/questions/questionsStore';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
 
 /**
- * The inline "A gentle question" card on Home. Surfaces the next unlocked,
- * unanswered gentle question (gated by talk-time cadence — see Profile → Demo
- * Controls) with a soft textarea and Save / Not now. Renders nothing when no
- * question is unlocked or the user has set it aside for now.
+ * The Home "gentle question" card, driven by the cadence engine
+ * (features/questions/cadence.ts). Shows one eligible question at a time by
+ * input type, records the answer, and lets the user set it aside or skip.
  */
 export function GentleQuestionCard() {
   const { colors } = useTheme();
-  const talkMs = useQuestionsStore((s) => s.talkMs);
-  const answers = useQuestionsStore((s) => s.answers);
-  const skipped = useQuestionsStore((s) => s.skipped);
+  const router = useRouter();
+
+  // Subscribe to the fields that affect which question shows, so the card
+  // re-renders as the cadence changes.
+  useQuestionsStore((s) => s.journalStage);
+  useQuestionsStore((s) => s.answeredIds);
+  useQuestionsStore((s) => s.sessionCount);
+  useQuestionsStore((s) => s.checkinSnoozeSession);
+  useQuestionsStore((s) => s.faithLanguage);
+  useQuestionsStore((s) => s.faithTradition);
+  useQuestionsStore((s) => s.causeOfDeath);
+  useSessionStore((s) => s.session);
   const recordAnswer = useQuestionsStore((s) => s.recordAnswer);
+  const skip = useQuestionsStore((s) => s.skip);
+  const dismissCheckin = useQuestionsStore((s) => s.dismissCheckin);
 
-  const [value, setValue] = useState('');
-  const [dismissed, setDismissed] = useState<string[]>([]);
+  const state = cadenceState();
+  const q = hasCheckin(state) ? nextQuestion(state) : null;
 
-  const question = nextHomeQuestion(talkMs, answers, skipped);
-  if (!question || dismissed.includes(question.id)) return null;
+  const [text, setText] = useState('');
+  const [choice, setChoice] = useState<string | null>(null);
+  const [multi, setMulti] = useState<string[]>([]);
+  const [librarySkipped, setLibrarySkipped] = useState(false);
 
-  const prompt = question.text.replace(/\[name\]/g, lovedOneName());
+  useEffect(() => {
+    setText('');
+    setChoice(null);
+    setMulti([]);
+    setLibrarySkipped(false);
+  }, [q?.id]);
+
+  if (!q) return null;
+
+  const isLibrary = q.input === 'library';
+  const canSave =
+    q.input === 'text' ? text.trim().length > 0 : q.input === 'choice' ? choice !== null : multi.length > 0;
 
   const onSave = () => {
-    if (!value.trim()) return;
-    recordAnswer(question.id, value.trim());
-    setValue('');
+    if (q.input === 'text') recordAnswer(q, text);
+    else if (q.input === 'choice' && choice) recordAnswer(q, choice);
+    else if (q.input === 'multi' && multi.length) recordAnswer(q, multi.join(', '));
   };
+
+  const toggleMulti = (opt: string) =>
+    setMulti((m) => (m.includes(opt) ? m.filter((x) => x !== opt) : [...m, opt]));
 
   return (
     <View style={styles.wrap}>
       <Card style={{ borderTopWidth: 3, borderTopColor: colors.saffron }}>
         <Text variant="sectionLabel" color="textMuted">
-          A gentle question, when you are ready
+          {isLibrary ? 'A library of your own' : 'A gentle question, when you are ready'}
         </Text>
-        <Text variant="screenTitle" style={styles.prompt}>
-          {prompt}
-        </Text>
-        <TextInput
-          value={value}
-          onChangeText={setValue}
-          placeholder="Only if you would like to. There is no hurry."
-          placeholderTextColor={colors.textMuted}
-          multiline
-          accessibilityLabel={prompt}
-          style={[styles.input, { color: colors.textPrimary, borderColor: colors.line }]}
-        />
-        <View style={styles.actions}>
-          <Button label="Save" onPress={onSave} disabled={!value.trim()} />
-          <Button label="Not now" variant="secondary" onPress={() => setDismissed((d) => [...d, question.id])} />
-        </View>
+
+        {isLibrary ? (
+          librarySkipped ? (
+            <>
+              <Text variant="body" style={styles.prompt}>
+                That is completely alright. Whenever it feels more comfortable, you can build your
+                library from Discover, and add to it any time.
+              </Text>
+              <View style={styles.actions}>
+                <Button label="Okay" onPress={() => skip(q)} />
+              </View>
+            </>
+          ) : (
+            <>
+              <Text variant="screenTitle" style={styles.prompt}>
+                A quiet room of your own
+              </Text>
+              <Text variant="bodySmall" color="textMuted">
+                {q.prompt(state.name, state)}
+              </Text>
+              <View style={styles.actions}>
+                <Button
+                  label="Create your library"
+                  onPress={() => {
+                    recordAnswer(q, 'chose to build their library');
+                    router.push('/discover');
+                  }}
+                />
+                <Button label="Skip" variant="secondary" onPress={() => setLibrarySkipped(true)} />
+              </View>
+            </>
+          )
+        ) : (
+          <>
+            <Text variant="screenTitle" style={styles.prompt}>
+              {q.prompt(state.name, state)}
+            </Text>
+
+            {q.input === 'text' ? (
+              <TextInput
+                value={text}
+                onChangeText={setText}
+                placeholder="Only if you would like to. There is no hurry."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                accessibilityLabel={q.prompt(state.name, state)}
+                style={[styles.input, { color: colors.textPrimary, borderColor: colors.line }]}
+              />
+            ) : null}
+
+            {q.input === 'choice' ? (
+              <View style={styles.options}>
+                {q.options?.map((opt) => (
+                  <Chip
+                    key={opt}
+                    label={opt}
+                    selected={choice === opt}
+                    onPress={() => setChoice(opt)}
+                  />
+                ))}
+              </View>
+            ) : null}
+
+            {q.input === 'multi' ? (
+              <View style={styles.options}>
+                {q.options?.map((opt) => (
+                  <Chip
+                    key={opt}
+                    label={opt}
+                    selected={multi.includes(opt)}
+                    onPress={() => toggleMulti(opt)}
+                  />
+                ))}
+              </View>
+            ) : null}
+
+            <View style={styles.actions}>
+              <Button label="Save" onPress={onSave} disabled={!canSave} />
+              <Button label="Not now" variant="secondary" onPress={dismissCheckin} />
+              {q.optional ? (
+                <Button label="Skip this one" variant="secondary" onPress={() => skip(q)} />
+              ) : null}
+            </View>
+          </>
+        )}
       </Card>
     </View>
   );
@@ -68,13 +166,20 @@ const styles = StyleSheet.create({
   prompt: { marginTop: spacing.sm, fontSize: 19, lineHeight: 26 },
   input: {
     marginTop: spacing.md,
-    minHeight: 96,
+    minHeight: 88,
     borderWidth: 1,
     borderRadius: 12,
     padding: spacing.md,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 23,
     textAlignVertical: 'top',
   },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.md },
+  options: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
 });

@@ -4,33 +4,34 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Text } from '@/components/ui/Text';
-import { QUESTION_INTERVAL_MS } from '@/constants/questions';
+import { useSessionStore } from '@/features/auth/sessionStore';
 import { spacing } from '@/theme/tokens';
-import { activeDays, dueDayIndex, useQuestionsStore } from './questionsStore';
+import { MAX_STAGE } from './cadence';
+import { useQuestionsStore } from './questionsStore';
 
 /**
  * Demo-only cadence controls (Profile). Each "journaling session" advances the
- * talk-time by one interval, unlocking the next gentle-question set on Home.
- * Mirrors the reference demo's Demo Controls block.
+ * cadence one stage, unlocking the next gentle-question set on Home. Mirrors the
+ * reference demo.
  */
 export function DemoControls() {
-  const talkMs = useQuestionsStore((s) => s.talkMs);
+  const stage = useQuestionsStore((s) => s.journalStage);
+  const journalSeconds = useQuestionsStore((s) => s.journalSeconds);
+  const sessionJournalSeconds = useQuestionsStore((s) => s.sessionJournalSeconds);
   const simulateSession = useQuestionsStore((s) => s.simulateSession);
   const resetProgress = useQuestionsStore((s) => s.resetProgress);
+  const module = useSessionStore((s) => s.session?.gateAnswers.mode ?? 'pet');
 
-  const total = activeDays().length;
-  const unlocked = Math.max(0, dueDayIndex(talkMs, total) + 1);
-  const stage = Math.min(unlocked + 1, total);
-  const totalMin = (talkMs / 60000).toFixed(1);
-  const perSessionMin = (QUESTION_INTERVAL_MS / 60000).toFixed(0);
+  const sessionMin = (sessionJournalSeconds / 60).toFixed(1);
+  const totalMin = (journalSeconds / 60).toFixed(0);
 
   return (
     <View style={styles.wrap}>
       <SectionLabel>DEMO CONTROLS</SectionLabel>
       <Card>
         <Text variant="bodySmall" color="textMuted">
-          For the demo only. Each journaling session of about {perSessionMin} min unlocks the
-          next set of questions.
+          For the demo only. Each journaling session of about 1 min unlocks the next set of
+          questions.
         </Text>
 
         <View style={styles.stat}>
@@ -38,7 +39,7 @@ export function DemoControls() {
             Cadence stage
           </Text>
           <Text variant="cardTitle">
-            {stage} of {total}
+            {stage} of {MAX_STAGE}
           </Text>
         </View>
         <View style={styles.stat}>
@@ -46,7 +47,7 @@ export function DemoControls() {
             This session
           </Text>
           <Text variant="cardTitle">
-            {totalMin} min total
+            {sessionMin} min · {totalMin} min total
           </Text>
         </View>
 
@@ -56,7 +57,7 @@ export function DemoControls() {
         </View>
 
         <Text variant="meta" color="textMuted" style={styles.note}>
-          Check Home for the next gentle question.
+          Currently {module} module. Check Home for the next gentle question.
         </Text>
       </Card>
     </View>

@@ -1,172 +1,169 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { useSessionStore } from '@/features/auth/sessionStore';
+import { lovedOneName, useSessionStore } from '@/features/auth/sessionStore';
 import { scopedStorage } from '@/features/profile/activeProfile';
+import { useWhatIKnowStore } from '@/features/profile/whatIKnowStore';
 import {
-  DAYS_HUMAN,
-  DAYS_PET,
-  QUESTION_INTERVAL_MS,
-  type DayBucket,
-  type Question,
-} from '@/constants/questions';
+  MAX_STAGE,
+  QUALIFY_SECONDS,
+  type CadenceQuestion,
+  type CadenceState,
+} from './cadence';
 
 /**
- * State for the timer-driven profile questions. Talk-time accumulates while the
- * user is on an entry conversation screen; every completed interval unlocks the
- * next Day bucket. `daysShown` is how many buckets have already been surfaced —
- * a new Day is "due" when the interval count exceeds it.
- *
- * Persisted with the same secureStorage pattern as the session/entries stores,
- * which on web is localStorage — so answers survive a reload for testing.
+ * Per-profile question-cadence state (ported from the demo). A `journalStage`
+ * unlocks question buckets; `startSession`/`dismissCheckin` gate the Home card
+ * per app-open session. Durable fields persist; session-scoped fields do not.
  */
 
-export type PendingMode = 'dialog' | 'direct';
-
-export interface Pending {
-  dayIndex: number;
-  mode: PendingMode;
-}
-
 interface QuestionsState {
-  /** Accumulated talk-time on entry screens, in ms. Persisted. */
-  talkMs: number;
-  /** How many Day buckets have been surfaced so far. Persisted. */
-  daysShown: number;
-  /** Answers keyed by question id. Persisted. */
-  answers: Record<string, string>;
-  /** Skipped question ids. Persisted. */
-  skipped: string[];
+  /** How many qualifying journaling sessions have advanced the cadence. */
+  journalStage: number;
+  /** Ids of questions answered or skipped. */
+  answeredIds: string[];
+  /** Cumulative journaling seconds (display). */
+  journalSeconds: number;
+  /** Journaling seconds in the current app-open session. */
+  sessionJournalSeconds: number;
+  /** App-open session counter (not persisted). */
+  sessionCount: number;
+  /** Session in which the user last tapped "Not now" (not persisted). */
+  checkinSnoozeSession: number;
+  faithLanguage?: string;
+  faithTradition?: string;
+  faithTraditionDetail?: string;
+  causeOfDeath?: string;
 
-  /** Transient: a Day awaiting presentation (not persisted). */
-  pending: Pending | null;
-  /** Transient: user declined this session; show directly on their return. */
-  deferAfterNo: boolean;
-
-  addTalkMs: (ms: number) => void;
-  recordAnswer: (qid: string, value: string) => void;
-  skipQuestion: (qid: string) => void;
-  markDayShown: () => void;
-  setPending: (pending: Pending | null) => void;
-  declinePending: () => void;
-  /** Demo control: advance one interval of talk-time, unlocking the next Day. */
+  recordAnswer: (q: CadenceQuestion, value: string) => void;
+  skip: (q: CadenceQuestion) => void;
+  dismissCheckin: () => void;
+  /** Demo control: advance one cadence stage. */
   simulateSession: () => void;
-  /** Demo control: wipe all question progress. */
+  /** Demo control: reset all cadence progress. */
   resetProgress: () => void;
-  /** Reset to a fresh cadence for a new test profile. */
+  /** Count one app open (once per session). */
+  startSession: () => void;
+  /** Accrue journaling time; advance the stage per qualifying length. */
+  addJournalSeconds: (seconds: number) => void;
   resetForProfile: () => void;
 }
 
-/**
- * The next gentle question to surface inline on Home: the first unlocked,
- * unanswered, un-skipped `text` question across all unlocked Day buckets (info
- * and chip questions are handled by the overlay flow, not the Home card).
- * Returns null when nothing is unlocked yet or everything is answered.
- */
-export function nextHomeQuestion(
-  talkMs: number,
-  answers: Record<string, string>,
-  skipped: string[],
-): Question | null {
-  const days = activeDays();
-  const due = dueDayIndex(talkMs, days.length);
-  for (let d = 0; d <= due; d++) {
-    for (const q of days[d].questions) {
-      if (q.kind !== 'text') continue;
-      if (answers[q.id] || skipped.includes(q.id)) continue;
-      return q;
-    }
-  }
-  return null;
+/** Merge the store's cadence data with the active session (module, name, onboarded). */
+export function cadenceState(): CadenceState {
+  const q = useQuestionsStore.getState();
+  const session = useSessionStore.getState().session;
+  return {
+    module: session?.gateAnswers.mode ?? 'pet',
+    name: lovedOneName(),
+    onboarded: !!session?.gateComplete,
+    journalStage: q.journalStage,
+    answeredIds: q.answeredIds,
+    sessionCount: q.sessionCount,
+    checkinSnoozeSession: q.checkinSnoozeSession,
+    faithLanguage: q.faithLanguage,
+    faithTradition: q.faithTradition,
+    faithTraditionDetail: q.faithTraditionDetail,
+    causeOfDeath: q.causeOfDeath,
+  };
 }
 
-/** The active module's Day buckets, chosen from the day-zero gate answer. */
-export function activeDays(): DayBucket[] {
-  const mode = useSessionStore.getState().session?.gateAnswers.mode;
-  return mode === 'pet' ? DAYS_PET : DAYS_HUMAN;
-}
-
-/**
- * The highest Day index (0-based) unlocked by the accumulated talk-time, or -1
- * if none yet. Capped at the last available Day.
- */
-export function dueDayIndex(talkMs: number, total: number): number {
-  const intervals = Math.floor(talkMs / QUESTION_INTERVAL_MS);
-  return Math.min(intervals, total) - 1;
-}
+let sessionStarted = false;
 
 export const useQuestionsStore = create<QuestionsState>()(
   persist(
-    (set) => ({
-      talkMs: 0,
-      daysShown: 0,
-      answers: {},
-      skipped: [],
-      pending: null,
-      deferAfterNo: false,
+    (set, get) => ({
+      journalStage: 0,
+      answeredIds: [],
+      journalSeconds: 0,
+      sessionJournalSeconds: 0,
+      sessionCount: 0,
+      checkinSnoozeSession: 0,
 
-      addTalkMs(ms) {
-        set((s) => ({ talkMs: s.talkMs + ms }));
+      recordAnswer(q, value) {
+        const v = value.trim();
+        if (!v) return;
+        set((s) => ({
+          answeredIds: [...s.answeredIds, q.id],
+          ...(q.sets ? q.sets(v) : {}),
+        }));
+        useWhatIKnowStore.getState().addLearnedLine(q.toLine(v, lovedOneName()));
       },
 
-      recordAnswer(qid, value) {
-        set((s) => ({ answers: { ...s.answers, [qid]: value } }));
-      },
-
-      skipQuestion(qid) {
+      skip(q) {
         set((s) =>
-          s.skipped.includes(qid) ? s : { skipped: [...s.skipped, qid] },
+          s.answeredIds.includes(q.id) ? s : { answeredIds: [...s.answeredIds, q.id] },
         );
       },
 
-      // A Day has been fully surfaced: advance the pointer and clear the
-      // transient presentation state so the next due Day starts fresh.
-      markDayShown() {
-        set((s) => ({
-          daysShown: s.daysShown + 1,
-          pending: null,
-          deferAfterNo: false,
-        }));
-      },
-
-      setPending(pending) {
-        set({ pending });
-      },
-
-      // User said "no" to the permission dialog: dismiss it for now, and arm the
-      // "show directly on their return" path (no dialog next time).
-      declinePending() {
-        set({ pending: null, deferAfterNo: true });
+      dismissCheckin() {
+        set((s) => ({ checkinSnoozeSession: s.sessionCount }));
       },
 
       simulateSession() {
-        set((s) => ({ talkMs: s.talkMs + QUESTION_INTERVAL_MS }));
+        set((s) => ({ journalStage: Math.min(s.journalStage + 1, MAX_STAGE) }));
       },
 
       resetProgress() {
-        set({ talkMs: 0, daysShown: 0, answers: {}, skipped: [], pending: null });
+        set({
+          journalStage: 0,
+          journalSeconds: 0,
+          sessionJournalSeconds: 0,
+          answeredIds: [],
+          checkinSnoozeSession: 0,
+          faithLanguage: undefined,
+          faithTradition: undefined,
+          faithTraditionDetail: undefined,
+          causeOfDeath: undefined,
+        });
+      },
+
+      startSession() {
+        if (sessionStarted) return;
+        sessionStarted = true;
+        set((s) => ({ sessionCount: s.sessionCount + 1, sessionJournalSeconds: 0 }));
+      },
+
+      addJournalSeconds(seconds) {
+        set((s) => {
+          const before = Math.floor(s.sessionJournalSeconds / QUALIFY_SECONDS);
+          const sessionSecs = s.sessionJournalSeconds + seconds;
+          const after = Math.floor(sessionSecs / QUALIFY_SECONDS);
+          const advances = Math.max(0, after - before);
+          return {
+            journalSeconds: s.journalSeconds + seconds,
+            sessionJournalSeconds: sessionSecs,
+            journalStage: Math.min(s.journalStage + advances, MAX_STAGE),
+          };
+        });
       },
 
       resetForProfile() {
         set({
-          talkMs: 0,
-          daysShown: 0,
-          answers: {},
-          skipped: [],
-          pending: null,
-          deferAfterNo: false,
+          journalStage: 0,
+          answeredIds: [],
+          journalSeconds: 0,
+          sessionJournalSeconds: 0,
+          checkinSnoozeSession: 0,
+          faithLanguage: undefined,
+          faithTradition: undefined,
+          faithTraditionDetail: undefined,
+          causeOfDeath: undefined,
         });
       },
     }),
     {
       name: 'westercove.questions',
       storage: createJSONStorage(() => scopedStorage('questions')),
-      // Only durable progress is persisted; pending/deferAfterNo are per-session.
+      // Session counters snooze/sessions are per app-open, not persisted.
       partialize: (s) => ({
-        talkMs: s.talkMs,
-        daysShown: s.daysShown,
-        answers: s.answers,
-        skipped: s.skipped,
+        journalStage: s.journalStage,
+        answeredIds: s.answeredIds,
+        journalSeconds: s.journalSeconds,
+        faithLanguage: s.faithLanguage,
+        faithTradition: s.faithTradition,
+        faithTraditionDetail: s.faithTraditionDetail,
+        causeOfDeath: s.causeOfDeath,
       }),
     },
   ),

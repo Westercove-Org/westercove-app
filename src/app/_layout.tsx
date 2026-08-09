@@ -20,7 +20,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthGuard } from '@/features/auth/useAuthGuard';
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { QuestionsOverlay } from '@/features/questions/QuestionsOverlay';
+import { useQuestionsStore } from '@/features/questions/questionsStore';
 import { useTheme, WestercoveThemeProvider } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -57,6 +57,11 @@ function RootNav() {
   const hydrated = useSessionStore((s) => s.hydrated);
   useAuthGuard();
 
+  // Count one app-open session so the Home check-in un-snoozes each open.
+  useEffect(() => {
+    useQuestionsStore.getState().startSession();
+  }, []);
+
   // Hold on a plain surface until the persisted session has rehydrated, so we
   // don't flash the tab shell before the guard can redirect.
   if (!hydrated) {
@@ -84,9 +89,6 @@ function RootNav() {
           options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
         />
       </Stack>
-      {/* Timer-driven profile questions overlay the whole app; it self-hides
-          until the talk-time timer marks a Day due. */}
-      <QuestionsOverlay />
     </>
   );
 }
