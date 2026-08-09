@@ -4,7 +4,9 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
+import { useEntriesStore } from '@/features/journal/entriesStore';
 import { search } from '@/features/search/searchIndex';
+import { SafetyLevel } from '@/services/safety';
 
 describe('search index', () => {
   it('returns nothing for an empty query', () => {
@@ -22,6 +24,18 @@ describe('search index', () => {
   });
 
   it('global scope searches entries too', () => {
+    useEntriesStore.setState({
+      entries: [
+        {
+          id: 'x1',
+          type: 'Memory',
+          headline: 'The lake house',
+          createdAt: new Date().toISOString(),
+          safetyLevel: SafetyLevel.Normal,
+          turns: [],
+        },
+      ],
+    });
     const r = search('lake house', 'global');
     expect(r.some((x) => x.kind === 'entry')).toBe(true);
   });
