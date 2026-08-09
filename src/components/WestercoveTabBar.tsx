@@ -3,10 +3,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   CompassIcon,
-  HeartIcon,
   HomeIcon,
   JournalIcon,
-  LeafIcon,
+  LifeBuoyIcon,
+  PersonIcon,
   type IconProps,
 } from '@/components/icons';
 import { useTheme } from '@/theme';
@@ -37,8 +37,8 @@ const TABS: Record<string, TabConfig> = {
   index: { label: 'Home', Icon: HomeIcon },
   journal: { label: 'Journal', Icon: JournalIcon },
   discover: { label: 'Discover', Icon: CompassIcon },
-  profile: { label: 'Profile', Icon: LeafIcon },
-  support: { label: 'Support', Icon: HeartIcon },
+  profile: { label: 'Profile', Icon: PersonIcon },
+  support: { label: 'Support', Icon: LifeBuoyIcon },
 };
 
 /**
@@ -69,7 +69,6 @@ export function WestercoveTabBar({ state, navigation }: TabBarProps) {
           const config = TABS[route.name];
           if (!config) return null;
           const focused = state.index === index;
-          const tint = focused ? colors.forest : colors.textMuted;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -91,10 +90,21 @@ export function WestercoveTabBar({ state, navigation }: TabBarProps) {
               onPress={onPress}
               style={styles.tab}
             >
-              <config.Icon size={24} color={tint} strokeWidth={2} />
+              <View
+                style={[
+                  styles.iconWrap,
+                  focused && { backgroundColor: colors.heading },
+                ]}
+              >
+                <config.Icon
+                  size={20}
+                  color={focused ? colors.onAccent : colors.textMuted}
+                  strokeWidth={2}
+                />
+              </View>
               <Text
                 variant="meta"
-                color={tint}
+                color={focused ? 'heading' : 'textMuted'}
                 style={[styles.label, focused && styles.labelActive]}
               >
                 {config.label}
@@ -119,7 +129,14 @@ const styles = StyleSheet.create({
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 2,
+  },
+  iconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   label: { fontSize: 11 },
   labelActive: { fontWeight: '700' },

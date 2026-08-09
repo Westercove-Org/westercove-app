@@ -211,6 +211,16 @@ export function PersonIcon(props: IconProps) {
   );
 }
 
+export function LifeBuoyIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Circle cx="12" cy="12" r="10" />
+      <Circle cx="12" cy="12" r="4" />
+      <Path d="M4.93 4.93 L9.17 9.17 M14.83 14.83 L19.07 19.07 M14.83 9.17 L19.07 4.93 M9.17 14.83 L4.93 19.07" />
+    </Base>
+  );
+}
+
 export function EyeIcon(props: IconProps) {
   return (
     <Base {...props}>
