@@ -170,6 +170,15 @@ export function PauseIcon(props: IconProps) {
   );
 }
 
+export function ResetIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M4 12 A8 8 0 1 0 6.3 6.3" />
+      <Path d="M4 4 V8 H8" />
+    </Base>
+  );
+}
+
 export function DownloadIcon(props: IconProps) {
   return (
     <Base {...props}>
@@ -226,6 +235,55 @@ export function EyeIcon(props: IconProps) {
     <Base {...props}>
       <Path d="M2 12 C 5 6 9 4.5 12 4.5 C 15 4.5 19 6 22 12 C 19 18 15 19.5 12 19.5 C 9 19.5 5 18 2 12 Z" />
       <Circle cx="12" cy="12" r="3" />
+    </Base>
+  );
+}
+
+export function BookIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M4 4 H12 A3 3 0 0 1 15 7 V20 A2 2 0 0 0 13 18 H4 Z" />
+      <Path d="M20 4 H12" />
+      <Path d="M8 8.5 H11 M8 12 H11" />
+    </Base>
+  );
+}
+
+export function LayersIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M12 3 L21 8 L12 13 L3 8 Z" />
+      <Path d="M3 12 L12 17 L21 12" />
+      <Path d="M3 16 L12 21 L21 16" />
+    </Base>
+  );
+}
+
+export function SparkleIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M12 3 C12 7.5 13.5 9 18 9 C13.5 9 12 10.5 12 15 C12 10.5 10.5 9 6 9 C10.5 9 12 7.5 12 3 Z" />
+      <Path d="M18 15 C18 17.2 18.8 18 21 18 C18.8 18 18 18.8 18 21 C18 18.8 17.2 18 15 18 C17.2 18 18 17.2 18 15 Z" />
+    </Base>
+  );
+}
+
+export function FileTextIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M6 3 H14 L19 8 V20 A1 1 0 0 1 18 21 H6 A1 1 0 0 1 5 20 V4 A1 1 0 0 1 6 3 Z" />
+      <Path d="M14 3 V8 H19" />
+      <Path d="M8 13 H16 M8 16.5 H14" />
+    </Base>
+  );
+}
+
+export function InfoIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Circle cx={12} cy={12} r={9} />
+      <Path d="M12 11 V16" />
+      <Circle cx={12} cy={8} r={0.6} />
     </Base>
   );
 }

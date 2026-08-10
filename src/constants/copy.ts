@@ -151,9 +151,9 @@ export const LOSS_TYPES = [
 
 /** Reading list rows (Support). */
 export const READING = [
-  { title: 'Essays' },
-  { title: 'Framework explainers' },
-  { title: 'Grief glossary' },
-  { title: 'White papers' },
-  { title: 'Why Westercove', subtitle: 'Founder story' },
+  { id: 'essays', title: 'Essays' },
+  { id: 'framework', title: 'Framework explainers' },
+  { id: 'glossary', title: 'Grief glossary' },
+  { id: 'white-papers', title: 'White papers' },
+  { id: 'why', title: 'Why Westercove', subtitle: 'Founder story' },
 ] as const;

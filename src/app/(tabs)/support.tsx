@@ -1,14 +1,24 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { MessageIcon, PhoneIcon } from '@/components/icons';
+import {
+  BookIcon,
+  ChevronRightIcon,
+  FileTextIcon,
+  InfoIcon,
+  LayersIcon,
+  MessageIcon,
+  PhoneIcon,
+  SparkleIcon,
+} from '@/components/icons';
 import { Screen } from '@/components/Screen';
 import { Card } from '@/components/ui/Card';
-import { ListRow } from '@/components/ui/ListRow';
 import { SearchPill } from '@/components/ui/SearchPill';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Text } from '@/components/ui/Text';
 import { copy, LOSS_TYPES, READING } from '@/constants/copy';
+import { ESSAYS } from '@/constants/essays';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { callLine, textLine } from '@/lib/crisisLinks';
 import { useTheme } from '@/theme';
@@ -16,10 +26,19 @@ import { radii, spacing } from '@/theme/tokens';
 
 const heroImage = require('../../../assets/images/westercove_hero_valley.jpg');
 
+const READING_ICON = {
+  essays: BookIcon,
+  framework: LayersIcon,
+  glossary: SparkleIcon,
+  'white-papers': FileTextIcon,
+  why: InfoIcon,
+} as const;
+
 export default function SupportScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const now = new Date();
+  const [openRow, setOpenRow] = useState<string | null>(null);
 
   return (
     <Screen header={{ title: 'Support', subtitle: formatHeaderDateTime(now), image: heroImage }}>
@@ -102,15 +121,85 @@ export default function SupportScreen() {
       <SectionLabel>{copy.support.reading}</SectionLabel>
       <View style={styles.pad}>
         <Card padded={false}>
-          {READING.map((row, i) => (
-            <ListRow
-              key={row.title}
-              label={row.title}
-              subtitle={'subtitle' in row ? (row.subtitle as string) : undefined}
-              divider={i < READING.length - 1}
-              onPress={() => {}}
-            />
-          ))}
+          {READING.map((row, i) => {
+            const Icon = READING_ICON[row.id];
+            const open = openRow === row.id;
+            const last = i === READING.length - 1;
+            return (
+              <View
+                key={row.id}
+                style={
+                  last ? null : { borderBottomWidth: 1, borderBottomColor: colors.line }
+                }
+              >
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: open }}
+                  accessibilityLabel={row.title}
+                  onPress={() => setOpenRow(open ? null : row.id)}
+                  style={({ pressed }) => [styles.readingRow, pressed && { opacity: 0.6 }]}
+                >
+                  <View style={styles.readingLeading}>
+                    <Icon size={20} color={colors.forest} />
+                  </View>
+                  <View style={styles.readingText}>
+                    <Text variant="cardTitle">{row.title}</Text>
+                    {'subtitle' in row ? (
+                      <Text variant="bodySmall" color="textMuted" style={styles.readingSub}>
+                        {row.subtitle}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={open ? styles.chevronOpen : undefined}>
+                    <ChevronRightIcon size={20} color={colors.textMuted} />
+                  </View>
+                </Pressable>
+
+                {open && row.id === 'essays' ? (
+                  <View style={[styles.expand, { borderTopColor: colors.line }]}>
+                    {ESSAYS.map((es, j) => (
+                      <Pressable
+                        key={es.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${es.title}. ${es.subtitle}`}
+                        onPress={() =>
+                          router.push({ pathname: '/essay/[id]', params: { id: es.id } })
+                        }
+                        style={({ pressed }) => [
+                          styles.essayRow,
+                          j < ESSAYS.length - 1 && {
+                            borderBottomWidth: 1,
+                            borderBottomColor: colors.line,
+                          },
+                          pressed && { opacity: 0.6 },
+                        ]}
+                      >
+                        <View style={styles.essayText}>
+                          <Text variant="cardTitle">{es.title}</Text>
+                          <Text
+                            variant="bodySmall"
+                            color="textMuted"
+                            style={styles.readingSub}
+                          >
+                            {es.subtitle}
+                          </Text>
+                        </View>
+                        <ChevronRightIcon size={18} color={colors.textMuted} />
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+
+                {open && row.id !== 'essays' ? (
+                  <View style={[styles.expand, { borderTopColor: colors.line }]}>
+                    <Text variant="bodySmall" color="textMuted" style={styles.laterNote}>
+                      This section will open in a later phase.
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
         </Card>
       </View>
     </Screen>
@@ -154,6 +243,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  readingRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.cardInner,
+    gap: spacing.md,
+  },
+  readingLeading: { width: 24, alignItems: 'center' },
+  readingText: { flex: 1 },
+  readingSub: { marginTop: 2 },
+  chevronOpen: { transform: [{ rotate: '90deg' }] },
+  expand: { borderTopWidth: 1 },
+  essayRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingRight: spacing.cardInner,
+    paddingLeft: spacing.cardInner + 24 + spacing.md,
+    gap: spacing.md,
+  },
+  essayText: { flex: 1 },
+  laterNote: {
+    paddingVertical: spacing.md,
+    paddingRight: spacing.cardInner,
+    paddingLeft: spacing.cardInner + 24 + spacing.md,
   },
   orgs: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   orgChip: {
