@@ -16,33 +16,43 @@ import { radii, spacing } from '@/theme/tokens';
 const headerPhoto = require('../../../assets/images/westercove_meadow_white.jpg');
 // Softer than natural speech: unhurried pace, slightly lowered pitch for a calm,
 // grounded tone rather than the bright default TTS voice.
-const SPEECH_RATE = 0.82;
-const SPEECH_PITCH = 0.92;
-// Warm, natural-sounding English voices, in order of preference. First match
-// among the device's installed voices wins; the OS default is the last resort.
+const SPEECH_RATE = 0.8;
+const SPEECH_PITCH = 0.9;
+// Warm, natural-sounding English voices, softest first. First match among the
+// device's installed voices wins; the OS default is the last resort.
 const PREFERRED_VOICES = [
-  'Ava',
+  'Google UK English Female', // Chrome: smooth, unhurried
+  'Ava', // iOS/macOS premium, warm
+  'Serena',
   'Samantha',
   'Allison',
-  'Serena',
   'Karen',
   'Moira',
   'Tessa',
-  'Google UK English Female',
-  'Google US English',
 ];
 
-/** Pick the calmest available English voice: a preferred name first, then any
- *  enhanced/premium voice, then any English voice. */
+/** Pick the calmest available English voice. Enhanced/premium voices sound far
+ *  less robotic than the compact defaults, so they win first; among names we
+ *  honour PREFERRED_VOICES order (not the device's arbitrary list order). */
 function pickCalmVoice(voices: Speech.Voice[]): string | undefined {
   const en = voices.filter((v) => v.language?.toLowerCase().startsWith('en'));
   if (!en.length) return undefined;
-  for (const name of PREFERRED_VOICES) {
-    const hit = en.find((v) => v.name?.includes(name) || v.identifier?.includes(name));
-    if (hit) return hit.identifier;
-  }
-  const enhanced = en.find((v) => v.quality === Speech.VoiceQuality.Enhanced);
-  return (enhanced ?? en[0]).identifier;
+  const enhanced = (v: Speech.Voice) => v.quality === Speech.VoiceQuality.Enhanced;
+  const byPreference = (extra: (v: Speech.Voice) => boolean) => {
+    for (const n of PREFERRED_VOICES) {
+      const hit = en.find(
+        (v) => (v.name?.includes(n) || v.identifier?.includes(n)) && extra(v),
+      );
+      if (hit) return hit;
+    }
+    return undefined;
+  };
+  return (
+    byPreference(enhanced) ?? // best: a warm voice in enhanced quality
+    en.find(enhanced) ?? // any enhanced voice
+    byPreference(() => true) ?? // a warm voice at default quality
+    en[0]
+  ).identifier;
 }
 
 /** A word token and its character offset into the essay body. */
