@@ -21,7 +21,7 @@ const SPEECH_RATE = 0.9;
 type Token = { text: string; start: number; isWord: boolean };
 
 /** Split into words + whitespace, keeping each token's offset so we can map a
- *  speech boundary's charIndex back to the word being spoken. */
+ *  speech boundary's charIndex back to the sentence being spoken. */
 function tokenize(body: string): Token[] {
   const tokens: Token[] = [];
   let start = 0;
@@ -30,6 +30,19 @@ function tokenize(body: string): Token[] {
     start += text.length;
   }
   return tokens;
+}
+
+/** Sentence spans (start/end char offsets) so we can highlight the whole
+ *  sentence being read, not just one word. */
+function sentenceRanges(body: string): { start: number; end: number }[] {
+  const ranges: { start: number; end: number }[] = [];
+  // Runs ending in sentence punctuation, plus any trailing run without it.
+  const re = /[^.!?]*[.!?]+|[^.!?]+$/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body))) {
+    if (m[0].trim()) ranges.push({ start: m.index, end: m.index + m[0].length });
+  }
+  return ranges;
 }
 
 /** A single essay, read or listen. Reached at `/essay/:id`. */
@@ -55,15 +68,12 @@ export function EssayDetail() {
   const mountedRef = useRef(true);
 
   const tokens = useMemo(() => tokenize(essay?.body ?? ''), [essay?.body]);
-  // Index of the word token whose range contains the boundary char offset.
-  const activeToken = useMemo(() => {
-    if (charIndex < 0) return -1;
-    for (let i = tokens.length - 1; i >= 0; i--) {
-      const t = tokens[i];
-      if (t.isWord && charIndex >= t.start) return i;
-    }
-    return -1;
-  }, [charIndex, tokens]);
+  const sentences = useMemo(() => sentenceRanges(essay?.body ?? ''), [essay?.body]);
+  // The sentence span containing the boundary char offset; null when idle.
+  const activeSentence = useMemo(() => {
+    if (charIndex < 0) return null;
+    return sentences.find((r) => charIndex >= r.start && charIndex < r.end) ?? null;
+  }, [charIndex, sentences]);
 
   // Stop speech when leaving the screen or switching back to Read.
   useEffect(() => {
@@ -232,7 +242,7 @@ export function EssayDetail() {
               </View>
             </View>
             <Text variant="bodySmall" color="textMuted" style={styles.playerNote}>
-              Spoken by your device. The word being read is highlighted below.
+              Spoken by your device. The sentence being read is highlighted below.
             </Text>
           </Card>
         ) : null}
@@ -240,7 +250,9 @@ export function EssayDetail() {
         {mode === 'listen' ? (
           <Text variant="body" style={styles.paragraph}>
             {tokens.map((t, i) =>
-              t.isWord && i === activeToken ? (
+              activeSentence &&
+              t.start >= activeSentence.start &&
+              t.start < activeSentence.end ? (
                 <Text
                   key={i}
                   style={{ backgroundColor: colors.saffron, color: colors.heading }}
