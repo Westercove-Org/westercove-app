@@ -122,7 +122,7 @@ export function EntryDetail() {
         </Pressable>
       </View>
 
-      <CrisisBanner />
+      <CrisisBanner compact />
     </View>
   );
 }

@@ -8,6 +8,8 @@ export const copy = {
 
   crisis: {
     bannerLine: 'In crisis? Call or text 988 · Text HOME to 741741',
+    /** The lead-in used by the compact bar, where the numbers are tappable spans. */
+    bannerLead: 'In crisis?',
     call988: 'Call or text 988',
     call988Sub: 'Suicide and Crisis Lifeline',
     textHome: 'Text HOME to 741741',

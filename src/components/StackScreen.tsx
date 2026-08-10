@@ -27,7 +27,7 @@ export function StackScreen({ title, children }: { title: string; children: Reac
         <Text variant="screenTitle">{title}</Text>
       </View>
       <ScrollView contentContainerStyle={styles.body}>{children}</ScrollView>
-      <CrisisBanner />
+      <CrisisBanner compact />
     </View>
   );
 }
