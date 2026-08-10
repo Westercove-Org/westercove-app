@@ -7,8 +7,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
-import { ChevronRightIcon, PauseIcon, PlayIcon } from '@/components/icons';
-import { Card } from '@/components/ui/Card';
+import { ChevronRightIcon, PauseIcon, PlayIcon, ResetIcon } from '@/components/icons';
 import { Text } from '@/components/ui/Text';
 import { ESSAYS } from '@/constants/essays';
 import { useTheme } from '@/theme';
@@ -81,7 +80,6 @@ export function EssayDetail() {
   const { scheme, colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const essay = ESSAYS.find((e) => e.id === id);
-  const [mode, setMode] = useState<'read' | 'listen'>('read');
   const [playing, setPlaying] = useState(false);
   // Absolute char offset (into the full body) of the word currently spoken;
   // -1 when idle/finished.
@@ -105,6 +103,8 @@ export function EssayDetail() {
     if (charIndex < 0) return null;
     return sentences.find((r) => charIndex >= r.start && charIndex < r.end) ?? null;
   }, [charIndex, sentences]);
+  // Playback has begun (playing, or paused mid-essay) → show Reset + progress.
+  const started = playing || charIndex >= 0;
 
   // Stop speech when leaving the screen or switching back to Read.
   useEffect(() => {
@@ -123,10 +123,6 @@ export function EssayDetail() {
       Speech.stop();
     };
   }, []);
-  useEffect(() => {
-    if (mode === 'read') stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
 
   function fullReset() {
     if (!mountedRef.current) return;
@@ -231,87 +227,60 @@ export function EssayDetail() {
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
-        <View style={[styles.toggle, { borderColor: colors.line, backgroundColor: colors.card }]}>
-          {(['read', 'listen'] as const).map((m) => {
-            const active = mode === m;
-            return (
+        <View style={styles.controls}>
+          {started ? (
+            <>
+              <View style={[styles.trackBg, { backgroundColor: colors.surfaceAlt }]}>
+                <View
+                  style={[
+                    styles.trackFill,
+                    {
+                      backgroundColor: colors.forest,
+                      width: `${Math.min(100, (Math.max(0, charIndex) / essay.body.length) * 100)}%`,
+                    },
+                  ]}
+                />
+              </View>
               <Pressable
-                key={m}
                 accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => setMode(m)}
-                style={[
-                  styles.toggleBtn,
-                  active && { backgroundColor: colors.emerald },
-                ]}
+                accessibilityLabel="Reset"
+                onPress={stop}
+                style={[styles.resetBtn, { borderColor: colors.line }]}
               >
-                <Text color={active ? 'onAccent' : 'textMuted'} style={styles.toggleText}>
-                  {m === 'read' ? 'Read' : 'Listen'}
-                </Text>
+                <ResetIcon size={20} color={colors.amethystText} />
               </Pressable>
-            );
-          })}
+            </>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={playing ? 'Pause' : 'Play'}
+            onPress={toggle}
+            style={[styles.playBtn, { backgroundColor: colors.forest }]}
+          >
+            {playing ? (
+              <PauseIcon size={22} color={colors.onAccent} />
+            ) : (
+              <PlayIcon size={22} color={colors.onAccent} />
+            )}
+          </Pressable>
         </View>
 
-        {mode === 'listen' ? (
-          <Card>
-            <View style={styles.player}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={playing ? 'Pause' : 'Play'}
-                onPress={toggle}
-                style={[styles.playBtn, { backgroundColor: colors.forest }]}
+        <Text variant="body" style={styles.paragraph}>
+          {tokens.map((t, i) =>
+            activeSentence &&
+            t.start >= activeSentence.start &&
+            t.start < activeSentence.end ? (
+              <Text
+                key={i}
+                style={{ backgroundColor: colors.saffron, color: colors.heading }}
               >
-                {playing ? (
-                  <PauseIcon size={22} color={colors.onAccent} />
-                ) : (
-                  <PlayIcon size={22} color={colors.onAccent} />
-                )}
-              </Pressable>
-              <View style={styles.track}>
-                <View style={[styles.trackBg, { backgroundColor: colors.surfaceAlt }]}>
-                  <View
-                    style={[
-                      styles.trackFill,
-                      {
-                        backgroundColor: colors.forest,
-                        width: `${Math.min(100, (Math.max(0, charIndex) / essay.body.length) * 100)}%`,
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
-            </View>
-            <Text variant="bodySmall" color="textMuted" style={styles.playerNote}>
-              Spoken by your device. The sentence being read is highlighted below.
-            </Text>
-          </Card>
-        ) : null}
-
-        {mode === 'listen' ? (
-          <Text variant="body" style={styles.paragraph}>
-            {tokens.map((t, i) =>
-              activeSentence &&
-              t.start >= activeSentence.start &&
-              t.start < activeSentence.end ? (
-                <Text
-                  key={i}
-                  style={{ backgroundColor: colors.saffron, color: colors.heading }}
-                >
-                  {t.text}
-                </Text>
-              ) : (
-                t.text
-              ),
-            )}
-          </Text>
-        ) : (
-          essay.body.split(/\n\n+/).map((p, i) => (
-            <Text key={i} variant="body" style={styles.paragraph}>
-              {p}
-            </Text>
-          ))
-        )}
+                {t.text}
+              </Text>
+            ) : (
+              t.text
+            ),
+          )}
+        </Text>
       </ScrollView>
 
       <CrisisBanner />
@@ -334,24 +303,14 @@ const styles = StyleSheet.create({
   title: { marginTop: 2 },
   subtitle: { marginTop: spacing.xs, opacity: 0.9 },
   body: { paddingHorizontal: spacing.screen, paddingTop: spacing.lg, paddingBottom: 120 },
-  toggle: {
+  controls: {
     flexDirection: 'row',
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: radii.inputPill,
-    padding: 4,
-    gap: 4,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
     marginBottom: spacing.lg,
+    minHeight: 48,
   },
-  toggleBtn: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.inputPill,
-    minHeight: 40,
-    justifyContent: 'center',
-  },
-  toggleText: { fontWeight: '600', fontSize: 14 },
-  player: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   playBtn: {
     width: 48,
     height: 48,
@@ -359,9 +318,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  track: { flex: 1 },
-  trackBg: { height: 6, borderRadius: 3, width: '100%', overflow: 'hidden' },
+  resetBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trackBg: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
   trackFill: { height: 6, borderRadius: 3 },
-  playerNote: { marginTop: spacing.md },
   paragraph: { fontSize: 17, lineHeight: 27, marginBottom: spacing.md },
 });

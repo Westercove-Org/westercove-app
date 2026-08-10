@@ -170,6 +170,15 @@ export function PauseIcon(props: IconProps) {
   );
 }
 
+export function ResetIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <Path d="M4 12 A8 8 0 1 0 6.3 6.3" />
+      <Path d="M4 4 V8 H8" />
+    </Base>
+  );
+}
+
 export function DownloadIcon(props: IconProps) {
   return (
     <Base {...props}>
