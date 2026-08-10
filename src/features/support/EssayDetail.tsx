@@ -15,7 +15,36 @@ import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
 const headerPhoto = require('../../../assets/images/westercove_meadow_white.jpg');
-const SPEECH_RATE = 0.9;
+// Softer than natural speech: unhurried pace, slightly lowered pitch for a calm,
+// grounded tone rather than the bright default TTS voice.
+const SPEECH_RATE = 0.82;
+const SPEECH_PITCH = 0.92;
+// Warm, natural-sounding English voices, in order of preference. First match
+// among the device's installed voices wins; the OS default is the last resort.
+const PREFERRED_VOICES = [
+  'Ava',
+  'Samantha',
+  'Allison',
+  'Serena',
+  'Karen',
+  'Moira',
+  'Tessa',
+  'Google UK English Female',
+  'Google US English',
+];
+
+/** Pick the calmest available English voice: a preferred name first, then any
+ *  enhanced/premium voice, then any English voice. */
+function pickCalmVoice(voices: Speech.Voice[]): string | undefined {
+  const en = voices.filter((v) => v.language?.toLowerCase().startsWith('en'));
+  if (!en.length) return undefined;
+  for (const name of PREFERRED_VOICES) {
+    const hit = en.find((v) => v.name?.includes(name) || v.identifier?.includes(name));
+    if (hit) return hit.identifier;
+  }
+  const enhanced = en.find((v) => v.quality === Speech.VoiceQuality.Enhanced);
+  return (enhanced ?? en[0]).identifier;
+}
 
 /** A word token and its character offset into the essay body. */
 type Token = { text: string; start: number; isWord: boolean };
@@ -66,6 +95,8 @@ export function EssayDetail() {
   // a pause (freeze highlight) rather than natural completion (clear it).
   const pausingRef = useRef(false);
   const mountedRef = useRef(true);
+  // Chosen calm voice identifier; undefined = use the platform default.
+  const voiceRef = useRef<string | undefined>(undefined);
 
   const tokens = useMemo(() => tokenize(essay?.body ?? ''), [essay?.body]);
   const sentences = useMemo(() => sentenceRanges(essay?.body ?? ''), [essay?.body]);
@@ -78,6 +109,14 @@ export function EssayDetail() {
   // Stop speech when leaving the screen or switching back to Read.
   useEffect(() => {
     mountedRef.current = true;
+    // Voices load asynchronously (web fires them late); pick once up front.
+    Speech.getAvailableVoicesAsync()
+      .then((voices) => {
+        voiceRef.current = pickCalmVoice(voices);
+      })
+      .catch(() => {
+        /* No voice list: fall back to the platform default. */
+      });
     return () => {
       mountedRef.current = false;
       pausingRef.current = true;
@@ -121,6 +160,8 @@ export function EssayDetail() {
     };
     Speech.speak(essay.body.slice(offset), {
       rate: SPEECH_RATE,
+      pitch: SPEECH_PITCH,
+      voice: voiceRef.current,
       onBoundary: (e: { charIndex?: number }) =>
         setCharIndex(baseRef.current + (e?.charIndex ?? 0)),
       onDone: handleEnd,
