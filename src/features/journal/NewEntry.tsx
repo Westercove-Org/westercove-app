@@ -160,7 +160,7 @@ export function NewEntry() {
         </View>
       </ScrollView>
 
-      <CrisisBanner />
+      <CrisisBanner compact />
     </View>
   );
 }

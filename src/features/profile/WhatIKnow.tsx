@@ -67,7 +67,7 @@ export function WhatIKnow() {
           ))}
         </View>
       </ScrollView>
-      <CrisisBanner />
+      <CrisisBanner compact />
     </View>
   );
 }

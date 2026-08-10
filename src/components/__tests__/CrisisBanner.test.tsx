@@ -18,9 +18,27 @@ describe('CrisisBanner', () => {
     // Collapsed: expanded actions are not shown yet.
     expect(queryByLabelText(/^Call 988\./)).toBeNull();
 
-    fireEvent.press(getByLabelText(/tap to expand/i));
+    // RNTL 14 dispatches through act(); un-awaited presses leak into the next test.
+    await fireEvent.press(getByLabelText(/tap to expand/i));
 
-    fireEvent.press(await findByLabelText(/^Call 988\./));
+    await fireEvent.press(await findByLabelText(/^Call 988\./));
+    expect(openURL).toHaveBeenCalledWith('tel:988');
+
+    await fireEvent.press(getByLabelText(/^Text HOME to 741741\./));
+    expect(openURL).toHaveBeenCalledWith(expect.stringContaining('sms:741741'));
+
+    openURL.mockRestore();
+  });
+
+  it('compact: numbers are tappable directly, with no expand step', async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const { getByLabelText, queryByLabelText, findByLabelText } = await renderWithProviders(
+      <CrisisBanner compact />,
+    );
+
+    expect(queryByLabelText(/tap to expand/i)).toBeNull();
+
+    fireEvent.press(await findByLabelText(/^Call or text 988\./));
     expect(openURL).toHaveBeenCalledWith('tel:988');
 
     fireEvent.press(getByLabelText(/^Text HOME to 741741\./));
