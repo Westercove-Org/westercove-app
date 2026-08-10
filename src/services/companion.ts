@@ -1,9 +1,21 @@
+import {
+  type CompanionChatRequest,
+  type CompanionTurn,
+} from './companionPrompt';
+
 export interface CompanionRequest {
   text: string;
   type: string;
   lovedOneName?: string;
   /** When true, the user asked to be heard without a response ("just heard"). */
   justHeard?: boolean;
+  /**
+   * Everything already said in this entry, oldest first, excluding `text`.
+   * A follow-up turn without it reads as amnesia.
+   */
+  history?: CompanionTurn[];
+  /** Gate answers that shape the voice (tone, relationship, pet vs human). */
+  context?: Omit<CompanionChatRequest, 'history' | 'entryType' | 'lovedOneName'>;
 }
 
 export interface CompanionReply {
@@ -47,8 +59,48 @@ export class MockCompanionService implements CompanionService {
     const response = [
       'Thank you for putting this here.',
       naming,
-      'You do not have to resolve any of it right now — the love and the ache can both be true at once. I am here with it, and with you.',
+      // No em dash here: the same language rules the model is held to apply to
+      // this text, which is what the user sees whenever the API is unreachable.
+      'You do not have to resolve any of it right now. The love and the ache can both be true at once, and I am here with it, and with you.',
     ].join(' ');
     return { response, headline };
+  }
+}
+
+/**
+ * The real companion: posts to the `/api/chat` route, which holds the API key
+ * server-side. Falls back to the mock whenever the route is unreachable or has
+ * no key configured (offline, or a native build whose `origin` is not deployed
+ * yet) — the journal always answers.
+ */
+export class ApiCompanionService implements CompanionService {
+  private readonly fallback = new MockCompanionService();
+
+  async respond(req: CompanionRequest): Promise<CompanionReply> {
+    const headline = makeHeadline(req.text);
+    // "Just heard" means the user asked not to be answered — no request at all.
+    if (req.justHeard) {
+      return { response: 'It is heard. It stays here.', headline };
+    }
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...req.context,
+          lovedOneName: req.lovedOneName,
+          entryType: req.type,
+          history: [...(req.history ?? []), { role: 'user', content: req.text }],
+        } satisfies CompanionChatRequest),
+      });
+      if (!res.ok) return this.fallback.respond(req);
+      const data = (await res.json()) as { reply?: string };
+      const reply = data.reply?.trim();
+      if (!reply) return this.fallback.respond(req);
+      return { response: reply, headline };
+    } catch {
+      return this.fallback.respond(req);
+    }
   }
 }

@@ -31,6 +31,26 @@ function lovedOneName(): string | undefined {
   return useSessionStore.getState().session?.gateAnswers.lovedOneName;
 }
 
+/** Gate answers that shape the companion's voice. */
+function companionContext() {
+  const gate = useSessionStore.getState().session?.gateAnswers;
+  return {
+    tone: gate?.tone,
+    userName: gate?.callName,
+    mode: gate?.mode,
+    species: gate?.species,
+    relationship: gate?.relationship,
+  };
+}
+
+/** Prior turns of an entry, in the shape the companion API expects. */
+function historyFor(entry: Entry | undefined): { role: 'user' | 'assistant'; content: string }[] {
+  return (entry?.turns ?? []).map((t) => ({
+    role: t.role === 'user' ? ('user' as const) : ('assistant' as const),
+    content: t.text,
+  }));
+}
+
 export const useEntriesStore = create<EntriesState>()(
   persist(
     (set, get) => ({
@@ -50,6 +70,7 @@ export const useEntriesStore = create<EntriesState>()(
         type,
         lovedOneName: lovedOneName(),
         justHeard,
+        context: companionContext(),
       });
       turns.push(turn('companion', reply.response, at));
       headline = reply.headline;
@@ -82,6 +103,8 @@ export const useEntriesStore = create<EntriesState>()(
         text,
         type: 'Journal',
         lovedOneName: lovedOneName(),
+        history: historyFor(get().entries.find((e) => e.id === id)),
+        context: companionContext(),
       });
       extra.push(turn('companion', reply.response, at));
     }

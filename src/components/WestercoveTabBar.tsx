@@ -54,7 +54,7 @@ export function WestercoveTabBar({ state, navigation }: TabBarProps) {
   return (
     <View>
       {/* The crisis pill floats directly above the tab bar (demo layout). */}
-      <CrisisBanner atBottom={false} />
+      <CrisisBanner atBottom={false} compact />
       <View
         style={[
           styles.bar,

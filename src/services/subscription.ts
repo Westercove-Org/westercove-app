@@ -10,8 +10,6 @@ export interface SubscriptionStatus {
 export interface SubscriptionService {
   getStatus(entitlement: Entitlement): SubscriptionStatus;
   restore(): Promise<Entitlement>;
-  /** Generate the full archive. Optionally exclude the protected Rage section. */
-  exportArchive(opts: { includeRage: boolean }): Promise<{ ready: true }>;
   /** Schedule deletion with a 30-day reversible grace period. */
   scheduleDeletion(): Promise<{ deletesOn: string }>;
   cancelDeletion(): Promise<void>;
@@ -36,11 +34,6 @@ export class MockSubscriptionService implements SubscriptionService {
 
   async restore(): Promise<Entitlement> {
     return 'active_monthly';
-  }
-
-  async exportArchive(): Promise<{ ready: true }> {
-    await new Promise((r) => setTimeout(r, 600));
-    return { ready: true };
   }
 
   async scheduleDeletion(): Promise<{ deletesOn: string }> {

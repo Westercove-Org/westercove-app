@@ -66,7 +66,7 @@ export function SectionPage({ slug }: { slug: string }) {
       <View style={styles.body}>
         <EmptyState message={meta.empty} />
       </View>
-      <CrisisBanner />
+      <CrisisBanner compact />
     </View>
   );
 }

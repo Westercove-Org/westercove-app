@@ -61,7 +61,7 @@ export function OrgDetail() {
               </Card>
             ))}
       </ScrollView>
-      <CrisisBanner />
+      <CrisisBanner compact />
     </View>
   );
 }

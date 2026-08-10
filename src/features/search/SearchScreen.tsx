@@ -82,7 +82,7 @@ export function SearchScreen() {
           ))
         )}
       </ScrollView>
-      <CrisisBanner />
+      <CrisisBanner compact />
     </View>
   );
 }
