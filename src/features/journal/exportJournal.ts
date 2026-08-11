@@ -1,3 +1,4 @@
+import './latin1TextDecoder';
 import { jsPDF } from 'jspdf';
 import { Platform } from 'react-native';
 
