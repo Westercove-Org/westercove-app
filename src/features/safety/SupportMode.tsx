@@ -55,11 +55,6 @@ export function SupportMode() {
             variant="secondary"
             onPress={() => textLine('741741', 'HOME')}
           />
-          <Button
-            label={copy.safety.reachTrusted}
-            variant="secondary"
-            onPress={() => {}}
-          />
         </View>
 
         <Pressable

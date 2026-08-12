@@ -93,6 +93,8 @@ export const copy = {
     passwordPlaceholder: 'Password',
     saveEmail: 'Remember me',
     signIn: 'Sign in',
+    unknownName:
+      'That name is not one of the test profiles. Please enter a test profile name exactly as it appears on your list, for example Corinne Baker or Marcus Bell.',
     forgot: 'Forgot email or password?',
     newHere: 'New to Westercove',
     create: 'Create an account',
@@ -132,7 +134,6 @@ export const copy = {
       'There is no rush and nothing to get right. Stay here as long as you need.',
     grounding:
       'If it helps, take one slow breath. Feel where you are sitting. You are here, and this moment will pass.',
-    reachTrusted: 'Reach someone you trust',
     // Level 4 — full-screen crisis interface.
     crisisTitle: 'You deserve support right now',
     crisisBody: 'Please reach out. Someone is ready to talk or text with you.',

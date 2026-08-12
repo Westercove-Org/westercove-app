@@ -1,5 +1,5 @@
 import { useEntriesStore } from '@/features/journal/entriesStore';
-import { MOCK_BOOKS } from '@/features/discover/mockBooks';
+import { BOOKS } from '@/constants/books';
 import { LOSS_TYPES, READING } from '@/constants/copy';
 
 export type SearchScope = 'global' | 'discover' | 'support';
@@ -28,7 +28,7 @@ export function search(query: string, scope: SearchScope): SearchResult[] {
   }
 
   if (scope === 'global' || scope === 'discover') {
-    for (const b of MOCK_BOOKS) {
+    for (const b of BOOKS) {
       if (`${b.title} ${b.author}`.toLowerCase().includes(q)) {
         results.push({ id: b.id, kind: 'book', title: b.title, subtitle: b.author });
       }

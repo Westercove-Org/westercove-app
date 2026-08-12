@@ -10,6 +10,7 @@ import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { useProfilesStore } from '@/features/profile/profilesStore';
 import type { GateAnswers, GateMode } from '@/features/auth/types';
+import type { ToneLabel } from '@/services/companionPrompt';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
@@ -33,7 +34,7 @@ const RELATIONSHIPS = [
   PET_OPTION,
   'Other',
 ];
-const TONES: { label: string; desc: string }[] = [
+const TONES: { label: ToneLabel; desc: string }[] = [
   { label: 'Gentle and warm', desc: 'Soft, present, unhurried.' },
   { label: 'Direct and plain', desc: 'Clear, honest, no softening.' },
   { label: 'Quiet and minimal', desc: 'Short replies, lots of space.' },

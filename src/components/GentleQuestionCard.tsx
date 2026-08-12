@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { hasCheckin, nextQuestion } from '@/features/questions/cadence';
+import { hasCheckin, nextQuestion, type CadenceQuestion } from '@/features/questions/cadence';
 import { cadenceState, useQuestionsStore } from '@/features/questions/questionsStore';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
@@ -18,9 +18,6 @@ import { spacing } from '@/theme/tokens';
  * input type, records the answer, and lets the user set it aside or skip.
  */
 export function GentleQuestionCard() {
-  const { colors } = useTheme();
-  const router = useRouter();
-
   // Subscribe to the fields that affect which question shows, so the card
   // re-renders as the cadence changes.
   useQuestionsStore((s) => s.journalStage);
@@ -31,26 +28,26 @@ export function GentleQuestionCard() {
   useQuestionsStore((s) => s.faithTradition);
   useQuestionsStore((s) => s.causeOfDeath);
   useSessionStore((s) => s.session);
+  const state = cadenceState();
+  const q = hasCheckin(state) ? nextQuestion(state) : null;
+  if (!q) return null;
+  // Keyed on the question: a new question gets a new form, rather than an
+  // effect racing to clear the last answer out of the inputs.
+  return <QuestionForm key={q.id} q={q} />;
+}
+
+function QuestionForm({ q }: { q: CadenceQuestion }) {
+  const { colors } = useTheme();
+  const state = cadenceState();
+  const router = useRouter();
   const recordAnswer = useQuestionsStore((s) => s.recordAnswer);
   const skip = useQuestionsStore((s) => s.skip);
   const dismissCheckin = useQuestionsStore((s) => s.dismissCheckin);
-
-  const state = cadenceState();
-  const q = hasCheckin(state) ? nextQuestion(state) : null;
 
   const [text, setText] = useState('');
   const [choice, setChoice] = useState<string | null>(null);
   const [multi, setMulti] = useState<string[]>([]);
   const [librarySkipped, setLibrarySkipped] = useState(false);
-
-  useEffect(() => {
-    setText('');
-    setChoice(null);
-    setMulti([]);
-    setLibrarySkipped(false);
-  }, [q?.id]);
-
-  if (!q) return null;
 
   const isLibrary = q.input === 'library';
   const canSave =

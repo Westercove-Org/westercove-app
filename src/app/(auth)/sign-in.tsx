@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { resolveDemoProfile } from '@/features/profile/demoProfiles';
+import { useProfilesStore } from '@/features/profile/profilesStore';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
@@ -17,18 +19,31 @@ export default function SignInScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const signIn = useSessionStore((s) => s.signIn);
+  const setFullName = useSessionStore((s) => s.setFullName);
+  const signInAs = useProfilesStore((s) => s.signInAs);
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const canSubmit = name.trim().length > 0 && password.length > 0;
 
   const onSignIn = async () => {
     if (!canSubmit || busy) return;
+    // Sign-in is by test-profile name: it resumes that person's saved data, so
+    // an unrecognized name must not silently open someone else's profile.
+    const profile = resolveDemoProfile(name);
+    if (!profile) {
+      setError(copy.signIn.unknownName);
+      return;
+    }
+    setError(null);
     setBusy(true);
-    await signIn(name.trim(), password);
+    await signInAs(profile);
+    await signIn(profile.name, password);
+    setFullName(profile.fullName);
     // Guard redirects to the tab shell once the session is ready.
   };
 
@@ -103,6 +118,12 @@ export default function SignInScreen() {
           <Text variant="cardTitle">{copy.signIn.saveEmail}</Text>
         </Pressable>
 
+        {error ? (
+          <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
+            {error}
+          </Text>
+        ) : null}
+
         <Button
           label={copy.signIn.signIn}
           variant="amethyst"
@@ -111,7 +132,9 @@ export default function SignInScreen() {
           onPress={onSignIn}
         />
 
-        <Pressable accessibilityRole="button" style={styles.center} onPress={() => {}}>
+        {/* No password to recover yet: the demo signs in on a name, so this
+            follows the same path rather than sitting dead under the finger. */}
+        <Pressable accessibilityRole="button" style={styles.center} onPress={onSignIn}>
           <Text variant="bodySmall" color="textMuted">
             {copy.signIn.forgot}
           </Text>

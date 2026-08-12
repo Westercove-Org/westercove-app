@@ -14,6 +14,7 @@ import { useSessionStore } from '@/features/auth/sessionStore';
 import { DemoControls } from '@/features/questions/DemoControls';
 import { TestProfiles } from '@/features/profile/TestProfiles';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
+import { TONE_LABELS } from '@/services/companionPrompt';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
 
@@ -41,12 +42,20 @@ const SETTINGS: Row[] = [
   { label: 'Legal', subtitle: 'Terms, Privacy, Disclaimer', section: 'legal' },
 ];
 
-const LOVED_ONES: { initials: string; name: string; color: string }[] = [];
+/** Initials for an avatar: two words give two letters, one gives one. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? '')
+    .join('');
+}
 
 const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
 
-/** Tones the companion-tone row cycles through. */
-const TONES = ['Gentle and warm', 'Plain and direct', 'Quiet and spare'];
+/** Tones the companion-tone row cycles through: the same labels the gate offers
+ *  and the companion prompt understands. */
+const TONES = TONE_LABELS;
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -57,7 +66,20 @@ export default function ProfileScreen() {
   const setFullName = useSessionStore((s) => s.setFullName);
   const tone = useSessionStore((s) => s.session?.gateAnswers.tone ?? TONES[0]);
   const updateGate = useSessionStore((s) => s.updateGate);
+  const gate = useSessionStore((s) => s.session?.gateAnswers);
   const [nameDraft, setNameDraft] = useState(fullName);
+
+  // The person named in the gate is a loved one already; the avatar row shows
+  // them rather than sitting empty until some future add-a-loved-one flow.
+  const lovedOnes = gate?.lovedOneName?.trim()
+    ? [
+        {
+          name: gate.lovedOneName.trim(),
+          initials: initialsOf(gate.lovedOneName),
+          color: gate.mode === 'pet' ? colors.forest : colors.amethystTint,
+        },
+      ]
+    : [];
 
   const go = (section: string) => {
     if (section === 'what-i-know') router.push('/profile/what-i-know');
@@ -68,7 +90,7 @@ export default function ProfileScreen() {
   };
 
   const cycleTone = () => {
-    const i = TONES.indexOf(tone);
+    const i = TONES.findIndex((t) => t === tone);
     updateGate({ tone: TONES[(i + 1) % TONES.length] });
   };
 
@@ -117,7 +139,7 @@ export default function ProfileScreen() {
 
       <SectionLabel>{copy.profile.lovedOnes}</SectionLabel>
       <View style={styles.avatars}>
-        {LOVED_ONES.map((lo) => (
+        {lovedOnes.map((lo) => (
           <View key={lo.name} style={styles.avatarItem}>
             <View style={[styles.avatar, { backgroundColor: lo.color }]}>
               <Text color="onAccent" style={styles.avatarText}>

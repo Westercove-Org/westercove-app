@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { libraryForCompanion, useLibraryStore } from '@/features/discover/libraryStore';
+import { useWhatIKnowStore } from '@/features/profile/whatIKnowStore';
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
 import { SafetyLevel } from '@/services/safety';
@@ -32,14 +34,20 @@ function lovedOneName(): string | undefined {
 }
 
 /** Gate answers that shape the companion's voice. */
-function companionContext() {
+function companionContext(entryType: string) {
   const gate = useSessionStore.getState().session?.gateAnswers;
+  const mode = gate?.mode ?? 'human';
+  const myLibrary = useLibraryStore.getState().myLibrary;
   return {
     tone: gate?.tone,
     userName: gate?.callName,
-    mode: gate?.mode,
+    mode,
     species: gate?.species,
     relationship: gate?.relationship,
+    // Only what this entry type earns: nothing until the person builds a
+    // library, except the guided types, which fall back to the loss-path shelf.
+    library: libraryForCompanion(myLibrary, mode, entryType),
+    profile: useWhatIKnowStore.getState().learned.map((k) => `${k.label}: ${k.value}`),
   };
 }
 
@@ -70,7 +78,7 @@ export const useEntriesStore = create<EntriesState>()(
         type,
         lovedOneName: lovedOneName(),
         justHeard,
-        context: companionContext(),
+        context: companionContext(type),
       });
       turns.push(turn('companion', reply.response, at));
       headline = reply.headline;
@@ -104,7 +112,7 @@ export const useEntriesStore = create<EntriesState>()(
         type: 'Journal',
         lovedOneName: lovedOneName(),
         history: historyFor(get().entries.find((e) => e.id === id)),
-        context: companionContext(),
+        context: companionContext('Journal'),
       });
       extra.push(turn('companion', reply.response, at));
     }

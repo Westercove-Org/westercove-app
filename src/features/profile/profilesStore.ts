@@ -7,6 +7,7 @@ import { useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionsStore } from '@/features/questions/questionsStore';
 import { secureStorage } from '@/lib/secureStorage';
 import { clearProfileData, setActiveId } from './activeProfile';
+import { DEMO_ROSTER, type DemoProfile } from './demoProfiles';
 import { useWhatIKnowStore } from './whatIKnowStore';
 
 /**
@@ -25,11 +26,22 @@ export interface Persona {
 interface ProfilesState {
   profiles: Persona[];
   activeId: string;
+  /**
+   * Profiles whose namespace has been written at least once. A roster profile
+   * nobody has opened yet has nothing to rehydrate, so it must be reset rather
+   * than left holding the previous profile's data.
+   */
+  initialized: string[];
   switchTo: (id: string) => Promise<void>;
   createNew: () => Promise<void>;
   remove: (id: string) => void;
   setActiveName: (name: string) => void;
+  /** Open the test profile behind a recognized sign-in name. */
+  signInAs: (profile: DemoProfile) => Promise<void>;
 }
+
+/** The nine test profiles, listed and blank until a tester fills one in. */
+const ROSTER_SEED: Persona[] = DEMO_ROSTER.map((p) => ({ id: p.id, name: p.name }));
 
 /**
  * Point the data stores at profile `id` and load its data.
@@ -47,12 +59,14 @@ export async function reloadProfileStores(id: string, fresh = false): Promise<vo
     useEntriesStore.getState().resetForProfile();
     useQuestionsStore.getState().resetForProfile();
     useLibraryStore.getState().resetForProfile();
+    useWhatIKnowStore.setState({ learned: [] });
   } else {
     await Promise.all([
       useSessionStore.persist.rehydrate(),
       useEntriesStore.persist.rehydrate(),
       useQuestionsStore.persist.rehydrate(),
       useLibraryStore.persist.rehydrate(),
+      useWhatIKnowStore.persist.rehydrate(),
     ]);
   }
   useWhatIKnowStore.getState().hydrateFromSession();
@@ -61,26 +75,49 @@ export async function reloadProfileStores(id: string, fresh = false): Promise<vo
 export const useProfilesStore = create<ProfilesState>()(
   persist(
     (set, get) => ({
-      profiles: [{ id: 'p-1', name: '' }],
-      activeId: 'p-1',
+      profiles: ROSTER_SEED,
+      activeId: ROSTER_SEED[0].id,
+      initialized: [],
 
       async switchTo(id) {
         if (id === get().activeId || !get().profiles.some((p) => p.id === id)) return;
-        set({ activeId: id });
-        await reloadProfileStores(id);
+        const fresh = !get().initialized.includes(id);
+        set((s) => ({
+          activeId: id,
+          initialized: fresh ? [...s.initialized, id] : s.initialized,
+        }));
+        await reloadProfileStores(id, fresh);
       },
 
       async createNew() {
         const id = `p-${Date.now()}`;
-        set((s) => ({ profiles: [...s.profiles, { id, name: '' }], activeId: id }));
+        set((s) => ({
+          profiles: [...s.profiles, { id, name: '' }],
+          activeId: id,
+          initialized: [...s.initialized, id],
+        }));
         await reloadProfileStores(id, true);
+      },
+
+      async signInAs(profile) {
+        const known = get().profiles.some((p) => p.id === profile.id);
+        const fresh = !get().initialized.includes(profile.id);
+        const wasActive = get().activeId === profile.id;
+        set((s) => ({
+          profiles: known ? s.profiles : [...s.profiles, { id: profile.id, name: profile.name }],
+          activeId: profile.id,
+          initialized: fresh ? [...s.initialized, profile.id] : s.initialized,
+        }));
+        // Always load on a fresh profile; on a returning one, only when it is
+        // not already the active namespace.
+        if (fresh || !wasActive) await reloadProfileStores(profile.id, fresh);
       },
 
       remove(id) {
         const wasActive = get().activeId === id;
         set((s) => {
           const profiles = s.profiles.filter((p) => p.id !== id);
-          const list = profiles.length ? profiles : [{ id: 'p-1', name: '' }];
+          const list = profiles.length ? profiles : ROSTER_SEED;
           const activeId = wasActive ? list[0].id : s.activeId;
           return { profiles: list, activeId };
         });

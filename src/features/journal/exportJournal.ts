@@ -3,10 +3,11 @@ import { jsPDF } from 'jspdf';
 import { Platform } from 'react-native';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { useLibraryStore } from '@/features/discover/libraryStore';
+import { useLibraryStore, type LibraryBook } from '@/features/discover/libraryStore';
+import { useQuestionsStore } from '@/features/questions/questionsStore';
 import { useWhatIKnowStore } from '@/features/profile/whatIKnowStore';
 import { useEntriesStore } from './entriesStore';
-import { userEntries } from './exportSelection';
+import { faithSummary, userEntries } from './exportSelection';
 
 /**
  * Export the journal as a shareable PDF: a kind overview of themes over a date
@@ -37,6 +38,18 @@ function san(s: string): string {
     .replace(/…/g, '...');
 }
 
+/** Every book in the library as the overview needs it, own books with their meta. */
+function libraryTitles(books: LibraryBook[]): string {
+  return books
+    .map((b) => {
+      if (b.source !== 'own') return `${b.title} by ${b.author}`;
+      const meta = [b.status, b.reader ? `for ${b.reader}` : null].filter(Boolean).join(', ');
+      const summary = b.summary ? `: ${b.summary}` : '';
+      return `${b.title} by ${b.author}${meta ? ` (${meta})` : ''}${summary}`;
+    })
+    .join('; ');
+}
+
 /** Ask the backend for a theme overview built only from the user's entries. */
 async function fetchSummary(entries: { date: string; text: string }[]): Promise<string> {
   try {
@@ -53,7 +66,8 @@ async function fetchSummary(entries: { date: string; text: string }[]): Promise<
         loved: gate?.lovedOneName ?? '',
         relationship: gate?.relationship ?? '',
         communication: gate?.tone ?? '',
-        books: library.map((b) => `${b.title} by ${b.author}`).join('; '),
+        faith: faithSummary(useQuestionsStore.getState()),
+        books: libraryTitles(library),
         known: known.map((k) => `${k.label}: ${k.value}`).join('\n'),
       }),
     });
@@ -206,9 +220,9 @@ export class NothingToExportError extends Error {}
  * sheet elsewhere. Resolves once the file exists; rejects if it could not be
  * written, so the screen never claims an archive is ready when it is not.
  */
-export async function downloadJournal({ includeRage }: { includeRage: boolean }): Promise<void> {
+export async function downloadJournal(): Promise<void> {
   const gate = useSessionStore.getState().session?.gateAnswers;
-  const entries = userEntries(useEntriesStore.getState().entries, includeRage);
+  const entries = userEntries(useEntriesStore.getState().entries);
   if (entries.length === 0) {
     throw new NothingToExportError(
       'There are no entries to export yet. Write one first, and it will be here when you come back.',

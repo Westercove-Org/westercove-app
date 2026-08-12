@@ -14,6 +14,7 @@ export interface ContentService {
   organizationsFor(lossType: string): Promise<Organization[]>;
 }
 
+/** Catalog summaries live in the book data itself; this covers the rest. */
 const SUMMARIES: Record<string, string> = {
   b1: 'A companion through traumatic grief that refuses easy comfort, honoring the enormity of loss while making room to keep living alongside it.',
   b2: 'On grief as a natural, even necessary, part of a whole life — and on tending sorrow in community rather than alone.',
@@ -51,5 +52,39 @@ export class MockContentService implements ContentService {
         description: 'Reading, groups, and organizations by region.',
       },
     ];
+  }
+}
+
+/**
+ * Real book summaries, written by the companion via `/api/booksummary`.
+ * Falls back to the mock whenever the route is unreachable or unconfigured,
+ * the same contract `ApiCompanionService` follows: adding a book must never
+ * fail in the user's face.
+ */
+export class ApiContentService implements ContentService {
+  private readonly fallback = new MockContentService();
+
+  fetchBookSummary(bookId: string): Promise<string> {
+    return this.fallback.fetchBookSummary(bookId);
+  }
+
+  async generateBookSummary(title: string, author: string): Promise<string> {
+    try {
+      const res = await fetch('/api/booksummary', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ title, author }),
+      });
+      if (!res.ok) return this.fallback.generateBookSummary(title, author);
+      const data = (await res.json()) as { summary?: string };
+      const summary = data.summary?.trim();
+      return summary || this.fallback.generateBookSummary(title, author);
+    } catch {
+      return this.fallback.generateBookSummary(title, author);
+    }
+  }
+
+  organizationsFor(lossType: string): Promise<Organization[]> {
+    return this.fallback.organizationsFor(lossType);
   }
 }

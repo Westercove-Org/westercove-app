@@ -1,4 +1,4 @@
-import { userEntries } from '@/features/journal/exportSelection';
+import { faithSummary, userEntries } from '@/features/journal/exportSelection';
 import type { Entry } from '@/features/journal/types';
 
 function entry(over: Partial<Entry> & { id: string; createdAt: string }): Entry {
@@ -31,7 +31,6 @@ describe('userEntries (journal export)', () => {
           ],
         }),
       ],
-      true,
     );
 
     expect(out.map((e) => e.text)).toEqual(['First day.', 'Second day.']);
@@ -49,27 +48,35 @@ describe('userEntries (journal export)', () => {
           ],
         }),
       ],
-      true,
     );
     expect(out).toEqual([]);
   });
 
-  it('honours the Rage toggle', () => {
-    const entries = [
-      entry({
-        id: 'a',
-        type: 'Rage',
-        createdAt: '2026-01-01T00:00:00.000Z',
-        turns: [{ id: '1', role: 'user', text: 'Protected.', at: '2026-01-01T00:00:00.000Z' }],
-      }),
-      entry({
-        id: 'b',
-        createdAt: '2026-01-02T00:00:00.000Z',
-        turns: [{ id: '2', role: 'user', text: 'Ordinary.', at: '2026-01-02T00:00:00.000Z' }],
-      }),
-    ];
+});
 
-    expect(userEntries(entries, true).map((e) => e.text)).toEqual(['Protected.', 'Ordinary.']);
-    expect(userEntries(entries, false).map((e) => e.text)).toEqual(['Ordinary.']);
+describe('faithSummary', () => {
+  it('says nothing when the question was never answered', () => {
+    expect(faithSummary({})).toBe('');
+  });
+
+  it('names the tradition when one was given', () => {
+    expect(
+      faithSummary({ faithLanguage: 'Yes, I would like that', faithTradition: 'Buddhist' }),
+    ).toBe('Welcomes faith or spiritual language (Buddhist).');
+    expect(faithSummary({ faithLanguage: 'Some is okay', faithTradition: 'Jewish' })).toBe(
+      'Some faith or spiritual language is welcome (Jewish).',
+    );
+  });
+
+  it('never guesses at a tradition the person kept back', () => {
+    expect(
+      faithSummary({
+        faithLanguage: 'Yes, I would like that',
+        faithTradition: 'Prefer not to say',
+      }),
+    ).toBe('Welcomes faith or spiritual language.');
+    expect(faithSummary({ faithLanguage: 'No, please keep it out' })).toBe(
+      'Prefers that faith or spiritual language be kept out of this space.',
+    );
   });
 });

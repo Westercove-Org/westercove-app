@@ -9,19 +9,22 @@ import { Chip } from '@/components/ui/Chip';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
+import type { EntryType } from '@/features/journal/entryTypes';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { formatEntryTimestamp, formatHeaderDateTime } from '@/lib/dateFormat';
 import { spacing } from '@/theme/tokens';
 
-/** Home quick-access command chips, below the gentle-question card. */
+/** Home quick-access command chips, below the gentle-question card. Every one
+ *  is a real entry type: a chip that is not lands the writer in a Journal entry
+ *  they did not ask for. */
 const HOME_CHIPS = [
   'Memory',
   'Struggle',
   'Journal',
   'Letter',
   'Anniversary',
-  'Question',
-] as const;
+  'Grief Question',
+] as const satisfies readonly EntryType[];
 
 function greeting(now: Date, name?: string): string {
   const h = now.getHours();
@@ -58,7 +61,7 @@ export default function HomeScreen() {
       </View>
 
       <SectionLabel>{copy.home.recent}</SectionLabel>
-      {entries.slice(0, 3).map((entry) => (
+      {entries.map((entry) => (
         <EntryCard
           key={entry.id}
           type={entry.type}

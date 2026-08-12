@@ -4,7 +4,8 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
-import { ChevronRightIcon, SendIcon } from '@/components/icons';
+import { GentleQuestionCard } from '@/components/GentleQuestionCard';
+import { ChevronRightIcon, DownloadIcon, SendIcon } from '@/components/icons';
 import { Card } from '@/components/ui/Card';
 import { EntryTag } from '@/components/ui/EntryTag';
 import { Text } from '@/components/ui/Text';
@@ -65,8 +66,21 @@ export function EntryDetail() {
         <View style={styles.headerText}>
           <View style={styles.tagRow}>
             <EntryTag label={entry.type} />
-            <Text variant="meta">{formatEntryTimestamp(new Date(entry.createdAt))}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Download journal"
+              onPress={() => router.push('/export')}
+              style={[styles.download, { backgroundColor: colors.emerald }]}
+            >
+              <DownloadIcon size={16} color={colors.onAccent} />
+              <Text variant="tag" color="onAccent" style={styles.downloadText}>
+                Download journal
+              </Text>
+            </Pressable>
           </View>
+          <Text variant="meta" style={styles.stamp}>
+            {formatEntryTimestamp(new Date(entry.createdAt))}
+          </Text>
           <Text variant="screenTitle" style={styles.headline}>
             {entry.headline}
           </Text>
@@ -92,6 +106,10 @@ export function EntryDetail() {
         )}
 
         {entry.safetyLevel === SafetyLevel.Elevated ? <InlineResourceCard /> : null}
+
+        {/* The same gentle question Home offers: writing here is exactly when a
+            person is most likely to have an answer for it. */}
+        <GentleQuestionCard />
       </ScrollView>
 
       <View style={styles.composeRow}>
@@ -144,7 +162,17 @@ const styles = StyleSheet.create({
   },
   headerText: { flex: 1, paddingTop: spacing.sm },
   tagRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  stamp: { marginTop: spacing.xs },
   headline: { marginTop: spacing.sm },
+  download: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  downloadText: { textTransform: 'none' },
   thread: { paddingHorizontal: spacing.screen, paddingTop: spacing.md, gap: spacing.md, paddingBottom: spacing.lg },
   userTurn: {},
   companionTurn: {},
