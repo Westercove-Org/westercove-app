@@ -3,9 +3,9 @@ import { MockContentService } from '@/services/content';
 describe('MockContentService', () => {
   const svc = new MockContentService();
 
-  it('fetches a book summary', async () => {
-    const s = await svc.fetchBookSummary('b1');
-    expect(s.length).toBeGreaterThan(0);
+  it('writes a summary for a book the user added', async () => {
+    const s = await svc.generateBookSummary('A Book', 'An Author');
+    expect(s).toContain('A Book');
   });
 
   it('returns organizations for a loss type', async () => {
