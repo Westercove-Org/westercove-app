@@ -31,7 +31,9 @@ export function SearchScreen() {
 
   const open = (r: SearchResult) => {
     if (r.kind === 'entry') router.push({ pathname: '/entry/[id]', params: { id: r.id } });
-    else if (r.kind === 'org') router.push({ pathname: '/support/org/[loss]', params: { loss: r.id } });
+    else if (r.kind === 'org')
+      router.push({ pathname: '/support/org/[loss]', params: { loss: r.id } });
+    else if (r.kind === 'book') router.push({ pathname: '/book/[id]', params: { id: r.id } });
   };
 
   return (

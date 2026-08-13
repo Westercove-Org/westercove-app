@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import {
+  BOOKS,
+  booksForModule,
+  guidanceFor,
+  GUIDED_ENTRY_TYPES,
+  type Book,
+  type BookModule,
+} from '@/constants/books';
+import type { CompanionLibraryBook } from '@/services/companionPrompt';
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
 
@@ -14,53 +23,73 @@ export interface LibraryBook {
   spine: string;
   /** Present for own books (companion-written); fetched on demand otherwise. */
   summary?: string;
+  /** Which loss path a curated book belongs to. Absent on the user's own books. */
+  module?: BookModule;
+  /** Cover accent from the catalog. */
+  accent?: string;
+  /** Own-book reading state, e.g. "In progress". */
+  status?: string;
+  /** Who is reading it, for shared accounts. */
+  reader?: string;
 }
 
 /** Rotating cover colors from the grief palette. */
 const SPINES = ['#2F6B33', '#3D2F5E', '#1F4D22', '#26114E', '#0E5F18'];
 const spineFor = (i: number) => SPINES[i % SPINES.length];
 
-const RECOMMENDED_SEED: Array<Pick<LibraryBook, 'title' | 'author'>> = [
-  { title: 'Letters to Grief', author: 'Kate Motaung' },
-  { title: 'Navigating Intense Grief', author: 'Emily Vandenberg' },
-  { title: 'Shattered: Surviving the Loss of a Child', author: 'Gary Roe' },
-  { title: 'The Grief Recovery Handbook Workbook', author: 'John W. James and Russell Friedman' },
-  { title: 'F**k Death Workbook', author: 'Steve Case' },
-  { title: 'Imagine Heaven', author: 'John Burke' },
-  { title: 'The Broken Way', author: 'Ann Voskamp' },
-  { title: 'How to Survive the Death of an Adult Child', author: 'G.M. Grace' },
-  { title: 'Journey of Souls: Case Studies of Life Between Lives', author: 'Michael Newton, PhD' },
-  { title: 'Signs: The Secret Language of the Universe', author: 'Laura Lynne Jackson' },
-  { title: 'Bearing the Unbearable: Love, Loss, and the Heartbreaking Path of Grief', author: 'Joanne Cacciatore, PhD' },
-  { title: "I Wasn't Ready to Say Goodbye", author: 'Brook Noel and Pamela D. Blair, PhD' },
-  { title: 'Healing After Loss', author: 'Martha W. Hickman' },
-  { title: 'When Our Grown Kids Disappoint Us', author: 'Jane Adams' },
-  { title: 'Heaven is for Real', author: 'Todd Burpo with Lynn Vincent' },
-  { title: 'Broken Walk', author: 'Gary Roe' },
-  { title: 'Grieving Beyond Gender: Understanding Diverse Grieving Styles', author: 'Kenneth J. Doka and Terry L. Martin' },
-  { title: 'Grief Counseling and Grief Therapy', author: 'J. William Worden' },
-  { title: 'Continuing Bonds: New Understandings of Grief', author: 'Dennis Klass, Phyllis R. Silverman, and Steven L. Nickman' },
-  { title: 'Disenfranchised Grief: Recognizing Hidden Sorrow', author: 'Kenneth J. Doka' },
-  { title: 'The Twelve Steps of Forgiveness', author: 'Paul Ferrini' },
-  { title: 'Induced After Death Communication', author: 'Allan L. Botkin and Craig Hogan' },
-];
+/** A catalog book as the library stores it. */
+export function fromCatalog(b: Book): LibraryBook {
+  return {
+    id: b.id,
+    title: b.title,
+    author: b.author,
+    source: 'westercove',
+    spine: b.cover,
+    accent: b.accent,
+    summary: b.summary,
+    module: b.module,
+  };
+}
 
-const RECOMMENDED: LibraryBook[] = RECOMMENDED_SEED.map((b, i) => ({
-  id: `rec-${i}`,
-  title: b.title,
-  author: b.author,
-  source: 'westercove',
-  spine: spineFor(i),
-}));
+/** The curated shelf for a loss path. Pet grievers never see the human shelf. */
+export function recommendedFor(module: BookModule): LibraryBook[] {
+  return booksForModule(module).map(fromCatalog);
+}
+
+/**
+ * What the companion may draw on for one entry. The person's own shelf when
+ * they have built one; on the guided entry types (where they are reaching for
+ * help) the whole loss-path catalog stands in, so a fitting book can always be
+ * named. Otherwise nothing: the companion never suggests a book the person has
+ * not chosen.
+ */
+export function libraryForCompanion(
+  myLibrary: LibraryBook[],
+  module: BookModule,
+  entryType: string,
+): CompanionLibraryBook[] {
+  const guided = GUIDED_ENTRY_TYPES.includes(entryType);
+  const books = myLibrary.length ? myLibrary : guided ? recommendedFor(module) : [];
+  return books.map((b) => ({
+    title: b.title,
+    author: b.author,
+    guidance: guidanceFor(b.id),
+    summary: b.summary,
+  }));
+}
 
 interface LibraryState {
-  /** Curated Westercove catalog (static). */
-  recommended: LibraryBook[];
-  /** Books the user has added to their own library. */
+  /** Books the user has added to their own library, curated or their own. */
   myLibrary: LibraryBook[];
+  /** Add a catalog book by id. */
   addToLibrary: (id: string) => void;
-  addAll: () => void;
+  /** Add every curated book for a loss path that is not already in the library. */
+  addAll: (module: BookModule) => void;
   addOwnBook: (title: string, author: string) => Promise<void>;
+  /** Drop a book from the library, curated or own. */
+  removeFromLibrary: (id: string) => void;
+  /** Fill in a summary once the companion has written one. */
+  setSummary: (id: string, summary: string) => void;
   inLibrary: (id: string) => boolean;
   /** Reset the user's library for a new test profile. */
   resetForProfile: () => void;
@@ -69,7 +98,6 @@ interface LibraryState {
 export const useLibraryStore = create<LibraryState>()(
   persist(
     (set, get) => ({
-      recommended: RECOMMENDED,
       myLibrary: [],
 
       inLibrary(id) {
@@ -77,15 +105,15 @@ export const useLibraryStore = create<LibraryState>()(
       },
 
       addToLibrary(id) {
-        const book = get().recommended.find((b) => b.id === id);
+        const book = BOOKS.find((b) => b.id === id);
         if (!book || get().inLibrary(id)) return;
-        set((s) => ({ myLibrary: [...s.myLibrary, book] }));
+        set((s) => ({ myLibrary: [...s.myLibrary, fromCatalog(book)] }));
       },
 
-      addAll() {
+      addAll(module) {
         set((s) => {
           const have = new Set(s.myLibrary.map((b) => b.id));
-          const added = s.recommended.filter((b) => !have.has(b.id));
+          const added = recommendedFor(module).filter((b) => !have.has(b.id));
           return { myLibrary: [...s.myLibrary, ...added] };
         });
       },
@@ -94,12 +122,25 @@ export const useLibraryStore = create<LibraryState>()(
         const t = title.trim();
         const a = author.trim();
         if (!t) return;
-        const summary = await services.content.generateBookSummary(t, a);
+        const id = `own-${Date.now()}`;
+        // Shelve it first so the book appears while the summary is being written.
         set((s) => ({
           myLibrary: [
             ...s.myLibrary,
-            { id: `own-${Date.now()}`, title: t, author: a, source: 'own', spine: spineFor(s.myLibrary.length), summary },
+            { id, title: t, author: a, source: 'own', spine: spineFor(s.myLibrary.length) },
           ],
+        }));
+        const summary = await services.content.generateBookSummary(t, a);
+        if (summary) get().setSummary(id, summary);
+      },
+
+      removeFromLibrary(id) {
+        set((s) => ({ myLibrary: s.myLibrary.filter((b) => b.id !== id) }));
+      },
+
+      setSummary(id, summary) {
+        set((s) => ({
+          myLibrary: s.myLibrary.map((b) => (b.id === id ? { ...b, summary } : b)),
         }));
       },
 

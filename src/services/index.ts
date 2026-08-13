@@ -1,6 +1,6 @@
 import { MockAuthService, type AuthService } from './auth';
 import { ApiCompanionService, type CompanionService } from './companion';
-import { MockContentService, type ContentService } from './content';
+import { ApiContentService, type ContentService } from './content';
 import { MockCrmService, type CrmService } from './crm';
 import { MockSafetyService, type SafetyService } from './safety';
 import { MockSubscriptionService, type SubscriptionService } from './subscription';
@@ -25,7 +25,7 @@ export const services: {
   crm: new MockCrmService(),
   companion: new ApiCompanionService(),
   voice: new MockVoiceService(),
-  content: new MockContentService(),
+  content: new ApiContentService(),
   subscription: new MockSubscriptionService(),
 };
 

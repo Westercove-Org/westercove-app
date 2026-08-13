@@ -12,8 +12,12 @@ import { SearchPill } from '@/components/ui/SearchPill';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
-import { BookSummarySheet } from '@/features/discover/BookSummarySheet';
-import { useLibraryStore, type LibraryBook } from '@/features/discover/libraryStore';
+import {
+  recommendedFor,
+  useLibraryStore,
+  type LibraryBook,
+} from '@/features/discover/libraryStore';
+import { useSessionStore } from '@/features/auth/sessionStore';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
@@ -100,24 +104,85 @@ function BookCoverCard({
   );
 }
 
+/** A book the user added themselves: title, the meta they gave it, and the
+ *  companion-written summary once it arrives. */
+function OwnBookRow({
+  book,
+  onOpen,
+  onRemove,
+}: {
+  book: LibraryBook;
+  onOpen: () => void;
+  onRemove: () => void;
+}) {
+  const { colors } = useTheme();
+  const meta = [book.status, book.reader ? `for ${book.reader}` : null].filter(Boolean).join(' · ');
+  return (
+    <Card style={styles.ownRow}>
+      <View style={styles.ownHead}>
+        <Text variant="cardTitle" style={styles.ownTitle}>
+          {book.title}
+        </Text>
+        <View style={[styles.ownPill, { borderColor: colors.line }]}>
+          <Text variant="meta" color="textMuted">
+            Added by you
+          </Text>
+        </View>
+      </View>
+      <Text variant="bodySmall" color="textMuted">
+        by {book.author}
+      </Text>
+      {meta ? (
+        <Text variant="bodySmall" color="textMuted">
+          {meta}
+        </Text>
+      ) : null}
+      <Text variant="body" numberOfLines={2} style={styles.ownSummary}>
+        {book.summary ?? 'Your companion is writing a short summary for this book.'}
+      </Text>
+      <View style={styles.ownActions}>
+        <Pressable accessibilityRole="button" onPress={onOpen} hitSlop={8}>
+          <Text variant="bodySmall" color="forest">
+            Read more
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${book.title} from your library`}
+          onPress={onRemove}
+          hitSlop={8}
+        >
+          <Text variant="bodySmall" color="textMuted">
+            Remove
+          </Text>
+        </Pressable>
+      </View>
+    </Card>
+  );
+}
+
 export default function DiscoverScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const now = new Date();
 
-  const recommended = useLibraryStore((s) => s.recommended);
+  const mode = useSessionStore((s) => s.session?.gateAnswers.mode ?? 'human');
   const myLibrary = useLibraryStore((s) => s.myLibrary);
   const addToLibrary = useLibraryStore((s) => s.addToLibrary);
   const addAll = useLibraryStore((s) => s.addAll);
   const addOwnBook = useLibraryStore((s) => s.addOwnBook);
+  const removeFromLibrary = useLibraryStore((s) => s.removeFromLibrary);
 
-  const [selected, setSelected] = useState<LibraryBook | null>(null);
+  const recommended = recommendedFor(mode);
+  const openBook = (id: string) => router.push({ pathname: '/book/[id]', params: { id } });
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [busy, setBusy] = useState(false);
 
   const inLibrary = (id: string) => myLibrary.some((b) => b.id === id);
   const notAdded = recommended.filter((b) => !inLibrary(b.id));
+  const ownBooks = myLibrary.filter((b) => b.source === 'own');
+  const shelved = myLibrary.filter((b) => b.source === 'westercove');
 
   const onAddOwn = async () => {
     if (!title.trim() || busy) return;
@@ -160,14 +225,27 @@ export default function DiscoverScreen() {
         </Card>
       </View>
 
-      {myLibrary.length > 0 ? (
+      {ownBooks.length > 0 ? (
+        <View style={styles.blockWrap}>
+          {ownBooks.map((book) => (
+            <OwnBookRow
+              key={book.id}
+              book={book}
+              onOpen={() => openBook(book.id)}
+              onRemove={() => removeFromLibrary(book.id)}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      {shelved.length > 0 ? (
         <View style={[styles.blockWrap, styles.grid]}>
-          {myLibrary.map((book) => (
+          {shelved.map((book) => (
             <BookCoverCard
               key={book.id}
               book={book}
               inLibrary
-              onOpen={() => setSelected(book)}
+              onOpen={() => openBook(book.id)}
               onAdd={() => {}}
             />
           ))}
@@ -205,19 +283,28 @@ export default function DiscoverScreen() {
 
       <View style={styles.recHead}>
         <SectionLabel>RECOMMENDED LIBRARY</SectionLabel>
-        <Pressable accessibilityRole="button" accessibilityLabel="Add all" onPress={addAll} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Add all" onPress={() => addAll(mode)} hitSlop={8}>
           <Text variant="tag" color="forest">
             Add all
           </Text>
         </Pressable>
       </View>
+      {notAdded.length === 0 ? (
+        <View style={styles.blockWrap}>
+          <Card>
+            <Text variant="body" color="textMuted">
+              You have added every recommended book to your library.
+            </Text>
+          </Card>
+        </View>
+      ) : null}
       <View style={[styles.blockWrap, styles.grid]}>
         {notAdded.map((book) => (
           <BookCoverCard
             key={book.id}
             book={book}
             inLibrary={false}
-            onOpen={() => setSelected(book)}
+            onOpen={() => openBook(book.id)}
             onAdd={() => addToLibrary(book.id)}
           />
         ))}
@@ -266,7 +353,6 @@ export default function DiscoverScreen() {
         </Card>
       </View>
 
-      <BookSummarySheet book={selected} onClose={() => setSelected(null)} />
     </Screen>
   );
 }
@@ -275,6 +361,12 @@ const styles = StyleSheet.create({
   searchWrap: { paddingHorizontal: spacing.screen, paddingTop: spacing.xl },
   blockWrap: { paddingHorizontal: spacing.screen, paddingTop: spacing.sm },
   addSub: { marginTop: spacing.xs },
+  ownRow: { marginBottom: spacing.md },
+  ownHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  ownTitle: { flex: 1 },
+  ownPill: { borderWidth: 1, borderRadius: radii.inputPill, paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  ownSummary: { marginTop: spacing.sm },
+  ownActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.md },
   input: {
     marginTop: spacing.md,
     borderWidth: 1,
