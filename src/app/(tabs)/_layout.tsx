@@ -16,6 +16,9 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: colors.background },
+        // Tabs cross-fade rather than snap, matching the screen transitions.
+        animation: 'fade',
+        transitionSpec: { animation: 'timing', config: { duration: 350 } },
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Home' }} />

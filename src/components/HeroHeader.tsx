@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { useTheme } from '@/theme';
+import { DriftingPhoto } from './DriftingPhoto';
+import { SunGlow } from './SunGlow';
 import { DownloadIcon } from './icons';
 import { Text } from './ui/Text';
 
@@ -54,7 +56,18 @@ export function HeroHeader({
 
   return (
     <View style={[styles.container, { height, backgroundColor: colors.background }]}>
-      <Image source={image} style={StyleSheet.absoluteFill} contentFit="cover" />
+      <DriftingPhoto source={image} />
+      {/* Sun upper-right, the way the demo's header rays fan in. Under the
+          parchment fade so the glow warms the photo, not the text. */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <SunGlow
+          originX={0.82}
+          originY={-0.08}
+          spread={0.7}
+          intensity={0.1}
+          glowOpacity={0.18}
+        />
+      </View>
       <LinearGradient colors={fade} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} />
 
       <View style={[styles.overlay, { paddingTop: insets.top + 8 }]}>
@@ -62,6 +75,9 @@ export function HeroHeader({
           <View style={styles.brand} accessibilityRole="header" accessibilityLabel="Westercove">
             <Image source={icon} style={styles.icon} contentFit="contain" />
             <Image source={wordmark} style={styles.wordmark} contentFit="contain" />
+            <Text variant="meta" color="heading" style={styles.trademark}>
+              ™
+            </Text>
           </View>
           {signedIn ? (
             <Pressable
@@ -114,6 +130,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  // Sits high against the wordmark, the way a superscript mark should.
+  trademark: { alignSelf: 'flex-start', marginLeft: -4, marginTop: 2 },
   icon: { width: 24, height: 22 },
   wordmark: { width: 84, height: 15 },
   download: {

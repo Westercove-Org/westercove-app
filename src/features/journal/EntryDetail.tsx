@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
 import { GentleQuestionCard } from '@/components/GentleQuestionCard';
-import { ChevronRightIcon, DownloadIcon, SendIcon } from '@/components/icons';
+import { ChevronRightIcon, DownloadIcon, MicIcon, SendIcon } from '@/components/icons';
 import { Card } from '@/components/ui/Card';
 import { EntryTag } from '@/components/ui/EntryTag';
 import { Text } from '@/components/ui/Text';
@@ -14,6 +14,7 @@ import { InlineResourceCard } from '@/features/safety/InlineResourceCard';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionTimer } from '@/features/questions/useQuestionTimer';
 import { formatEntryTimestamp } from '@/lib/dateFormat';
+import { services } from '@/services';
 import { SafetyLevel } from '@/services/safety';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
@@ -29,6 +30,7 @@ export function EntryDetail() {
 
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [listening, setListening] = useState(false);
 
   // Accumulate talk-time while this conversation screen is focused.
   useQuestionTimer();
@@ -42,6 +44,16 @@ export function EntryDetail() {
       </View>
     );
   }
+
+  const onMic = async () => {
+    setListening(true);
+    try {
+      const transcript = await services.voice.capture();
+      setText((t) => (t ? `${t} ${transcript}` : transcript));
+    } finally {
+      setListening(false);
+    }
+  };
 
   const onContinue = async () => {
     if (!text.trim() || busy) return;
@@ -105,6 +117,16 @@ export function EntryDetail() {
           ),
         )}
 
+        {/* A companion reply is being written. Saying so in the thread keeps the
+            wait from reading as silence. */}
+        {busy ? (
+          <Card reflective style={styles.companionTurn}>
+            <Text variant="body" color="amethystText">
+              Thinking with you…
+            </Text>
+          </Card>
+        ) : null}
+
         {entry.safetyLevel === SafetyLevel.Elevated ? <InlineResourceCard /> : null}
 
         {/* The same gentle question Home offers: writing here is exactly when a
@@ -125,6 +147,19 @@ export function EntryDetail() {
             { color: colors.textPrimary, backgroundColor: colors.surfaceAlt },
           ]}
         />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={listening ? 'Listening' : 'Speak'}
+          disabled={listening}
+          onPress={onMic}
+          style={[
+            styles.send,
+            { backgroundColor: colors.forest },
+            listening && { opacity: 0.6 },
+          ]}
+        >
+          <MicIcon size={22} color={colors.onAccent} />
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Send"

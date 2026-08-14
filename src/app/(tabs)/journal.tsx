@@ -9,7 +9,7 @@ import { Chip } from '@/components/ui/Chip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { copy } from '@/constants/copy';
-import { ENTRY_TYPES } from '@/features/journal/entryTypes';
+import { ENTRY_PLACEHOLDERS, ENTRY_TYPES, type EntryType } from '@/features/journal/entryTypes';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { formatEntryTimestamp, formatHeaderDateTime } from '@/lib/dateFormat';
 import { spacing } from '@/theme/tokens';
@@ -34,13 +34,18 @@ export default function JournalScreen() {
 
   const shown = filter === 'All' ? entries : entries.filter((e) => e.type === filter);
 
+  // The compose card follows the active filter, so tapping it starts the kind of
+  // entry the reader is already looking at rather than always a plain Journal.
+  const composeType: EntryType = filter === 'All' ? 'Journal' : (filter as EntryType);
+  const compose = () => router.push({ pathname: '/entry/new', params: { type: composeType } });
+
   return (
     <Screen header={{ title: 'Journal', subtitle: formatHeaderDateTime(now), image: heroImage }}>
       <ComposeCard
-        placeholder="Write your journal entry here…"
+        placeholder={ENTRY_PLACEHOLDERS[composeType]}
         attach
-        onPressPrompt={() => router.push('/entry/new')}
-        onPressMic={() => router.push('/entry/new')}
+        onPressPrompt={compose}
+        onPressMic={compose}
       />
 
       <View style={styles.filters}>
@@ -51,7 +56,10 @@ export default function JournalScreen() {
 
       <SectionLabel>{copy.journal.entries}</SectionLabel>
       {shown.length === 0 ? (
-        <EmptyState message={copy.journal.empty} />
+        <EmptyState
+          message={copy.journal.empty}
+          action={{ label: `Start a new ${composeType} entry`, onPress: compose }}
+        />
       ) : (
         shown.map((entry) => (
           <EntryCard
