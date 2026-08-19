@@ -4,7 +4,7 @@ import { ApiCompanionService, type CompanionService } from './companion';
 import { ApiContentService, type ContentService } from './content';
 import { MockCrmService, type CrmService } from './crm';
 import { MockSafetyService, type SafetyService } from './safety';
-import { MockSubscriptionService, type SubscriptionService } from './subscription';
+import { ApiSubscriptionService, type SubscriptionService } from './subscription';
 import { ApiSurveyService, type SurveyService } from './survey';
 import { MockVoiceService, type VoiceService } from './voice';
 
@@ -30,7 +30,7 @@ export const services: {
   companion: new ApiCompanionService(),
   voice: new MockVoiceService(),
   content: new ApiContentService(),
-  subscription: new MockSubscriptionService(),
+  subscription: new ApiSubscriptionService(),
   chat: new ApiChatSessionService(),
   survey: new ApiSurveyService(),
 };
