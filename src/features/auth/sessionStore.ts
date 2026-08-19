@@ -14,7 +14,7 @@ interface SessionState {
   signIn: (email: string, password: string) => Promise<void>;
   beginAccount: (input: CreateAccountInput) => Promise<void>;
   completeGate: (answers: GateAnswers) => void;
-  setEntitlement: (entitlement: Entitlement) => void;
+  setEntitlement: (entitlement: Entitlement, sponsorOrganization?: string) => void;
   setFullName: (fullName: string) => void;
   updateGate: (partial: Partial<GateAnswers>) => void;
   signOut: () => void;
@@ -51,13 +51,17 @@ export const useSessionStore = create<SessionState>()(
       async beginAccount(input) {
         const result = await services.auth.createAccount(input);
         // Signup writes a single CRM contact carrying lifecycle facts only.
-        await services.crm.createContact({
-          email: result.user.email,
-          firstName: result.user.firstName,
-          entryPath: result.entryPath,
-          entitlement: result.entitlement,
-          sponsorOrganization: result.sponsorOrganization,
-        });
+        // Fire-and-forget: a CRM failure (or synced:false) must never block or
+        // fail account creation.
+        void services.crm
+          .createContact({
+            email: result.user.email,
+            firstName: result.user.firstName,
+            entryPath: result.entryPath,
+            entitlement: result.entitlement,
+            sponsorOrganization: result.sponsorOrganization,
+          })
+          .catch(() => {});
         set({
           session: {
             user: result.user,
@@ -89,11 +93,18 @@ export const useSessionStore = create<SessionState>()(
           .catch(() => {});
       },
 
-      setEntitlement(entitlement) {
+      setEntitlement(entitlement, sponsorOrganization) {
         const s = get().session;
         if (!s) return;
-        set({ session: { ...s, entitlement } });
-        void services.crm.updateEntitlement(s.user.email, entitlement);
+        set({
+          session: {
+            ...s,
+            entitlement,
+            ...(sponsorOrganization !== undefined ? { sponsorOrganization } : {}),
+          },
+        });
+        // CRM sync is fire-and-forget; synced:false is not an error.
+        void services.crm.updateEntitlement(s.user.email, entitlement).catch(() => {});
       },
 
       setFullName(fullName) {

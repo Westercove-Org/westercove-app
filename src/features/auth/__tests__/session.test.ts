@@ -7,7 +7,6 @@ jest.mock('expo-secure-store', () => ({
 import { sessionStatus, useSessionStore } from '@/features/auth/sessionStore';
 import type { Session } from '@/features/auth/types';
 import { services } from '@/services';
-import { MockCrmService } from '@/services/crm';
 
 const readySession: Session = {
   user: { email: 'a@b.com' },
@@ -34,8 +33,7 @@ describe('session store', () => {
   beforeEach(() => useSessionStore.setState({ session: null }));
 
   it('beginAccount creates a session that still needs the gate, and writes one CRM contact', async () => {
-    const crm = services.crm as MockCrmService;
-    const before = crm.contacts.length;
+    const createContact = jest.spyOn(services.crm, 'createContact').mockResolvedValue();
 
     await useSessionStore.getState().beginAccount({ entryPath: 'consumer_trial' });
 
@@ -43,7 +41,8 @@ describe('session store', () => {
     expect(s).not.toBeNull();
     expect(s!.gateComplete).toBe(false);
     expect(sessionStatus(s)).toBe('needs-gate');
-    expect(crm.contacts.length).toBe(before + 1);
+    expect(createContact).toHaveBeenCalledTimes(1);
+    createContact.mockRestore();
   });
 
   it('partner_license account gets a license entitlement', async () => {
