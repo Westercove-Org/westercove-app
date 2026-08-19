@@ -7,6 +7,7 @@ import { useWhatIKnowStore } from '@/features/profile/whatIKnowStore';
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
 import { SafetyLevel } from '@/services/safety';
+import type { ChatSessionSummary } from '@/services/chat';
 import type { ConversationTurn, Entry } from './types';
 
 let counter = 100;
@@ -18,6 +19,8 @@ function turn(role: 'user' | 'companion', text: string, at = new Date()): Conver
 
 interface EntriesState {
   entries: Entry[];
+  /** Chat-session summaries fetched from the backend for the active profile. */
+  serverSessions: ChatSessionSummary[];
   addEntry: (input: {
     type: string;
     text: string;
@@ -25,6 +28,9 @@ interface EntriesState {
   }) => Promise<{ id: string; level: SafetyLevel }>;
   continueEntry: (id: string, text: string) => Promise<SafetyLevel>;
   getEntry: (id: string) => Entry | undefined;
+  /** Load the backend chat-session summaries for the persisted profile id.
+   * No-op (clears) when there is no backend profile id yet. */
+  refreshServerSessions: () => Promise<void>;
   /** Reset to seed data (used when switching to a fresh test profile). */
   resetForProfile: () => void;
 }
@@ -63,6 +69,7 @@ export const useEntriesStore = create<EntriesState>()(
   persist(
     (set, get) => ({
   entries: [],
+  serverSessions: [],
 
   async addEntry({ type, text, justHeard }) {
     // Safety runs on every submission, before response generation.
@@ -101,13 +108,15 @@ export const useEntriesStore = create<EntriesState>()(
 
     // Create the backend chat session that will back this entry, and stamp its
     // id onto the entry once it returns. Fire-and-forget: writing an entry must
-    // never block on the network, and entries stay readable offline. profile_id
-    // is omitted for now (backend uses the default profile) — the app has no
-    // persisted backend profile id yet.
+    // never block on the network, and entries stay readable offline. Scope to
+    // the backend profile id when we have one (falls back to the default).
     // ponytail: session create only; posting turns to /chat/sessions/{id}/messages
-    // is a later ticket, and listing needs a backend profile id the app lacks.
+    // is a later ticket.
     void services.chat
-      .createSession({ title: headline })
+      .createSession({
+        title: headline,
+        profileId: useSessionStore.getState().session?.backendProfileId,
+      })
       .then(({ sessionId }) =>
         set((s) => ({
           entries: s.entries.map((e) => (e.id === id ? { ...e, sessionId } : e)),
@@ -147,8 +156,21 @@ export const useEntriesStore = create<EntriesState>()(
     return get().entries.find((e) => e.id === id);
   },
 
+  async refreshServerSessions() {
+    const profileId = useSessionStore.getState().session?.backendProfileId;
+    if (profileId == null) {
+      set({ serverSessions: [] });
+      return;
+    }
+    try {
+      set({ serverSessions: await services.chat.listSessions(profileId) });
+    } catch {
+      // Offline / transient: keep whatever we last loaded.
+    }
+  },
+
   resetForProfile() {
-    set({ entries: [] });
+    set({ entries: [], serverSessions: [] });
   },
     }),
     {

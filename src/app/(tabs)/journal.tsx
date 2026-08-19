@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ComposeCard } from '@/components/ComposeCard';
@@ -23,7 +23,14 @@ export default function JournalScreen() {
   const router = useRouter();
   const now = new Date();
   const entries = useEntriesStore((s) => s.entries);
+  const refreshServerSessions = useEntriesStore((s) => s.refreshServerSessions);
   const [filter, setFilter] = useState<string>('All');
+
+  // Pull the backend chat-session summaries for this profile when the journal
+  // opens (no-op until the survey submit has stashed a backend profile id).
+  useEffect(() => {
+    void refreshServerSessions();
+  }, [refreshServerSessions]);
 
   const shown = filter === 'All' ? entries : entries.filter((e) => e.type === filter);
 
