@@ -49,6 +49,16 @@ export default function SubscriptionScreen() {
   const [code, setCode] = useState('');
   const [redeemError, setRedeemError] = useState<string | null>(null);
   const [redeeming, setRedeeming] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+
+  const onRestore = async () => {
+    setRestoreError(null);
+    try {
+      setEntitlement(await services.subscription.restore());
+    } catch {
+      setRestoreError("We couldn't restore your purchases just now. Try again in a moment.");
+    }
+  };
 
   const onRedeem = async () => {
     const trimmed = code.trim();
@@ -99,11 +109,12 @@ export default function SubscriptionScreen() {
         ) : null}
       </Card>
 
-      <Button
-        label="Restore purchases"
-        variant="secondary"
-        onPress={async () => setEntitlement(await services.subscription.restore())}
-      />
+      <Button label="Restore purchases" variant="secondary" onPress={onRestore} />
+      {restoreError ? (
+        <Text variant="bodySmall" color="crisis" style={{ marginTop: spacing.xs }}>
+          {restoreError}
+        </Text>
+      ) : null}
 
       <Card>
         <Text variant="meta" color="textMuted">
