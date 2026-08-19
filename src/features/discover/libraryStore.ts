@@ -130,7 +130,9 @@ export const useLibraryStore = create<LibraryState>()(
             { id, title: t, author: a, source: 'own', spine: spineFor(s.myLibrary.length) },
           ],
         }));
-        const summary = await services.content.generateBookSummary(t, a);
+        // Rate-limited (rateLimited:true) leaves the book un-summarized; opening
+        // its detail re-requests, so no retry is needed here.
+        const { summary } = await services.content.generateBookSummary(t, a);
         if (summary) get().setSummary(id, summary);
       },
 

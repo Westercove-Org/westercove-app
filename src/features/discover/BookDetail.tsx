@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,6 +19,8 @@ const headerPhoto = require('../../../assets/images/westercove_wildflowers_purpl
 const COVER_TEXT = '#F6F1E7';
 const WAITING =
   'Your companion is writing a short summary for this book. It will appear here in a moment.';
+const THROTTLED =
+  'Your companion is caught up with summaries right now. Come back in a little while and this will be ready.';
 
 /** One book: its summary, the practices it offers, and whether it is shelved.
  *  Reached at `/book/:id` from Discover, the library, and search. */
@@ -42,11 +44,16 @@ export function BookDetail() {
   // A book the user added themselves arrives without a summary. Ask for one
   // once, and write it back so the shelf and the export both pick it up.
   const needsSummary = Boolean(book && isCustom && !book.summary);
+  const [throttled, setThrottled] = useState(false);
   useEffect(() => {
     if (!needsSummary || !book) return;
     let active = true;
-    services.content.generateBookSummary(book.title, book.author).then((s) => {
-      if (active && s) setSummary(book.id, s);
+    setThrottled(false);
+    // Single request, no retry: a 429 just shows a soft "try again shortly".
+    services.content.generateBookSummary(book.title, book.author).then(({ summary, rateLimited }) => {
+      if (!active) return;
+      if (summary) setSummary(book.id, summary);
+      else if (rateLimited) setThrottled(true);
     });
     return () => {
       active = false;
@@ -118,7 +125,7 @@ export function BookDetail() {
         </View>
 
         <Text variant="body" style={styles.summary}>
-          {book.summary ?? WAITING}
+          {book.summary ?? (throttled ? THROTTLED : WAITING)}
         </Text>
 
         {guidance.length > 0 ? (
