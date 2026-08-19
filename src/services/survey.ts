@@ -12,9 +12,27 @@ export interface SurveySubmitResult {
   profileId: number;
 }
 
+/** A profile's stored survey answers (QuietRoom `ProfileSurveyDataResponse`).
+ * `answers` is keyed by survey question id (e.g. `user_name`, `relationship`). */
+export interface ProfileSurveyData {
+  id: number;
+  displayName?: string;
+  answers: Record<string, string>;
+  generatedPrompt?: string;
+  promptStatus: 'pending' | 'ready' | 'failed';
+  promptError?: string;
+}
+
 export interface SurveyService {
   /** Submit the day-zero gate answers (partial allowed). */
   submitGate(answers: GateAnswers): Promise<SurveySubmitResult>;
+  /** Read a profile's stored survey answers (backs the What I Know page). */
+  getProfileAnswers(profileId: number): Promise<ProfileSurveyData>;
+  /** Merge answer edits into a profile; omitted keys are kept server-side. */
+  updateProfileAnswers(
+    profileId: number,
+    answers: Record<string, string>,
+  ): Promise<ProfileSurveyData>;
 }
 
 /**
@@ -75,4 +93,36 @@ export class ApiSurveyService implements SurveyService {
     });
     return { status: res.status, profileId: res.profile_id };
   }
+
+  async getProfileAnswers(profileId: number): Promise<ProfileSurveyData> {
+    return toProfileData(await apiClient.get(`/survey/profiles/${profileId}`));
+  }
+
+  async updateProfileAnswers(
+    profileId: number,
+    answers: Record<string, string>,
+  ): Promise<ProfileSurveyData> {
+    return toProfileData(
+      await apiClient.patch(`/survey/profiles/${profileId}/answers`, { answers }),
+    );
+  }
+}
+
+/** Map the backend `ProfileSurveyDataResponse` (snake_case) onto camelCase. */
+function toProfileData(r: {
+  id: number;
+  display_name?: string | null;
+  answers: Record<string, string>;
+  generated_prompt?: string | null;
+  prompt_status?: ProfileSurveyData['promptStatus'];
+  prompt_error?: string | null;
+}): ProfileSurveyData {
+  return {
+    id: r.id,
+    displayName: r.display_name ?? undefined,
+    answers: r.answers ?? {},
+    generatedPrompt: r.generated_prompt ?? undefined,
+    promptStatus: r.prompt_status ?? 'ready',
+    promptError: r.prompt_error ?? undefined,
+  };
 }

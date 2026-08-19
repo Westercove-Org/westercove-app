@@ -24,10 +24,16 @@ export function WhatIKnow() {
   const learned = useWhatIKnowStore((s) => s.learned);
   const unanswered = useWhatIKnowStore((s) => s.unanswered);
   const hydrate = useWhatIKnowStore((s) => s.hydrateFromSession);
+  const syncFromBackend = useWhatIKnowStore((s) => s.syncFromBackend);
 
   useEffect(() => {
     if (learned.length === 0) hydrate();
-  }, [learned.length, hydrate]);
+    // Pull the authoritative facts from the backend profile (no-op offline /
+    // before a profile id exists, leaving the local gate hydration in place).
+    void syncFromBackend();
+    // Mount only: a re-run on every learned change would clobber in-progress edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { scopedStorage } from '@/features/profile/activeProfile';
+import { services } from '@/services';
 
 export interface LearnedItem {
   id: string;
@@ -10,6 +11,32 @@ export interface LearnedItem {
   value: string;
   /** Where it came from: the gate, or silently from conversations. */
   source: 'gate' | 'conversation';
+  /** Backend survey question id, when this item mirrors a stored answer.
+   * Present → edits/deletes are persisted to the profile via the survey API. */
+  questionId?: string;
+}
+
+/** Nicer labels for the common survey question ids (kept consistent with the
+ * day-zero gate copy); everything else is humanized from its id. */
+const QUESTION_LABELS: Record<string, string> = {
+  user_name: 'What to call you',
+  full_name: 'Who you are grieving',
+  pet_name: 'Who you are grieving',
+  relationship: 'Your relationship',
+  pet_species: 'Kind of companion',
+  animal_species: 'Kind of companion',
+  pet_breed: 'Breed',
+  app_tone: 'How to be with you',
+};
+
+function labelForQuestion(id: string): string {
+  if (QUESTION_LABELS[id]) return QUESTION_LABELS[id];
+  const words = id.replace(/^pet_/, '').replace(/_/g, ' ').trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function backendProfileId(): number | undefined {
+  return useSessionStore.getState().session?.backendProfileId;
 }
 
 export interface UnansweredQuestion {
@@ -22,6 +49,10 @@ interface WhatIKnowState {
   unanswered: UnansweredQuestion[];
   /** Rebuild the learned list from the current session's gate answers + seeds. */
   hydrateFromSession: () => void;
+  /** Load the authoritative learned facts from the backend profile (survey
+   * answers). No-op when there is no backend profile id yet (offline / pre-submit),
+   * so the local gate hydration remains the fallback. */
+  syncFromBackend: () => Promise<void>;
   /** Append a line the companion learned from a cadence answer. */
   addLearnedLine: (line: string) => void;
   updateItem: (id: string, value: string) => void;
@@ -99,6 +130,30 @@ export const useWhatIKnowStore = create<WhatIKnowState>()(
         set({ learned: [...fromGate, ...(kept.length ? kept : SEED_CONVERSATION)] });
       },
 
+      async syncFromBackend() {
+        const profileId = backendProfileId();
+        if (profileId == null) return;
+        let data;
+        try {
+          data = await services.survey.getProfileAnswers(profileId);
+        } catch {
+          return; // offline / transient — keep the local view
+        }
+        // Backend answers are the authoritative "gate" facts; conversation items
+        // the person added locally are their own and survive the merge.
+        const fromBackend: LearnedItem[] = Object.entries(data.answers)
+          .filter(([, value]) => value.trim())
+          .map(([questionId, value]) => ({
+            id: `q-${questionId}`,
+            label: labelForQuestion(questionId),
+            value,
+            source: 'gate' as const,
+            questionId,
+          }));
+        const conversation = get().learned.filter((i) => i.source === 'conversation');
+        set({ learned: [...fromBackend, ...conversation] });
+      },
+
       addLearnedLine(line) {
         const trimmed = line.trim();
         if (!trimmed) return;
@@ -113,13 +168,31 @@ export const useWhatIKnowStore = create<WhatIKnowState>()(
       },
 
       updateItem(id, value) {
+        const item = get().learned.find((i) => i.id === id);
         set((s) => ({ learned: s.learned.map((i) => (i.id === id ? { ...i, value } : i)) }));
+        // Persist edits to backend-backed facts. Fire-and-forget: the page stays
+        // responsive and the local edit is authoritative for the session.
+        const profileId = backendProfileId();
+        if (item?.questionId && profileId != null) {
+          void services.survey
+            .updateProfileAnswers(profileId, { [item.questionId]: value })
+            .catch(() => {});
+        }
       },
 
       deleteItem(id) {
         // Deleting a learned fact removes it everywhere immediately; the companion
         // does not re-learn it without new confirmation.
+        const item = get().learned.find((i) => i.id === id);
         set((s) => ({ learned: s.learned.filter((i) => i.id !== id) }));
+        // Backend merge has no per-field delete, so clear the value server-side.
+        // ponytail: '' clears the answer; a true field-delete needs a backend endpoint.
+        const profileId = backendProfileId();
+        if (item?.questionId && profileId != null) {
+          void services.survey
+            .updateProfileAnswers(profileId, { [item.questionId]: '' })
+            .catch(() => {});
+        }
       },
     }),
     {
