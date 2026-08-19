@@ -4,6 +4,7 @@ import { ApiContentService, type ContentService } from './content';
 import { MockCrmService, type CrmService } from './crm';
 import { MockSafetyService, type SafetyService } from './safety';
 import { MockSubscriptionService, type SubscriptionService } from './subscription';
+import { ApiSurveyService, type SurveyService } from './survey';
 import { MockVoiceService, type VoiceService } from './voice';
 
 /**
@@ -19,6 +20,7 @@ export const services: {
   voice: VoiceService;
   content: ContentService;
   subscription: SubscriptionService;
+  survey: SurveyService;
 } = {
   safety: new MockSafetyService(),
   auth: new MockAuthService(),
@@ -27,6 +29,7 @@ export const services: {
   voice: new MockVoiceService(),
   content: new ApiContentService(),
   subscription: new MockSubscriptionService(),
+  survey: new ApiSurveyService(),
 };
 
 export * from './safety';
@@ -36,3 +39,4 @@ export * from './companion';
 export * from './voice';
 export * from './content';
 export * from './subscription';
+export * from './survey';

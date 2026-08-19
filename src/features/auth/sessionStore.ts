@@ -75,6 +75,10 @@ export const useSessionStore = create<SessionState>()(
         const s = get().session;
         if (!s) return;
         set({ session: { ...s, gateComplete: true, gateAnswers: answers } });
+        // Persist the (possibly partial) gate answers to the backend so the
+        // companion prompt can be generated. Fire-and-forget: onboarding never
+        // blocks on the network, and a failure here must not strand the user.
+        void services.survey.submitGate(answers).catch(() => {});
       },
 
       setEntitlement(entitlement) {
