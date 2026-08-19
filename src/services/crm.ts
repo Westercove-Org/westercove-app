@@ -1,3 +1,4 @@
+import { apiClient } from '@/lib/http';
 import type { Entitlement, EntryPath } from '@/features/auth/types';
 
 /**
@@ -30,5 +31,27 @@ export class MockCrmService implements CrmService {
   async updateEntitlement(email: string, entitlement: Entitlement): Promise<void> {
     const c = this.contacts.find((x) => x.email === email);
     if (c) c.entitlement = entitlement;
+  }
+}
+
+/**
+ * Real CRM over the shared `apiClient` (QuietRoom `/crm`). Only lifecycle facts
+ * cross this fence — never journal content, profile answers, or safety data.
+ * `synced: false` is a normal outcome (CRM down / not configured), not an error,
+ * so callers always fire-and-forget and never surface a failure to the user.
+ */
+export class ApiCrmService implements CrmService {
+  async createContact(contact: CrmContact): Promise<void> {
+    await apiClient.post<{ synced: boolean }>('/crm/contact', {
+      email: contact.email,
+      first_name: contact.firstName,
+      entry_path: contact.entryPath,
+      entitlement: contact.entitlement,
+      sponsor_organization: contact.sponsorOrganization,
+    });
+  }
+
+  async updateEntitlement(email: string, entitlement: Entitlement): Promise<void> {
+    await apiClient.patch<{ synced: boolean }>('/crm/contact/entitlement', { email, entitlement });
   }
 }
