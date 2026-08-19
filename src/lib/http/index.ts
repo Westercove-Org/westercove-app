@@ -1,4 +1,3 @@
-import { useSessionStore } from '@/features/auth/sessionStore';
 import { clearAuthToken, getAuthToken } from './authToken';
 import { HttpClient } from './client';
 import { API_BASE_URL } from './config';
@@ -14,6 +13,9 @@ export const apiClient = new HttpClient({
   getToken: getAuthToken,
   async onUnauthorized() {
     await clearAuthToken();
+    // Lazy require breaks the module-init cycle: sessionStore → services →
+    // chat/survey → this client. Only needed at 401 time, never at load.
+    const { useSessionStore } = require('@/features/auth/sessionStore');
     useSessionStore.getState().signOut();
     return false;
   },

@@ -18,4 +18,6 @@ export interface Entry {
   justHeard?: boolean;
   /** Highest safety level seen on this entry (1 Normal … 4 Critical). */
   safetyLevel: number;
+  /** Backend chat-session id, once the session has been created for this entry. */
+  sessionId?: number;
 }
