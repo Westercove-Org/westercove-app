@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
+
 import { StackScreen } from '@/components/StackScreen';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { services } from '@/services';
+import { services, type SubscriptionStatus } from '@/services';
 
 const LABELS: Record<string, string> = {
   trial_active: 'Free trial',
@@ -16,9 +18,28 @@ const LABELS: Record<string, string> = {
 /** Subscription. Plain trial-end statement (date + price), no countdown, no
  * discount pressure, no guilt. Crisis resources work in every state. */
 export default function SubscriptionScreen() {
-  const entitlement = useSessionStore((s) => s.session?.entitlement ?? 'trial_active');
+  const sessionEntitlement = useSessionStore((s) => s.session?.entitlement ?? 'trial_active');
   const setEntitlement = useSessionStore((s) => s.setEntitlement);
-  const status = services.subscription.getStatus(entitlement);
+  const [status, setStatus] = useState<SubscriptionStatus | null>(null);
+
+  // Load the authoritative status from the backend; keep the session entitlement
+  // in sync so the rest of the app reflects it.
+  useEffect(() => {
+    let live = true;
+    services.subscription
+      .getStatus()
+      .then((s) => {
+        if (!live) return;
+        setStatus(s);
+        setEntitlement(s.entitlement);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [setEntitlement]);
+
+  const entitlement = status?.entitlement ?? sessionEntitlement;
 
   return (
     <StackScreen title="Subscription">
@@ -29,16 +50,16 @@ export default function SubscriptionScreen() {
         <Text variant="cardTitle" style={{ marginTop: 4 }}>
           {LABELS[entitlement] ?? entitlement}
         </Text>
-        {status.trialEndsOn ? (
+        {status?.trialEndsOn ? (
           <Text variant="body" color="textMuted" style={{ marginTop: 8 }}>
             Your trial ends on {status.trialEndsOn}. When it does, it is{' '}
             {status.price}. Nothing is charged without your say.
           </Text>
-        ) : (
+        ) : status ? (
           <Text variant="body" color="textMuted" style={{ marginTop: 8 }}>
             {status.price}. You can change or step away anytime.
           </Text>
-        )}
+        ) : null}
       </Card>
 
       <Button

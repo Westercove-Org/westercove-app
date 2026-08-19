@@ -15,7 +15,8 @@ export default function AccountScreen() {
   const [confirming, setConfirming] = useState(false);
 
   const onDelete = async () => {
-    const { deletesOn } = await services.subscription.scheduleDeletion();
+    // Backend requires the account email as an explicit confirmation.
+    const { deletesOn } = await services.subscription.scheduleDeletion(email ?? '');
     setDeletesOn(deletesOn);
     setConfirming(false);
   };
