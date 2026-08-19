@@ -78,7 +78,15 @@ export const useSessionStore = create<SessionState>()(
         // Persist the (possibly partial) gate answers to the backend so the
         // companion prompt can be generated. Fire-and-forget: onboarding never
         // blocks on the network, and a failure here must not strand the user.
-        void services.survey.submitGate(answers).catch(() => {});
+        // Stash the returned backend profile id so chat-session calls can scope
+        // to this companion (patch onto the current session if it's still live).
+        void services.survey
+          .submitGate(answers)
+          .then(({ profileId }) => {
+            const cur = get().session;
+            if (cur) set({ session: { ...cur, backendProfileId: profileId } });
+          })
+          .catch(() => {});
       },
 
       setEntitlement(entitlement) {

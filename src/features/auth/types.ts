@@ -42,4 +42,7 @@ export interface Session {
   gateAnswers: GateAnswers;
   /** Full name as it should appear on the downloaded journal (Profile). */
   fullName?: string;
+  /** Backend survey profile id, returned by `POST /survey/submit` and used to
+   * scope chat-session calls (create/list) to this companion. */
+  backendProfileId?: number;
 }
