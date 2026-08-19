@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { CheckIcon, PadlockIcon, PlusIcon } from '@/components/icons';
@@ -138,7 +138,10 @@ function OwnBookRow({
         </Text>
       ) : null}
       <Text variant="body" numberOfLines={2} style={styles.ownSummary}>
-        {book.summary ?? 'Your companion is writing a short summary for this book.'}
+        {book.summary ??
+          (book.enrichmentStatus === 'pending' || book.enrichmentStatus === 'researching'
+            ? 'Your companion is still researching this book.'
+            : 'Your companion is writing a short summary for this book.')}
       </Text>
       <View style={styles.ownActions}>
         <Pressable accessibilityRole="button" onPress={onOpen} hitSlop={8}>
@@ -172,6 +175,12 @@ export default function DiscoverScreen() {
   const addAll = useLibraryStore((s) => s.addAll);
   const addOwnBook = useLibraryStore((s) => s.addOwnBook);
   const removeFromLibrary = useLibraryStore((s) => s.removeFromLibrary);
+  const syncServerBooks = useLibraryStore((s) => s.syncServerBooks);
+
+  // Pull server-side enrichment (summaries + status) for shelved books on open.
+  useEffect(() => {
+    void syncServerBooks();
+  }, [syncServerBooks]);
 
   const recommended = recommendedFor(mode);
   const openBook = (id: string) => router.push({ pathname: '/book/[id]', params: { id } });
