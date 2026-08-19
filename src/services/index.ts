@@ -1,6 +1,7 @@
 import { MockAuthService, type AuthService } from './auth';
 import { ApiChatSessionService, type ChatSessionService } from './chat';
 import { ApiCompanionService, type CompanionService } from './companion';
+import { ApiLibraryService, type LibraryService } from './library';
 import { ApiContentService, type ContentService } from './content';
 import { ApiCrmService, type CrmService } from './crm';
 import { MockSafetyService, type SafetyService } from './safety';
@@ -23,6 +24,7 @@ export const services: {
   subscription: SubscriptionService;
   chat: ChatSessionService;
   survey: SurveyService;
+  library: LibraryService;
 } = {
   safety: new MockSafetyService(),
   auth: new MockAuthService(),
@@ -33,9 +35,11 @@ export const services: {
   subscription: new ApiSubscriptionService(),
   chat: new ApiChatSessionService(),
   survey: new ApiSurveyService(),
+  library: new ApiLibraryService(),
 };
 
 export * from './chat';
+export * from './library';
 export * from './safety';
 export * from './auth';
 export * from './crm';

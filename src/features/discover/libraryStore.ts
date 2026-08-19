@@ -11,7 +11,9 @@ import {
 } from '@/constants/books';
 import type { CompanionLibraryBook } from '@/services/companionPrompt';
 import { scopedStorage } from '@/features/profile/activeProfile';
+import { useSessionStore } from '@/features/auth/sessionStore';
 import { services } from '@/services';
+import type { EnrichmentStatus } from '@/services/library';
 
 export interface LibraryBook {
   id: string;
@@ -31,11 +33,20 @@ export interface LibraryBook {
   status?: string;
   /** Who is reading it, for shared accounts. */
   reader?: string;
+  /** Backend `UserBook.id`, once the book is persisted on the profile's shelf.
+   * Present → summary/enrichment can be read from the server. */
+  backendId?: number;
+  /** Latest backend enrichment status, for the inline "still researching" hint. */
+  enrichmentStatus?: EnrichmentStatus;
 }
 
 /** Rotating cover colors from the grief palette. */
 const SPINES = ['#2F6B33', '#3D2F5E', '#1F4D22', '#26114E', '#0E5F18'];
 const spineFor = (i: number) => SPINES[i % SPINES.length];
+
+function backendProfileId(): number | undefined {
+  return useSessionStore.getState().session?.backendProfileId;
+}
 
 /** A catalog book as the library stores it. */
 export function fromCatalog(b: Book): LibraryBook {
@@ -90,6 +101,12 @@ interface LibraryState {
   removeFromLibrary: (id: string) => void;
   /** Fill in a summary once the companion has written one. */
   setSummary: (id: string, summary: string) => void;
+  /** Pull the profile's server shelf and merge enrichment (summary + status)
+   * onto matching own-books. No-op without a backend profile id. */
+  syncServerBooks: () => Promise<void>;
+  /** Refresh one book's enrichment from the server; returns its status so the
+   * caller can decide whether to poll again ("still researching"). */
+  refreshBookSummary: (id: string) => Promise<EnrichmentStatus | null>;
   inLibrary: (id: string) => boolean;
   /** Reset the user's library for a new test profile. */
   resetForProfile: () => void;
@@ -130,14 +147,87 @@ export const useLibraryStore = create<LibraryState>()(
             { id, title: t, author: a, source: 'own', spine: spineFor(s.myLibrary.length) },
           ],
         }));
+        // Persist to the profile's server shelf when we have a backend profile
+        // id, and keep its backend id + enrichment status so the summary can be
+        // read/polled later. Best-effort: shelving locally already succeeded.
+        const profileId = backendProfileId();
+        if (profileId != null) {
+          try {
+            const book = await services.library.addBook({
+              profileId,
+              title: t,
+              authors: a ? [a] : [],
+            });
+            set((s) => ({
+              myLibrary: s.myLibrary.map((b) =>
+                b.id === id
+                  ? { ...b, backendId: book.id, enrichmentStatus: book.enrichment?.status }
+                  : b,
+              ),
+            }));
+            if (book.enrichment?.summary) get().setSummary(id, book.enrichment.summary);
+            return; // server shelf drives the summary from here (enrichment)
+          } catch {
+            // fall through to the on-demand companion summary
+          }
+        }
         // Rate-limited (rateLimited:true) leaves the book un-summarized; opening
         // its detail re-requests, so no retry is needed here.
         const { summary } = await services.content.generateBookSummary(t, a);
         if (summary) get().setSummary(id, summary);
       },
 
+      async syncServerBooks() {
+        const profileId = backendProfileId();
+        if (profileId == null) return;
+        let books;
+        try {
+          books = await services.library.listBooks(profileId);
+        } catch {
+          return;
+        }
+        // Match server books to local own-books by backend id and merge in the
+        // enrichment (summary once ready, plus the status for the inline hint).
+        set((s) => ({
+          myLibrary: s.myLibrary.map((b) => {
+            const match = b.backendId != null ? books.find((x) => x.id === b.backendId) : undefined;
+            if (!match) return b;
+            return {
+              ...b,
+              enrichmentStatus: match.enrichment?.status ?? b.enrichmentStatus,
+              summary: match.enrichment?.summary ?? b.summary,
+            };
+          }),
+        }));
+      },
+
+      async refreshBookSummary(id) {
+        const book = get().myLibrary.find((b) => b.id === id);
+        if (!book?.backendId) return null;
+        let enrichment;
+        try {
+          enrichment = await services.library.getBookSummary(book.backendId);
+        } catch {
+          return null;
+        }
+        set((s) => ({
+          myLibrary: s.myLibrary.map((b) =>
+            b.id === id
+              ? { ...b, enrichmentStatus: enrichment.status, summary: enrichment.summary ?? b.summary }
+              : b,
+          ),
+        }));
+        return enrichment.status;
+      },
+
       removeFromLibrary(id) {
+        const book = get().myLibrary.find((b) => b.id === id);
         set((s) => ({ myLibrary: s.myLibrary.filter((b) => b.id !== id) }));
+        // Also drop it from the profile's server shelf; fire-and-forget so the
+        // local removal is instant and never blocked by the network.
+        if (book?.backendId != null) {
+          void services.library.removeBook(book.backendId).catch(() => {});
+        }
       },
 
       setSummary(id, summary) {

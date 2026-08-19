@@ -21,6 +21,8 @@ const WAITING =
   'Your companion is writing a short summary for this book. It will appear here in a moment.';
 const THROTTLED =
   'Your companion is caught up with summaries right now. Come back in a little while and this will be ready.';
+const RESEARCHING =
+  'Your companion is still researching this book. It will fill in here once the summary is ready.';
 
 /** One book: its summary, the practices it offers, and whether it is shelved.
  *  Reached at `/book/:id` from Discover, the library, and search. */
@@ -34,6 +36,7 @@ export function BookDetail() {
   const addToLibrary = useLibraryStore((s) => s.addToLibrary);
   const removeFromLibrary = useLibraryStore((s) => s.removeFromLibrary);
   const setSummary = useLibraryStore((s) => s.setSummary);
+  const refreshBookSummary = useLibraryStore((s) => s.refreshBookSummary);
 
   const shelved = myLibrary.find((b) => b.id === id);
   const catalogBook = BOOKS.find((b) => b.id === id);
@@ -44,21 +47,51 @@ export function BookDetail() {
   // A book the user added themselves arrives without a summary. Ask for one
   // once, and write it back so the shelf and the export both pick it up.
   const needsSummary = Boolean(book && isCustom && !book.summary);
+  const backendId = book?.backendId;
   const [throttled, setThrottled] = useState(false);
+  const [researching, setResearching] = useState(false);
+
+  const generateOnDemand = async (title: string, author: string, bookId: string) => {
+    const { summary, rateLimited } = await services.content.generateBookSummary(title, author);
+    if (summary) setSummary(bookId, summary);
+    else if (rateLimited) setThrottled(true);
+  };
+
   useEffect(() => {
     if (!needsSummary || !book) return;
     let active = true;
+    let timer: ReturnType<typeof setTimeout>;
     setThrottled(false);
-    // Single request, no retry: a 429 just shows a soft "try again shortly".
-    services.content.generateBookSummary(book.title, book.author).then(({ summary, rateLimited }) => {
-      if (!active) return;
-      if (summary) setSummary(book.id, summary);
-      else if (rateLimited) setThrottled(true);
-    });
+    setResearching(false);
+
+    if (backendId != null) {
+      // Server-backed: poll the enrichment, bounded (max 4 tries, 6s apart) so a
+      // "still researching" book fills in without a retry-storm.
+      let attempts = 0;
+      const poll = async () => {
+        const status = await refreshBookSummary(book.id);
+        if (!active) return;
+        if (status === 'pending' || status === 'researching') {
+          setResearching(true);
+          if (++attempts < 4) timer = setTimeout(poll, 6000);
+        } else {
+          setResearching(false);
+          // approved / needs_review already wrote the summary; failed → fall back.
+          if (status === 'failed') void generateOnDemand(book.title, book.author, book.id);
+        }
+      };
+      void poll();
+    } else {
+      // No backend id (offline / pre-profile): single on-demand request, no retry.
+      void generateOnDemand(book.title, book.author, book.id);
+    }
+
     return () => {
       active = false;
+      clearTimeout(timer);
     };
-  }, [needsSummary, book, setSummary]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsSummary, book?.id, backendId]);
 
   if (!book) {
     return (
@@ -125,7 +158,7 @@ export function BookDetail() {
         </View>
 
         <Text variant="body" style={styles.summary}>
-          {book.summary ?? (throttled ? THROTTLED : WAITING)}
+          {book.summary ?? (researching ? RESEARCHING : throttled ? THROTTLED : WAITING)}
         </Text>
 
         {guidance.length > 0 ? (
