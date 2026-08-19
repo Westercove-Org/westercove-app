@@ -98,6 +98,23 @@ export const useEntriesStore = create<EntriesState>()(
       safetyLevel: level,
     };
     set((s) => ({ entries: [entry, ...s.entries] }));
+
+    // Create the backend chat session that will back this entry, and stamp its
+    // id onto the entry once it returns. Fire-and-forget: writing an entry must
+    // never block on the network, and entries stay readable offline. profile_id
+    // is omitted for now (backend uses the default profile) — the app has no
+    // persisted backend profile id yet.
+    // ponytail: session create only; posting turns to /chat/sessions/{id}/messages
+    // is a later ticket, and listing needs a backend profile id the app lacks.
+    void services.chat
+      .createSession({ title: headline })
+      .then(({ sessionId }) =>
+        set((s) => ({
+          entries: s.entries.map((e) => (e.id === id ? { ...e, sessionId } : e)),
+        })),
+      )
+      .catch(() => {});
+
     return { id, level };
   },
 

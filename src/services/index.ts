@@ -1,4 +1,5 @@
 import { MockAuthService, type AuthService } from './auth';
+import { ApiChatSessionService, type ChatSessionService } from './chat';
 import { ApiCompanionService, type CompanionService } from './companion';
 import { ApiContentService, type ContentService } from './content';
 import { MockCrmService, type CrmService } from './crm';
@@ -19,6 +20,7 @@ export const services: {
   voice: VoiceService;
   content: ContentService;
   subscription: SubscriptionService;
+  chat: ChatSessionService;
 } = {
   safety: new MockSafetyService(),
   auth: new MockAuthService(),
@@ -27,8 +29,10 @@ export const services: {
   voice: new MockVoiceService(),
   content: new ApiContentService(),
   subscription: new MockSubscriptionService(),
+  chat: new ApiChatSessionService(),
 };
 
+export * from './chat';
 export * from './safety';
 export * from './auth';
 export * from './crm';
