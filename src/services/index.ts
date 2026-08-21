@@ -1,4 +1,4 @@
-import { MockAuthService, type AuthService } from './auth';
+import { CognitoAuthService, type AuthService } from './auth';
 import { ApiChatSessionService, type ChatSessionService } from './chat';
 import { ApiCompanionService, type CompanionService } from './companion';
 import { ApiLibraryService, type LibraryService } from './library';
@@ -27,7 +27,7 @@ export const services: {
   library: LibraryService;
 } = {
   safety: new MockSafetyService(),
-  auth: new MockAuthService(),
+  auth: new CognitoAuthService(),
   crm: new ApiCrmService(),
   companion: new ApiCompanionService(),
   voice: new MockVoiceService(),

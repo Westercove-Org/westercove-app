@@ -8,43 +8,63 @@ import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { resolveDemoProfile } from '@/features/profile/demoProfiles';
-import { useProfilesStore } from '@/features/profile/profilesStore';
+import { AuthError, NewPasswordRequiredError } from '@/services';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
 const heroImage = require('../../../assets/images/westercove_hero_valley.jpg');
 
+/** Sign-in with real Cognito SRP. Invited users hit a NEW_PASSWORD_REQUIRED
+ * challenge on first login, which flips this screen into "set a password". */
 export default function SignInScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const signIn = useSessionStore((s) => s.signIn);
-  const setFullName = useSessionStore((s) => s.setFullName);
-  const signInAs = useProfilesStore((s) => s.signInAs);
-  const [name, setName] = useState('');
+  const completeNewPassword = useSessionStore((s) => s.completeNewPassword);
+
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [needsNewPassword, setNeedsNewPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = name.trim().length > 0 && password.length > 0;
+  const canSignIn = email.trim().length > 0 && password.length > 0;
+  const canSetPassword = newPassword.length >= 8;
+
+  const messageFor = (e: unknown) =>
+    e instanceof AuthError ? e.message : copy.signIn.genericError;
 
   const onSignIn = async () => {
-    if (!canSubmit || busy) return;
-    // Sign-in is by test-profile name: it resumes that person's saved data, so
-    // an unrecognized name must not silently open someone else's profile.
-    const profile = resolveDemoProfile(name);
-    if (!profile) {
-      setError(copy.signIn.unknownName);
-      return;
-    }
+    if (!canSignIn || busy) return;
     setError(null);
     setBusy(true);
-    await signInAs(profile);
-    await signIn(profile.name, password);
-    setFullName(profile.fullName);
-    // Guard redirects to the tab shell once the session is ready.
+    try {
+      await signIn(email.trim(), password);
+      // Guard redirects to the tab shell once the session is ready.
+    } catch (e) {
+      if (e instanceof NewPasswordRequiredError) {
+        setNeedsNewPassword(true);
+      } else {
+        setError(messageFor(e));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onSetPassword = async () => {
+    if (!canSetPassword || busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await completeNewPassword(email.trim(), newPassword);
+    } catch (e) {
+      setError(messageFor(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -52,7 +72,7 @@ export default function SignInScreen() {
       <HeroHeader
         variant="compact"
         title={copy.signIn.title}
-        subtitle={copy.signIn.subtitle}
+        subtitle={needsNewPassword ? copy.signIn.newPasswordSubtitle : copy.signIn.subtitle}
         image={heroImage}
       />
       <ScrollView contentContainerStyle={styles.form}>
@@ -61,11 +81,14 @@ export default function SignInScreen() {
           <View style={[styles.inputBox, { borderColor: colors.line }]}>
             <PersonIcon size={18} color={colors.textMuted} />
             <TextInput
-              value={name}
-              onChangeText={setName}
+              value={email}
+              onChangeText={setEmail}
+              editable={!needsNewPassword}
               placeholder={copy.signIn.emailPlaceholder}
               placeholderTextColor={colors.textMuted}
-              autoCapitalize="words"
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
               accessibilityLabel={copy.signIn.email}
               style={[styles.input, { color: colors.textPrimary }]}
             />
@@ -73,16 +96,23 @@ export default function SignInScreen() {
         </View>
 
         <View style={styles.fieldBlock}>
-          <Text variant="cardTitle">{copy.signIn.password}</Text>
+          <Text variant="cardTitle">
+            {needsNewPassword ? copy.signIn.newPassword : copy.signIn.password}
+          </Text>
           <View style={[styles.inputBox, { borderColor: colors.line }]}>
             <PadlockIcon size={18} color={colors.textMuted} />
             <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={copy.signIn.passwordPlaceholder}
+              value={needsNewPassword ? newPassword : password}
+              onChangeText={needsNewPassword ? setNewPassword : setPassword}
+              placeholder={
+                needsNewPassword
+                  ? copy.signIn.newPasswordPlaceholder
+                  : copy.signIn.passwordPlaceholder
+              }
               placeholderTextColor={colors.textMuted}
               secureTextEntry={!showPw}
-              accessibilityLabel={copy.signIn.password}
+              autoCapitalize="none"
+              accessibilityLabel={needsNewPassword ? copy.signIn.newPassword : copy.signIn.password}
               style={[styles.input, { color: colors.textPrimary }]}
             />
             <Pressable
@@ -98,25 +128,12 @@ export default function SignInScreen() {
               )}
             </Pressable>
           </View>
+          {needsNewPassword ? (
+            <Text variant="bodySmall" color="textMuted">
+              {copy.signIn.newPasswordHint}
+            </Text>
+          ) : null}
         </View>
-
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityState={{ checked: remember }}
-          accessibilityLabel={copy.signIn.saveEmail}
-          onPress={() => setRemember((v) => !v)}
-          style={styles.saveRow}
-        >
-          <View
-            style={[
-              styles.switch,
-              { backgroundColor: remember ? colors.forest : colors.line },
-            ]}
-          >
-            <View style={[styles.knob, remember && styles.knobOn]} />
-          </View>
-          <Text variant="cardTitle">{copy.signIn.saveEmail}</Text>
-        </Pressable>
 
         {error ? (
           <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
@@ -124,38 +141,45 @@ export default function SignInScreen() {
           </Text>
         ) : null}
 
-        <Button
-          label={copy.signIn.signIn}
-          variant="amethyst"
-          loading={busy}
-          disabled={!canSubmit}
-          onPress={onSignIn}
-        />
+        {needsNewPassword ? (
+          <Button
+            label={copy.signIn.setPassword}
+            variant="amethyst"
+            loading={busy}
+            disabled={!canSetPassword}
+            onPress={onSetPassword}
+          />
+        ) : (
+          <>
+            <Button
+              label={copy.signIn.signIn}
+              variant="amethyst"
+              loading={busy}
+              disabled={!canSignIn}
+              onPress={onSignIn}
+            />
+            <Pressable
+              accessibilityRole="button"
+              style={styles.center}
+              onPress={() => router.push('/forgot-password' as never)}
+            >
+              <Text variant="bodySmall" color="textMuted">
+                {copy.signIn.forgot}
+              </Text>
+            </Pressable>
 
-        {/* No password to recover yet: the demo signs in on a name, so this
-            follows the same path rather than sitting dead under the finger. */}
-        <Pressable accessibilityRole="button" style={styles.center} onPress={onSignIn}>
-          <Text variant="bodySmall" color="textMuted">
-            {copy.signIn.forgot}
-          </Text>
-        </Pressable>
-
-        <View style={styles.divider}>
-          <View style={[styles.line, { backgroundColor: colors.line }]} />
-          <Text variant="bodySmall" color="textMuted">
-            {copy.signIn.newHere}
-          </Text>
-          <View style={[styles.line, { backgroundColor: colors.line }]} />
-        </View>
-
-        <Button
-          label={copy.signIn.create}
-          variant="secondary"
-          onPress={() => router.push('/entry-path')}
-        />
-        <Text variant="bodySmall" color="textMuted" style={styles.center}>
-          {copy.signIn.createHint}
-        </Text>
+            <View style={styles.divider}>
+              <View style={[styles.line, { backgroundColor: colors.line }]} />
+              <Text variant="bodySmall" color="textMuted">
+                {copy.signIn.newHere}
+              </Text>
+              <View style={[styles.line, { backgroundColor: colors.line }]} />
+            </View>
+            <Text variant="bodySmall" color="textMuted" style={styles.center}>
+              {copy.signIn.inviteOnly}
+            </Text>
+          </>
+        )}
 
         <Pressable
           accessibilityRole="button"
@@ -185,10 +209,6 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   input: { flex: 1, fontSize: 15, minHeight: 48 },
-  saveRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 44 },
-  switch: { width: 48, height: 28, borderRadius: 14, padding: 2, justifyContent: 'center' },
-  knob: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFFFFF' },
-  knobOn: { alignSelf: 'flex-end' },
   center: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   line: { flex: 1, height: 1 },

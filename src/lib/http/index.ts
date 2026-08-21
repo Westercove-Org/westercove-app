@@ -12,9 +12,17 @@ export const apiClient = new HttpClient({
   baseUrl: API_BASE_URL,
   getToken: getAuthToken,
   async onUnauthorized() {
-    await clearAuthToken();
-    // Lazy require breaks the module-init cycle: sessionStore → services →
+    // Lazy require breaks the module-init cycle: sessionStore/services →
     // chat/survey → this client. Only needed at 401 time, never at load.
+    const { services } = require('@/services');
+    try {
+      // Silent refresh: exchange the stored refresh token for a fresh access
+      // token and have the failed request retried transparently.
+      if (await services.auth.refresh()) return true;
+    } catch {
+      // fall through to sign-out
+    }
+    await clearAuthToken();
     const { useSessionStore } = require('@/features/auth/sessionStore');
     useSessionStore.getState().signOut();
     return false;

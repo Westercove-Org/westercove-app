@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
-import type { CreateAccountInput } from '@/services/auth';
+import type { AuthResult, CreateAccountInput } from '@/services/auth';
 import type { Entitlement, GateAnswers, Session } from './types';
 
 export type SessionStatus = 'unauthenticated' | 'needs-gate' | 'ready';
@@ -12,6 +12,8 @@ interface SessionState {
   hydrated: boolean;
   session: Session | null;
   signIn: (email: string, password: string) => Promise<void>;
+  /** Finish an invited user's first login by setting a permanent password. */
+  completeNewPassword: (email: string, newPassword: string) => Promise<void>;
   beginAccount: (input: CreateAccountInput) => Promise<void>;
   completeGate: (answers: GateAnswers) => void;
   setEntitlement: (entitlement: Entitlement, sponsorOrganization?: string) => void;
@@ -26,6 +28,19 @@ interface SessionState {
 
 const emptyGate: GateAnswers = { mode: 'human', skipped: [] };
 
+/** A fresh, signed-in-but-not-yet-onboarded session from an auth result. */
+function sessionFrom(result: AuthResult): Session {
+  return {
+    user: result.user,
+    entryPath: result.entryPath,
+    entitlement: result.entitlement,
+    sponsorOrganization: result.sponsorOrganization,
+    disclaimerAcked: true,
+    gateComplete: false,
+    gateAnswers: emptyGate,
+  };
+}
+
 export const useSessionStore = create<SessionState>()(
   persist(
     (set, get) => ({
@@ -33,19 +48,14 @@ export const useSessionStore = create<SessionState>()(
       session: null,
 
       async signIn(email, password) {
-        const result = await services.auth.signIn(email, password);
-        // The demo runs onboarding after sign-in, so land in the day-zero gate.
-        set({
-          session: {
-            user: result.user,
-            entryPath: result.entryPath,
-            entitlement: result.entitlement,
-            sponsorOrganization: result.sponsorOrganization,
-            disclaimerAcked: true,
-            gateComplete: false,
-            gateAnswers: emptyGate,
-          },
-        });
+        // Throws NewPasswordRequiredError on a first login; the sign-in screen
+        // catches it and collects a permanent password, then calls
+        // completeNewPassword below.
+        set({ session: sessionFrom(await services.auth.signIn(email, password)) });
+      },
+
+      async completeNewPassword(email, newPassword) {
+        set({ session: sessionFrom(await services.auth.completeNewPassword(email, newPassword)) });
       },
 
       async beginAccount(input) {
@@ -120,6 +130,9 @@ export const useSessionStore = create<SessionState>()(
       },
 
       signOut() {
+        // Clear the Cognito tokens (access + refresh) too; fire-and-forget so
+        // sign-out is instant and never blocked on storage.
+        void services.auth.signOut().catch(() => {});
         set({ session: null });
       },
 
