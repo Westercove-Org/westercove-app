@@ -17,6 +17,8 @@ export default function AuthLayout() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
+          animation: 'fade',
+          animationDuration: 350,
         }}
       />
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">

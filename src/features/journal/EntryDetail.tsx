@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
 import { GentleQuestionCard } from '@/components/GentleQuestionCard';
-import { ChevronRightIcon, DownloadIcon, SendIcon } from '@/components/icons';
+import { ChevronRightIcon, DownloadIcon, MicIcon, SendIcon } from '@/components/icons';
 import { Card } from '@/components/ui/Card';
 import { EntryTag } from '@/components/ui/EntryTag';
 import { Text } from '@/components/ui/Text';
@@ -14,6 +14,7 @@ import { InlineResourceCard } from '@/features/safety/InlineResourceCard';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionTimer } from '@/features/questions/useQuestionTimer';
 import { formatEntryTimestamp } from '@/lib/dateFormat';
+import { services } from '@/services';
 import { SafetyLevel } from '@/services/safety';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
@@ -29,6 +30,8 @@ export function EntryDetail() {
 
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
 
   // Accumulate talk-time while this conversation screen is focused.
   useQuestionTimer();
@@ -42,6 +45,21 @@ export function EntryDetail() {
       </View>
     );
   }
+
+  const onMic = async () => {
+    setListening(true);
+    setMicError(null);
+    try {
+      const transcript = await services.voice.capture();
+      setText((t) => (t ? `${t} ${transcript}` : transcript));
+    } catch {
+      // A denied mic permission (or a failing real voice impl) rejects here;
+      // tell the user rather than letting the rejection go unhandled.
+      setMicError('Could not capture audio. Check microphone access and try again.');
+    } finally {
+      setListening(false);
+    }
+  };
 
   const onContinue = async () => {
     if (!text.trim() || busy) return;
@@ -94,7 +112,7 @@ export function EntryDetail() {
               {t.text}
             </Text>
           ) : (
-            <Card key={t.id} reflective style={styles.companionTurn}>
+            <Card key={t.id} reflective>
               <Text variant="meta" color="amethystText" style={styles.companionLabel}>
                 WESTERCOVE
               </Text>
@@ -105,12 +123,33 @@ export function EntryDetail() {
           ),
         )}
 
+        {/* A companion reply is being written. Saying so in the thread keeps the
+            wait from reading as silence. */}
+        {busy ? (
+          <Card reflective>
+            <Text variant="body" color="amethystText">
+              Thinking with you…
+            </Text>
+          </Card>
+        ) : null}
+
         {entry.safetyLevel === SafetyLevel.Elevated ? <InlineResourceCard /> : null}
 
         {/* The same gentle question Home offers: writing here is exactly when a
             person is most likely to have an answer for it. */}
         <GentleQuestionCard />
       </ScrollView>
+
+      {micError ? (
+        <Text
+          variant="bodySmall"
+          color="textMuted"
+          accessibilityRole="alert"
+          style={styles.micError}
+        >
+          {micError}
+        </Text>
+      ) : null}
 
       <View style={styles.composeRow}>
         <TextInput
@@ -125,6 +164,19 @@ export function EntryDetail() {
             { color: colors.textPrimary, backgroundColor: colors.surfaceAlt },
           ]}
         />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={listening ? 'Listening' : 'Speak'}
+          disabled={listening}
+          onPress={onMic}
+          style={[
+            styles.send,
+            { backgroundColor: colors.forest },
+            listening && { opacity: 0.6 },
+          ]}
+        >
+          <MicIcon size={22} color={colors.onAccent} />
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Send"
@@ -175,8 +227,8 @@ const styles = StyleSheet.create({
   downloadText: { textTransform: 'none' },
   thread: { paddingHorizontal: spacing.screen, paddingTop: spacing.md, gap: spacing.md, paddingBottom: spacing.lg },
   userTurn: {},
-  companionTurn: {},
   companionLabel: { marginBottom: spacing.xs, letterSpacing: 0.6 },
+  micError: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xs },
   composeRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',

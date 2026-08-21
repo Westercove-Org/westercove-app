@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
 import { ChevronRightIcon, PauseIcon, PlayIcon, ResetIcon } from '@/components/icons';
+import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
 import { ESSAYS } from '@/constants/essays';
 import { useTheme } from '@/theme';
@@ -18,6 +19,10 @@ const headerPhoto = require('../../../assets/images/westercove_meadow_white.jpg'
 // grounded tone rather than the bright default TTS voice.
 const SPEECH_RATE = 0.8;
 const SPEECH_PITCH = 0.9;
+// Listening speeds, as multipliers of the calm base rate above. 1x is the
+// unhurried default; the others are there for people who want to move faster or
+// slower, not to make the base voice brisk.
+const SPEEDS = [0.75, 1, 1.25, 1.5] as const;
 // Warm, natural-sounding English voices, softest first. First match among the
 // device's installed voices wins; the OS default is the last resort.
 const PREFERRED_VOICES = [
@@ -91,6 +96,9 @@ export function EssayDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const essay = ESSAYS.find((e) => e.id === id);
   const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState<number>(1);
+  // The live speed, read inside speakFrom's callbacks without re-creating them.
+  const speedRef = useRef(1);
   // Absolute char offset (into the full body) of the word currently spoken;
   // -1 when idle/finished.
   const [charIndex, setCharIndex] = useState(-1);
@@ -102,6 +110,8 @@ export function EssayDetail() {
   // Set before a deliberate Speech.stop() so its onDone/onStopped is treated as
   // a pause (freeze highlight) rather than natural completion (clear it).
   const pausingRef = useRef(false);
+  // Set when a stop is only a step in restarting at a new speed.
+  const resumeAfterStopRef = useRef(false);
   const mountedRef = useRef(true);
   // Chosen calm voice identifier; undefined = use the platform default.
   const voiceRef = useRef<string | undefined>(undefined);
@@ -136,6 +146,7 @@ export function EssayDetail() {
 
   function fullReset() {
     if (!mountedRef.current) return;
+    resumeAfterStopRef.current = false;
     resumeAtRef.current = 0;
     baseRef.current = 0;
     setPlaying(false);
@@ -159,13 +170,20 @@ export function EssayDetail() {
     const handleEnd = () => {
       if (pausingRef.current) {
         pausingRef.current = false;
-        if (mountedRef.current) setPlaying(false);
+        if (!mountedRef.current) return;
+        // A speed change stopped playback only to start it again.
+        if (resumeAfterStopRef.current) {
+          resumeAfterStopRef.current = false;
+          speakFrom(resumeAtRef.current);
+          return;
+        }
+        setPlaying(false);
         return;
       }
       fullReset();
     };
     Speech.speak(essay.body.slice(offset), {
-      rate: SPEECH_RATE,
+      rate: SPEECH_RATE * speedRef.current,
       pitch: SPEECH_PITCH,
       voice: voiceRef.current,
       onBoundary: (e: { charIndex?: number }) =>
@@ -173,6 +191,21 @@ export function EssayDetail() {
       onDone: handleEnd,
       onError: handleEnd,
     });
+  }
+
+  /** Change speed. Mid-playback the utterance is restarted from the current
+   *  word, since a rate change cannot be applied to speech already in flight. */
+  function changeSpeed(next: number) {
+    setSpeed(next);
+    speedRef.current = next;
+    if (!playing) return;
+    // Restart at the new rate from the current word. The resume is deferred to
+    // the stop's completion callback: speaking again before the old utterance
+    // has finished unwinding would let its handler cancel the new playback.
+    resumeAtRef.current = charIndex >= 0 ? charIndex : resumeAtRef.current;
+    resumeAfterStopRef.current = true;
+    pausingRef.current = true;
+    Speech.stop();
   }
 
   function toggle() {
@@ -275,6 +308,17 @@ export function EssayDetail() {
           </Pressable>
         </View>
 
+        <View style={styles.speeds}>
+          {SPEEDS.map((s) => (
+            <Chip
+              key={s}
+              label={`${s}x`}
+              selected={s === speed}
+              onPress={() => changeSpeed(s)}
+            />
+          ))}
+        </View>
+
         <Text variant="body" style={styles.paragraph}>
           {tokens.map((t, i) =>
             activeSentence &&
@@ -339,4 +383,10 @@ const styles = StyleSheet.create({
   trackBg: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
   trackFill: { height: 6, borderRadius: 3 },
   paragraph: { fontSize: 17, lineHeight: 27, marginBottom: spacing.md },
+  speeds: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
 });

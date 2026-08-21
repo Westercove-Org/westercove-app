@@ -6,6 +6,7 @@ import { EntryCard } from '@/components/EntryCard';
 import { GentleQuestionCard } from '@/components/GentleQuestionCard';
 import { Screen } from '@/components/Screen';
 import { Chip } from '@/components/ui/Chip';
+import { SearchPill } from '@/components/ui/SearchPill';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
@@ -28,7 +29,8 @@ const HOME_CHIPS = [
 
 function greeting(now: Date, name?: string): string {
   const h = now.getHours();
-  const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  const part =
+    h < 5 ? 'Late tonight' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
   return `${part}, ${name?.trim() || 'friend'}`;
 }
 
@@ -60,6 +62,13 @@ export default function HomeScreen() {
         ))}
       </View>
 
+      <View style={styles.searchWrap}>
+        <SearchPill
+          placeholder="Search your entries, books, memories"
+          onPress={() => router.push({ pathname: '/search', params: { scope: 'global' } })}
+        />
+      </View>
+
       <SectionLabel>{copy.home.recent}</SectionLabel>
       {entries.map((entry) => (
         <EntryCard
@@ -82,4 +91,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.lg,
   },
+  searchWrap: { paddingHorizontal: spacing.screen, paddingTop: spacing.xl },
 });

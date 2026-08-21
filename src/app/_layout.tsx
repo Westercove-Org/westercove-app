@@ -76,6 +76,10 @@ function RootNav() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
+          // A slow, gentle cross-fade between screens rather than a slide. No
+          // screen in this app should arrive abruptly.
+          animation: 'fade',
+          animationDuration: 350,
         }}
       >
         <Stack.Screen name="(tabs)" />
