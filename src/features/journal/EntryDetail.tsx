@@ -31,6 +31,7 @@ export function EntryDetail() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
 
   // Accumulate talk-time while this conversation screen is focused.
   useQuestionTimer();
@@ -47,9 +48,14 @@ export function EntryDetail() {
 
   const onMic = async () => {
     setListening(true);
+    setMicError(null);
     try {
       const transcript = await services.voice.capture();
       setText((t) => (t ? `${t} ${transcript}` : transcript));
+    } catch {
+      // A denied mic permission (or a failing real voice impl) rejects here;
+      // tell the user rather than letting the rejection go unhandled.
+      setMicError('Could not capture audio. Check microphone access and try again.');
     } finally {
       setListening(false);
     }
@@ -106,7 +112,7 @@ export function EntryDetail() {
               {t.text}
             </Text>
           ) : (
-            <Card key={t.id} reflective style={styles.companionTurn}>
+            <Card key={t.id} reflective>
               <Text variant="meta" color="amethystText" style={styles.companionLabel}>
                 WESTERCOVE
               </Text>
@@ -120,7 +126,7 @@ export function EntryDetail() {
         {/* A companion reply is being written. Saying so in the thread keeps the
             wait from reading as silence. */}
         {busy ? (
-          <Card reflective style={styles.companionTurn}>
+          <Card reflective>
             <Text variant="body" color="amethystText">
               Thinking with you…
             </Text>
@@ -133,6 +139,17 @@ export function EntryDetail() {
             person is most likely to have an answer for it. */}
         <GentleQuestionCard />
       </ScrollView>
+
+      {micError ? (
+        <Text
+          variant="bodySmall"
+          color="textMuted"
+          accessibilityRole="alert"
+          style={styles.micError}
+        >
+          {micError}
+        </Text>
+      ) : null}
 
       <View style={styles.composeRow}>
         <TextInput
@@ -210,8 +227,8 @@ const styles = StyleSheet.create({
   downloadText: { textTransform: 'none' },
   thread: { paddingHorizontal: spacing.screen, paddingTop: spacing.md, gap: spacing.md, paddingBottom: spacing.lg },
   userTurn: {},
-  companionTurn: {},
   companionLabel: { marginBottom: spacing.xs, letterSpacing: 0.6 },
+  micError: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xs },
   composeRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
