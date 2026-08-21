@@ -72,18 +72,6 @@ export const copy = {
     goBack: 'Go back',
   },
 
-  entryPath: {
-    title: 'How are you arriving?',
-    consumer: 'Start a free trial',
-    consumerSub: 'Through Westercove directly',
-    license: 'I have a license code',
-    licenseSub: 'From an employer or partner organization',
-    licensePrivacy:
-      'Your organization covers the cost. It cannot see anything you write.',
-    licensePlaceholder: 'Enter your license code',
-    continue: 'Continue',
-  },
-
   signIn: {
     title: 'Welcome',
     subtitle: 'Sign in to continue',

@@ -13,13 +13,6 @@ import { setAuthToken, clearAuthToken } from '@/lib/http';
 import { secureStorage } from '@/lib/secureStorage';
 import type { AuthUser, Entitlement, EntryPath } from '@/features/auth/types';
 
-export interface CreateAccountInput {
-  entryPath: EntryPath;
-  email?: string;
-  licenseCode?: string;
-  sponsorOrganization?: string;
-}
-
 export interface AuthResult {
   user: AuthUser;
   entitlement: Entitlement;
@@ -34,8 +27,6 @@ export interface AuthService {
   /** Finish a first login: set the permanent password after signIn threw
    * `NewPasswordRequiredError`. */
   completeNewPassword(email: string, newPassword: string): Promise<AuthResult>;
-  /** The pool is invite-only, so there is no public self-signup. */
-  createAccount(input: CreateAccountInput): Promise<AuthResult>;
   /** Start a password reset — emails a code. */
   forgotPassword(email: string): Promise<void>;
   /** Complete a password reset with the emailed code and a new password. */
@@ -178,14 +169,6 @@ export class CognitoAuthService implements AuthService {
         },
       );
     });
-  }
-
-  createAccount(): Promise<AuthResult> {
-    return Promise.reject(
-      new AuthError(
-        'Westercove is invitation-only right now. Check your email for an invite to set your password.',
-      ),
-    );
   }
 
   forgotPassword(email: string): Promise<void> {

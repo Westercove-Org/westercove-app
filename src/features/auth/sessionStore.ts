@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
-import type { AuthResult, CreateAccountInput } from '@/services/auth';
+import type { AuthResult } from '@/services/auth';
 import type { Entitlement, GateAnswers, Session } from './types';
 
 export type SessionStatus = 'unauthenticated' | 'needs-gate' | 'ready';
@@ -14,7 +14,6 @@ interface SessionState {
   signIn: (email: string, password: string) => Promise<void>;
   /** Finish an invited user's first login by setting a permanent password. */
   completeNewPassword: (email: string, newPassword: string) => Promise<void>;
-  beginAccount: (input: CreateAccountInput) => Promise<void>;
   completeGate: (answers: GateAnswers) => void;
   setEntitlement: (entitlement: Entitlement, sponsorOrganization?: string) => void;
   setFullName: (fullName: string) => void;
@@ -56,33 +55,6 @@ export const useSessionStore = create<SessionState>()(
 
       async completeNewPassword(email, newPassword) {
         set({ session: sessionFrom(await services.auth.completeNewPassword(email, newPassword)) });
-      },
-
-      async beginAccount(input) {
-        const result = await services.auth.createAccount(input);
-        // Signup writes a single CRM contact carrying lifecycle facts only.
-        // Fire-and-forget: a CRM failure (or synced:false) must never block or
-        // fail account creation.
-        void services.crm
-          .createContact({
-            email: result.user.email,
-            firstName: result.user.firstName,
-            entryPath: result.entryPath,
-            entitlement: result.entitlement,
-            sponsorOrganization: result.sponsorOrganization,
-          })
-          .catch(() => {});
-        set({
-          session: {
-            user: result.user,
-            entryPath: result.entryPath,
-            entitlement: result.entitlement,
-            sponsorOrganization: result.sponsorOrganization,
-            disclaimerAcked: true,
-            gateComplete: false,
-            gateAnswers: emptyGate,
-          },
-        });
       },
 
       completeGate(answers) {
