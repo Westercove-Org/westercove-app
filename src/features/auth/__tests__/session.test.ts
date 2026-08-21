@@ -7,6 +7,7 @@ jest.mock('expo-secure-store', () => ({
 import { sessionStatus, useSessionStore } from '@/features/auth/sessionStore';
 import type { Session } from '@/features/auth/types';
 import { services } from '@/services';
+import type { AuthResult } from '@/services/auth';
 
 const readySession: Session = {
   user: { email: 'a@b.com' },
@@ -15,6 +16,12 @@ const readySession: Session = {
   disclaimerAcked: true,
   gateComplete: true,
   gateAnswers: { mode: 'human', skipped: [] },
+};
+
+const authResult: AuthResult = {
+  user: { email: 'a@b.com' },
+  entitlement: 'trial_active',
+  entryPath: 'consumer_trial',
 };
 
 describe('sessionStatus', () => {
@@ -31,35 +38,24 @@ describe('sessionStatus', () => {
 
 describe('session store', () => {
   beforeEach(() => useSessionStore.setState({ session: null }));
+  afterEach(() => jest.restoreAllMocks());
 
-  it('beginAccount creates a session that still needs the gate, and writes one CRM contact', async () => {
-    const createContact = jest.spyOn(services.crm, 'createContact').mockResolvedValue();
-
-    await useSessionStore.getState().beginAccount({ entryPath: 'consumer_trial' });
-
-    const s = useSessionStore.getState().session;
-    expect(s).not.toBeNull();
-    expect(s!.gateComplete).toBe(false);
-    expect(sessionStatus(s)).toBe('needs-gate');
-    expect(createContact).toHaveBeenCalledTimes(1);
-    createContact.mockRestore();
+  it('signIn routes an invited user into onboarding (needs-gate)', async () => {
+    jest.spyOn(services.auth, 'signIn').mockResolvedValue(authResult);
+    await useSessionStore.getState().signIn('a@b.com', 'pw');
+    expect(sessionStatus(useSessionStore.getState().session)).toBe('needs-gate');
   });
 
-  it('partner_license account gets a license entitlement', async () => {
-    await useSessionStore
-      .getState()
-      .beginAccount({ entryPath: 'partner_license', licenseCode: 'ABC' });
-    expect(useSessionStore.getState().session!.entitlement).toBe('license_active');
+  it('completeNewPassword (first login) also lands in the gate', async () => {
+    jest.spyOn(services.auth, 'completeNewPassword').mockResolvedValue(authResult);
+    await useSessionStore.getState().completeNewPassword('a@b.com', 'New#Passw0rd!');
+    expect(sessionStatus(useSessionStore.getState().session)).toBe('needs-gate');
   });
 
   it('completeGate marks the session ready', async () => {
-    await useSessionStore.getState().beginAccount({ entryPath: 'consumer_trial' });
+    jest.spyOn(services.auth, 'signIn').mockResolvedValue(authResult);
+    await useSessionStore.getState().signIn('a@b.com', 'pw');
     useSessionStore.getState().completeGate({ mode: 'human', skipped: [], callName: 'Sam' });
     expect(sessionStatus(useSessionStore.getState().session)).toBe('ready');
-  });
-
-  it('signIn routes into onboarding (needs-gate), matching the demo', async () => {
-    await useSessionStore.getState().signIn('a@b.com', 'pw');
-    expect(sessionStatus(useSessionStore.getState().session)).toBe('needs-gate');
   });
 });
