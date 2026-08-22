@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { useProfilesStore } from '@/features/profile/profilesStore';
 import { AuthError, NewPasswordRequiredError } from '@/services';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
@@ -42,6 +43,8 @@ export default function SignInScreen() {
     setBusy(true);
     try {
       await signIn(email.trim(), password);
+      // First real sign-in wipes any leftover demo/seed data and starts clean.
+      useProfilesStore.getState().startRealUser();
       // Guard redirects to the tab shell once the session is ready.
     } catch (e) {
       if (e instanceof NewPasswordRequiredError) {
@@ -60,6 +63,7 @@ export default function SignInScreen() {
     setBusy(true);
     try {
       await completeNewPassword(email.trim(), newPassword);
+      useProfilesStore.getState().startRealUser();
     } catch (e) {
       setError(messageFor(e));
     } finally {

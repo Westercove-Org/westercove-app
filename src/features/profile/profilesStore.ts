@@ -7,21 +7,23 @@ import { useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionsStore } from '@/features/questions/questionsStore';
 import { secureStorage } from '@/lib/secureStorage';
 import { clearProfileData, setActiveId } from './activeProfile';
-import { DEMO_ROSTER, type DemoProfile } from './demoProfiles';
 import { useWhatIKnowStore } from './whatIKnowStore';
 
 /**
- * Test-profile roster. Each profile is a separate saved "person" in this
- * browser: its own namespaced copy of the session/entries/questions/library
- * stores (see activeProfile.ts). Switching or creating a profile just changes
- * which namespace those stores read, so every profile keeps its own data —
- * mirroring the demo's per-profile localStorage blobs.
+ * Per-profile local data. Each profile has its own namespaced copy of the
+ * session/entries/questions/library stores (see activeProfile.ts); switching a
+ * profile just changes which namespace those stores read. A real user has a
+ * single profile; `startRealUser` collapses to it and wipes any leftover
+ * demo/seed data on the first real sign-in.
  */
 
 export interface Persona {
   id: string;
   name: string;
 }
+
+/** The single default profile a real user starts from. */
+const DEFAULT_PROFILE: Persona = { id: 'p-1', name: '' };
 
 interface ProfilesState {
   profiles: Persona[];
@@ -32,16 +34,17 @@ interface ProfilesState {
    * than left holding the previous profile's data.
    */
   initialized: string[];
+  /** True once a real sign-in has collapsed to the single profile + wiped any
+   * leftover demo/seed data — so the wipe runs exactly once. */
+  realSignInDone: boolean;
   switchTo: (id: string) => Promise<void>;
   createNew: () => Promise<void>;
   remove: (id: string) => void;
   setActiveName: (name: string) => void;
-  /** Open the test profile behind a recognized sign-in name. */
-  signInAs: (profile: DemoProfile) => Promise<void>;
+  /** On the first real sign-in, wipe any local demo/seed data and start the
+   * real user clean on the single default profile. Idempotent. */
+  startRealUser: () => void;
 }
-
-/** The nine test profiles, listed and blank until a tester fills one in. */
-const ROSTER_SEED: Persona[] = DEMO_ROSTER.map((p) => ({ id: p.id, name: p.name }));
 
 /**
  * Point the data stores at profile `id` and load its data.
@@ -75,9 +78,10 @@ export async function reloadProfileStores(id: string, fresh = false): Promise<vo
 export const useProfilesStore = create<ProfilesState>()(
   persist(
     (set, get) => ({
-      profiles: ROSTER_SEED,
-      activeId: ROSTER_SEED[0].id,
+      profiles: [DEFAULT_PROFILE],
+      activeId: DEFAULT_PROFILE.id,
       initialized: [],
+      realSignInDone: false,
 
       async switchTo(id) {
         if (id === get().activeId || !get().profiles.some((p) => p.id === id)) return;
@@ -99,25 +103,29 @@ export const useProfilesStore = create<ProfilesState>()(
         await reloadProfileStores(id, true);
       },
 
-      async signInAs(profile) {
-        const known = get().profiles.some((p) => p.id === profile.id);
-        const fresh = !get().initialized.includes(profile.id);
-        const wasActive = get().activeId === profile.id;
-        set((s) => ({
-          profiles: known ? s.profiles : [...s.profiles, { id: profile.id, name: profile.name }],
-          activeId: profile.id,
-          initialized: fresh ? [...s.initialized, profile.id] : s.initialized,
-        }));
-        // Always load on a fresh profile; on a returning one, only when it is
-        // not already the active namespace.
-        if (fresh || !wasActive) await reloadProfileStores(profile.id, fresh);
+      startRealUser() {
+        if (get().realSignInDone) return;
+        // Point the data stores at the single real-user namespace and reset each
+        // to empty, so any leftover demo/seed data never surfaces for a real
+        // user. The resets persist a clean slate into the `p-1` namespace.
+        setActiveId(DEFAULT_PROFILE.id);
+        useEntriesStore.getState().resetForProfile();
+        useQuestionsStore.getState().resetForProfile();
+        useLibraryStore.getState().resetForProfile();
+        useWhatIKnowStore.setState({ learned: [] });
+        set({
+          profiles: [DEFAULT_PROFILE],
+          activeId: DEFAULT_PROFILE.id,
+          initialized: [DEFAULT_PROFILE.id],
+          realSignInDone: true,
+        });
       },
 
       remove(id) {
         const wasActive = get().activeId === id;
         set((s) => {
           const profiles = s.profiles.filter((p) => p.id !== id);
-          const list = profiles.length ? profiles : ROSTER_SEED;
+          const list = profiles.length ? profiles : [DEFAULT_PROFILE];
           const activeId = wasActive ? list[0].id : s.activeId;
           return { profiles: list, activeId };
         });
