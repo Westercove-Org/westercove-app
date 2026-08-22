@@ -1,21 +1,9 @@
-import {
-  type CompanionChatRequest,
-  type CompanionTurn,
-} from './companionPrompt';
-
 export interface CompanionRequest {
   text: string;
   type: string;
   lovedOneName?: string;
   /** When true, the user asked to be heard without a response ("just heard"). */
   justHeard?: boolean;
-  /**
-   * Everything already said in this entry, oldest first, excluding `text`.
-   * A follow-up turn without it reads as amnesia.
-   */
-  history?: CompanionTurn[];
-  /** Gate answers that shape the voice (tone, relationship, pet vs human). */
-  context?: Omit<CompanionChatRequest, 'history' | 'entryType' | 'lovedOneName'>;
 }
 
 export interface CompanionReply {
