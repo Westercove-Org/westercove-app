@@ -2,8 +2,6 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { libraryForCompanion, useLibraryStore } from '@/features/discover/libraryStore';
-import { useWhatIKnowStore } from '@/features/profile/whatIKnowStore';
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
 import { SafetyLevel } from '@/services/safety';
@@ -39,30 +37,42 @@ function lovedOneName(): string | undefined {
   return useSessionStore.getState().session?.gateAnswers.lovedOneName;
 }
 
-/** Gate answers that shape the companion's voice. */
-function companionContext(entryType: string) {
-  const gate = useSessionStore.getState().session?.gateAnswers;
-  const mode = gate?.mode ?? 'human';
-  const myLibrary = useLibraryStore.getState().myLibrary;
-  return {
-    tone: gate?.tone,
-    userName: gate?.callName,
-    mode,
-    species: gate?.species,
-    relationship: gate?.relationship,
-    // Only what this entry type earns: nothing until the person builds a
-    // library, except the guided types, which fall back to the loss-path shelf.
-    library: libraryForCompanion(myLibrary, mode, entryType),
-    profile: useWhatIKnowStore.getState().learned.map((k) => `${k.label}: ${k.value}`),
-  };
+function backendProfileId(): number | undefined {
+  return useSessionStore.getState().session?.backendProfileId;
 }
 
-/** Prior turns of an entry, in the shape the companion API expects. */
-function historyFor(entry: Entry | undefined): { role: 'user' | 'assistant'; content: string }[] {
-  return (entry?.turns ?? []).map((t) => ({
-    role: t.role === 'user' ? ('user' as const) : ('assistant' as const),
-    content: t.text,
-  }));
+/** The device timezone, so the backend can stamp turns in the user's local time. */
+function clientTimezone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Ask the backend to generate the companion's reply for a message. The backend
+ * (chat sessions API) now owns generation — voice, library, and profile context
+ * all live server-side, keyed by the session + profile id. Falls back to the
+ * offline companion when the backend is unreachable or its AI is unavailable
+ * (e.g. 502 before Bedrock/Anthropic is enabled): the journal always answers.
+ */
+async function companionReply(
+  sessionId: number | undefined,
+  text: string,
+  type: string,
+): Promise<string> {
+  const offline = await services.companion.respond({ text, type, lovedOneName: lovedOneName() });
+  if (sessionId == null) return offline.response;
+  try {
+    const { reply } = await services.chat.postMessage(sessionId, text, {
+      profileId: backendProfileId(),
+      timezone: clientTimezone(),
+    });
+    return reply || offline.response;
+  } catch {
+    return offline.response;
+  }
 }
 
 export const useEntriesStore = create<EntriesState>()(
@@ -76,22 +86,25 @@ export const useEntriesStore = create<EntriesState>()(
     const { level } = services.safety.classify(text);
     const at = new Date();
     const turns: ConversationTurn[] = [turn('user', text, at)];
-    let headline: string;
+    const { headline } = await services.companion.respond({ text, type, justHeard: true });
+    let sessionId: number | undefined;
 
-    // Six Moves are suspended at Level 3/4 — the safety surface governs there.
-    if (level < SafetyLevel.High) {
-      const reply = await services.companion.respond({
-        text,
-        type,
-        lovedOneName: lovedOneName(),
-        justHeard,
-        context: companionContext(type),
-      });
-      turns.push(turn('companion', reply.response, at));
-      headline = reply.headline;
-    } else {
-      const reply = await services.companion.respond({ text, type, justHeard: true });
-      headline = reply.headline;
+    // Six Moves are suspended at Level 3/4 (safety surface governs) and when the
+    // user asked to be "just heard". Otherwise create the backend session that
+    // backs this entry and let the backend generate the companion reply.
+    if (level < SafetyLevel.High && !justHeard) {
+      try {
+        ({ sessionId } = await services.chat.createSession({
+          title: headline,
+          profileId: backendProfileId(),
+        }));
+      } catch {
+        // Offline: the entry still saves; the reply comes from the fallback.
+      }
+      const response = await companionReply(sessionId, text, type);
+      turns.push(turn('companion', response, at));
+    } else if (justHeard) {
+      turns.push(turn('companion', 'It is heard. It stays here.', at));
     }
 
     const id = `e${Date.now()}`;
@@ -103,44 +116,20 @@ export const useEntriesStore = create<EntriesState>()(
       turns,
       justHeard,
       safetyLevel: level,
+      sessionId,
     };
     set((s) => ({ entries: [entry, ...s.entries] }));
-
-    // Create the backend chat session that will back this entry, and stamp its
-    // id onto the entry once it returns. Fire-and-forget: writing an entry must
-    // never block on the network, and entries stay readable offline. Scope to
-    // the backend profile id when we have one (falls back to the default).
-    // ponytail: session create only; posting turns to /chat/sessions/{id}/messages
-    // is a later ticket.
-    void services.chat
-      .createSession({
-        title: headline,
-        profileId: useSessionStore.getState().session?.backendProfileId,
-      })
-      .then(({ sessionId }) =>
-        set((s) => ({
-          entries: s.entries.map((e) => (e.id === id ? { ...e, sessionId } : e)),
-        })),
-      )
-      .catch(() => {});
-
     return { id, level };
   },
 
   async continueEntry(id, text) {
     const { level } = services.safety.classify(text);
     const at = new Date();
-    const userTurn = turn('user', text, at);
-    const extra: ConversationTurn[] = [userTurn];
+    const extra: ConversationTurn[] = [turn('user', text, at)];
     if (level < SafetyLevel.High) {
-      const reply = await services.companion.respond({
-        text,
-        type: 'Journal',
-        lovedOneName: lovedOneName(),
-        history: historyFor(get().entries.find((e) => e.id === id)),
-        context: companionContext('Journal'),
-      });
-      extra.push(turn('companion', reply.response, at));
+      const sessionId = get().entries.find((e) => e.id === id)?.sessionId;
+      const response = await companionReply(sessionId, text, 'Journal');
+      extra.push(turn('companion', response, at));
     }
     set((s) => ({
       entries: s.entries.map((e) =>

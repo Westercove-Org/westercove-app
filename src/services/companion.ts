@@ -67,40 +67,6 @@ export class MockCompanionService implements CompanionService {
   }
 }
 
-/**
- * The real companion: posts to the `/api/chat` route, which holds the API key
- * server-side. Falls back to the mock whenever the route is unreachable or has
- * no key configured (offline, or a native build whose `origin` is not deployed
- * yet) — the journal always answers.
- */
-export class ApiCompanionService implements CompanionService {
-  private readonly fallback = new MockCompanionService();
-
-  async respond(req: CompanionRequest): Promise<CompanionReply> {
-    const headline = makeHeadline(req.text);
-    // "Just heard" means the user asked not to be answered — no request at all.
-    if (req.justHeard) {
-      return { response: 'It is heard. It stays here.', headline };
-    }
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          ...req.context,
-          lovedOneName: req.lovedOneName,
-          entryType: req.type,
-          history: [...(req.history ?? []), { role: 'user', content: req.text }],
-        } satisfies CompanionChatRequest),
-      });
-      if (!res.ok) return this.fallback.respond(req);
-      const data = (await res.json()) as { reply?: string };
-      const reply = data.reply?.trim();
-      if (!reply) return this.fallback.respond(req);
-      return { response: reply, headline };
-    } catch {
-      return this.fallback.respond(req);
-    }
-  }
-}
+// Companion generation now happens on the backend (chat sessions API,
+// `POST /chat/sessions/{id}/messages`), driven from the entries store.
+// `MockCompanionService` remains the offline fallback + headline authority.

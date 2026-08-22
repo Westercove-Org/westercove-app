@@ -27,6 +27,25 @@ describe('ApiChatSessionService', () => {
     expect(post).toHaveBeenCalledWith('/chat/sessions', { profile_id: 7, title: undefined });
   });
 
+  it('posts a message with profile/timezone headers and returns the assistant reply', async () => {
+    post.mockResolvedValue({
+      assistant: { role: 'assistant', text: '  I am here with you.  ' },
+      session_title: 'A hard night',
+    });
+
+    const res = await new ApiChatSessionService().postMessage(42, 'I miss her', {
+      profileId: 3,
+      timezone: 'America/New_York',
+    });
+
+    expect(post).toHaveBeenCalledWith(
+      '/chat/sessions/42/messages',
+      { message: 'I miss her' },
+      { headers: { 'X-Profile-Id': '3', 'X-Client-Timezone': 'America/New_York' } },
+    );
+    expect(res).toEqual({ reply: 'I am here with you.', sessionTitle: 'A hard night' });
+  });
+
   it('lists a profile\'s sessions, mapping snake_case → camelCase with defaults', async () => {
     get.mockResolvedValue({
       sessions: [

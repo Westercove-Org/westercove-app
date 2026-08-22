@@ -2,12 +2,10 @@ import './latin1TextDecoder';
 import { jsPDF } from 'jspdf';
 import { Platform } from 'react-native';
 
+import { apiClient } from '@/lib/http';
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { useLibraryStore, type LibraryBook } from '@/features/discover/libraryStore';
-import { useQuestionsStore } from '@/features/questions/questionsStore';
-import { useWhatIKnowStore } from '@/features/profile/whatIKnowStore';
 import { useEntriesStore } from './entriesStore';
-import { faithSummary, userEntries } from './exportSelection';
+import { userEntries } from './exportSelection';
 
 /**
  * Export the journal as a shareable PDF: a kind overview of themes over a date
@@ -38,42 +36,21 @@ function san(s: string): string {
     .replace(/…/g, '...');
 }
 
-/** Every book in the library as the overview needs it, own books with their meta. */
-function libraryTitles(books: LibraryBook[]): string {
-  return books
-    .map((b) => {
-      if (b.source !== 'own') return `${b.title} by ${b.author}`;
-      const meta = [b.status, b.reader ? `for ${b.reader}` : null].filter(Boolean).join(', ');
-      const summary = b.summary ? `: ${b.summary}` : '';
-      return `${b.title} by ${b.author}${meta ? ` (${meta})` : ''}${summary}`;
-    })
-    .join('; ');
-}
-
-/** Ask the backend for a theme overview built only from the user's entries. */
-async function fetchSummary(entries: { date: string; text: string }[]): Promise<string> {
+/**
+ * Ask the backend for a theme overview of the user's journal. The backend
+ * (`POST /journal/summary`) builds it from the profile's server-side entries and
+ * holds the AI key. Returns '' when there is no backend profile yet, or when the
+ * summary is unavailable (offline, or a 502 before Bedrock/Anthropic is enabled)
+ * — the PDF then falls back to the verbatim entries.
+ */
+async function fetchSummary(): Promise<string> {
+  const profileId = useSessionStore.getState().session?.backendProfileId;
+  if (profileId == null) return '';
   try {
-    const gate = useSessionStore.getState().session?.gateAnswers;
-    const library = useLibraryStore.getState().myLibrary;
-    const known = useWhatIKnowStore.getState().learned;
-
-    const res = await fetch('/api/summary', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        entries: entries.map((e) => `${fmtDate(e.date)}\n${e.text}`).join('\n\n----\n\n'),
-        name: gate?.callName ?? '',
-        loved: gate?.lovedOneName ?? '',
-        relationship: gate?.relationship ?? '',
-        communication: gate?.tone ?? '',
-        faith: faithSummary(useQuestionsStore.getState()),
-        books: libraryTitles(library),
-        known: known.map((k) => `${k.label}: ${k.value}`).join('\n'),
-      }),
+    const res = await apiClient.post<{ summary?: string }>('/journal/summary', {
+      profile_id: profileId,
     });
-    if (!res.ok) return '';
-    const data = (await res.json()) as { summary?: string };
-    return (data.summary ?? '').trim();
+    return (res.summary ?? '').trim();
   } catch {
     return '';
   }
@@ -229,7 +206,7 @@ export async function downloadJournal(): Promise<void> {
     );
   }
 
-  const summary = await fetchSummary(entries);
+  const summary = await fetchSummary();
   const doc = makePdf(entries, summary, {
     name: (useSessionStore.getState().session?.fullName || gate?.callName || '').trim(),
     loved: (gate?.lovedOneName ?? '').trim(),
