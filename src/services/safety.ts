@@ -1,3 +1,5 @@
+import { apiClient } from '@/lib/http';
+
 /**
  * The four-level safety model (Crisis Detection Workflows). Every submission is
  * classified into one level; the system over-responds rather than under-responds
@@ -23,7 +25,12 @@ export interface SafetyAssessment {
 }
 
 export interface SafetyService {
+  /** Fast, offline keyword pre-flight — runs instantly on every submission. */
   classify(text: string): SafetyAssessment;
+  /** The authoritative tier from the backend classifier. Never downgrades below
+   * the local pre-flight, and falls back to it when the backend is unreachable
+   * (fail-safe toward showing help). */
+  classifyRemote(text: string): Promise<SafetyAssessment>;
 }
 
 // Placeholder keyword sets. NOT a real classifier — the production Layer-2
@@ -73,6 +80,52 @@ export class MockSafetyService implements SafetyService {
     if (matches(t, HIGH)) return { level: SafetyLevel.High };
     if (matches(t, ELEVATED)) return { level: SafetyLevel.Elevated };
     return { level: SafetyLevel.Normal };
+  }
+
+  /** No backend in the mock: the pre-flight is authoritative. */
+  async classifyRemote(text: string): Promise<SafetyAssessment> {
+    return this.classify(text);
+  }
+}
+
+/** Backend crisis tier → the app's four-level scale. */
+const TIER_TO_LEVEL: Record<string, SafetyLevel> = {
+  none: SafetyLevel.Normal,
+  tier_1: SafetyLevel.Elevated,
+  tier_2: SafetyLevel.High,
+  tier_3: SafetyLevel.Critical,
+};
+
+/**
+ * Authoritative safety via the backend classifier (`POST /safety/classify`),
+ * with the local keyword pass as an instant, offline-safe pre-flight and floor.
+ * The backend is the source of truth for tiering; on a crisis tier (tier_2/3)
+ * the returned level drives the app's crisis surfaces. Network failures fall
+ * back to the local pre-flight — the classifier never fails toward silence.
+ */
+export class ApiSafetyService implements SafetyService {
+  private readonly local = new MockSafetyService();
+
+  classify(text: string): SafetyAssessment {
+    return this.local.classify(text);
+  }
+
+  async classifyRemote(text: string): Promise<SafetyAssessment> {
+    const pre = this.local.classify(text);
+    // A dev/demo override forces the tier — skip the backend so it wins.
+    if (override !== null) return pre;
+    try {
+      const res = await apiClient.post<{ tier: string; crisis: boolean; categories: string[] }>(
+        '/safety/classify',
+        { text },
+      );
+      const remote = TIER_TO_LEVEL[res.tier] ?? SafetyLevel.Normal;
+      // Backend is authoritative, but never below the local pre-flight.
+      return { level: Math.max(pre.level, remote) as SafetyLevel };
+    } catch {
+      // Backend unreachable → local pre-flight (fail-safe toward showing help).
+      return pre;
+    }
   }
 }
 

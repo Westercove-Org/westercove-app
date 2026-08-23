@@ -82,8 +82,8 @@ export const useEntriesStore = create<EntriesState>()(
   serverSessions: [],
 
   async addEntry({ type, text, justHeard }) {
-    // Safety runs on every submission, before response generation.
-    const { level } = services.safety.classify(text);
+    // Fast local pre-flight, instant and offline: gates response generation.
+    const pre = services.safety.classify(text).level;
     const at = new Date();
     const turns: ConversationTurn[] = [turn('user', text, at)];
     const { headline } = await services.companion.respond({ text, type, justHeard: true });
@@ -91,8 +91,9 @@ export const useEntriesStore = create<EntriesState>()(
 
     // Six Moves are suspended at Level 3/4 (safety surface governs) and when the
     // user asked to be "just heard". Otherwise create the backend session that
-    // backs this entry and let the backend generate the companion reply.
-    if (level < SafetyLevel.High && !justHeard) {
+    // backs this entry and let the backend generate the companion reply. The gate
+    // uses the instant local pre-flight; the authoritative tier is fetched below.
+    if (pre < SafetyLevel.High && !justHeard) {
       try {
         ({ sessionId } = await services.chat.createSession({
           title: headline,
@@ -107,6 +108,9 @@ export const useEntriesStore = create<EntriesState>()(
       turns.push(turn('companion', 'It is heard. It stays here.', at));
     }
 
+    // Authoritative tier from the backend classifier (never below the local
+    // pre-flight); this is what we persist and what drives the crisis surfaces.
+    const level = (await services.safety.classifyRemote(text)).level;
     const id = `e${Date.now()}`;
     const entry: Entry = {
       id,
@@ -123,14 +127,16 @@ export const useEntriesStore = create<EntriesState>()(
   },
 
   async continueEntry(id, text) {
-    const { level } = services.safety.classify(text);
+    const pre = services.safety.classify(text).level;
     const at = new Date();
     const extra: ConversationTurn[] = [turn('user', text, at)];
-    if (level < SafetyLevel.High) {
+    if (pre < SafetyLevel.High) {
       const sessionId = get().entries.find((e) => e.id === id)?.sessionId;
       const response = await companionReply(sessionId, text, 'Journal');
       extra.push(turn('companion', response, at));
     }
+    // Authoritative tier for the entry's running safety level + crisis routing.
+    const level = (await services.safety.classifyRemote(text)).level;
     set((s) => ({
       entries: s.entries.map((e) =>
         e.id === id
