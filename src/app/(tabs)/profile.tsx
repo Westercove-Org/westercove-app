@@ -11,7 +11,6 @@ import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { DemoControls } from '@/features/questions/DemoControls';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { TONE_LABELS } from '@/services/companionPrompt';
 import { useTheme } from '@/theme';
@@ -178,8 +177,6 @@ export default function ProfileScreen() {
           />
         </Card>
       </View>
-
-      <DemoControls />
 
       <SectionLabel>{copy.profile.settings}</SectionLabel>
       <View style={styles.cardWrap}>{renderRows(SETTINGS)}</View>

@@ -6,7 +6,7 @@ import { useLibraryStore } from '@/features/discover/libraryStore';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionsStore } from '@/features/questions/questionsStore';
 import { secureStorage } from '@/lib/secureStorage';
-import { clearProfileData, setActiveId } from './activeProfile';
+import { setActiveId } from './activeProfile';
 import { useWhatIKnowStore } from './whatIKnowStore';
 
 /**
@@ -37,9 +37,6 @@ interface ProfilesState {
   /** True once a real sign-in has collapsed to the single profile + wiped any
    * leftover demo/seed data — so the wipe runs exactly once. */
   realSignInDone: boolean;
-  switchTo: (id: string) => Promise<void>;
-  createNew: () => Promise<void>;
-  remove: (id: string) => void;
   setActiveName: (name: string) => void;
   /** On the first real sign-in, wipe any local demo/seed data and start the
    * real user clean on the single default profile. Idempotent. */
@@ -83,26 +80,6 @@ export const useProfilesStore = create<ProfilesState>()(
       initialized: [],
       realSignInDone: false,
 
-      async switchTo(id) {
-        if (id === get().activeId || !get().profiles.some((p) => p.id === id)) return;
-        const fresh = !get().initialized.includes(id);
-        set((s) => ({
-          activeId: id,
-          initialized: fresh ? [...s.initialized, id] : s.initialized,
-        }));
-        await reloadProfileStores(id, fresh);
-      },
-
-      async createNew() {
-        const id = `p-${Date.now()}`;
-        set((s) => ({
-          profiles: [...s.profiles, { id, name: '' }],
-          activeId: id,
-          initialized: [...s.initialized, id],
-        }));
-        await reloadProfileStores(id, true);
-      },
-
       startRealUser() {
         if (get().realSignInDone) return;
         // Point the data stores at the single real-user namespace and reset each
@@ -119,18 +96,6 @@ export const useProfilesStore = create<ProfilesState>()(
           initialized: [DEFAULT_PROFILE.id],
           realSignInDone: true,
         });
-      },
-
-      remove(id) {
-        const wasActive = get().activeId === id;
-        set((s) => {
-          const profiles = s.profiles.filter((p) => p.id !== id);
-          const list = profiles.length ? profiles : [DEFAULT_PROFILE];
-          const activeId = wasActive ? list[0].id : s.activeId;
-          return { profiles: list, activeId };
-        });
-        void clearProfileData(id);
-        if (wasActive) void reloadProfileStores(get().activeId);
       },
 
       setActiveName(name) {
