@@ -72,14 +72,14 @@ export const useEntriesStore = create<EntriesState>()(
   serverSessions: [],
 
   async addEntry({ type, text, justHeard }) {
-    // Safety runs on every submission, before response generation.
-    const { level } = services.safety.classify(text);
+    // Fast local pre-flight, instant and offline: gates response generation.
+    const pre = services.safety.classify(text).level;
     const at = new Date();
     const turns: ConversationTurn[] = [turn('user', text, at)];
     let headline: string;
 
     // Six Moves are suspended at Level 3/4 — the safety surface governs there.
-    if (level < SafetyLevel.High) {
+    if (pre < SafetyLevel.High) {
       const reply = await services.companion.respond({
         text,
         type,
@@ -94,6 +94,9 @@ export const useEntriesStore = create<EntriesState>()(
       headline = reply.headline;
     }
 
+    // Authoritative tier from the backend classifier (never below the local
+    // pre-flight); this is what we persist and what drives the crisis surfaces.
+    const level = (await services.safety.classifyRemote(text)).level;
     const id = `e${Date.now()}`;
     const entry: Entry = {
       id,
@@ -128,11 +131,11 @@ export const useEntriesStore = create<EntriesState>()(
   },
 
   async continueEntry(id, text) {
-    const { level } = services.safety.classify(text);
+    const pre = services.safety.classify(text).level;
     const at = new Date();
     const userTurn = turn('user', text, at);
     const extra: ConversationTurn[] = [userTurn];
-    if (level < SafetyLevel.High) {
+    if (pre < SafetyLevel.High) {
       const reply = await services.companion.respond({
         text,
         type: 'Journal',
@@ -142,6 +145,8 @@ export const useEntriesStore = create<EntriesState>()(
       });
       extra.push(turn('companion', reply.response, at));
     }
+    // Authoritative tier for the entry's running safety level + crisis routing.
+    const level = (await services.safety.classifyRemote(text)).level;
     set((s) => ({
       entries: s.entries.map((e) =>
         e.id === id

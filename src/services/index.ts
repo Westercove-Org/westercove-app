@@ -4,7 +4,7 @@ import { ApiCompanionService, type CompanionService } from './companion';
 import { ApiLibraryService, type LibraryService } from './library';
 import { ApiContentService, type ContentService } from './content';
 import { ApiCrmService, type CrmService } from './crm';
-import { MockSafetyService, type SafetyService } from './safety';
+import { ApiSafetyService, type SafetyService } from './safety';
 import { ApiSubscriptionService, type SubscriptionService } from './subscription';
 import { ApiSurveyService, type SurveyService } from './survey';
 import { MockVoiceService, type VoiceService } from './voice';
@@ -26,7 +26,7 @@ export const services: {
   survey: SurveyService;
   library: LibraryService;
 } = {
-  safety: new MockSafetyService(),
+  safety: new ApiSafetyService(),
   auth: new CognitoAuthService(),
   crm: new ApiCrmService(),
   companion: new ApiCompanionService(),
