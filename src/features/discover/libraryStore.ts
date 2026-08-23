@@ -4,12 +4,9 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import {
   BOOKS,
   booksForModule,
-  guidanceFor,
-  GUIDED_ENTRY_TYPES,
   type Book,
   type BookModule,
 } from '@/constants/books';
-import type { CompanionLibraryBook } from '@/services/companionPrompt';
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { services } from '@/services';
@@ -65,28 +62,6 @@ export function fromCatalog(b: Book): LibraryBook {
 /** The curated shelf for a loss path. Pet grievers never see the human shelf. */
 export function recommendedFor(module: BookModule): LibraryBook[] {
   return booksForModule(module).map(fromCatalog);
-}
-
-/**
- * What the companion may draw on for one entry. The person's own shelf when
- * they have built one; on the guided entry types (where they are reaching for
- * help) the whole loss-path catalog stands in, so a fitting book can always be
- * named. Otherwise nothing: the companion never suggests a book the person has
- * not chosen.
- */
-export function libraryForCompanion(
-  myLibrary: LibraryBook[],
-  module: BookModule,
-  entryType: string,
-): CompanionLibraryBook[] {
-  const guided = GUIDED_ENTRY_TYPES.includes(entryType);
-  const books = myLibrary.length ? myLibrary : guided ? recommendedFor(module) : [];
-  return books.map((b) => ({
-    title: b.title,
-    author: b.author,
-    guidance: guidanceFor(b.id),
-    summary: b.summary,
-  }));
 }
 
 interface LibraryState {

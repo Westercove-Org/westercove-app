@@ -1,9 +1,5 @@
 import { booksForModule } from '@/constants/books';
-import {
-  libraryForCompanion,
-  recommendedFor,
-  useLibraryStore,
-} from '@/features/discover/libraryStore';
+import { recommendedFor, useLibraryStore } from '@/features/discover/libraryStore';
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { services } from '@/services';
 
@@ -122,22 +118,3 @@ describe('libraryStore server shelf', () => {
   });
 });
 
-describe('libraryForCompanion', () => {
-  it('offers nothing until the person builds a library', () => {
-    expect(libraryForCompanion([], 'pet', 'Journal')).toHaveLength(0);
-  });
-
-  it('falls back to the loss-path shelf when they are reaching for help', () => {
-    const lib = libraryForCompanion([], 'pet', 'Grief Question');
-    expect(lib).toHaveLength(10);
-    expect(lib[0].guidance.length).toBeGreaterThan(0);
-  });
-
-  it('uses the person’s own shelf once they have one', () => {
-    const { addToLibrary } = useLibraryStore.getState();
-    useLibraryStore.setState({ myLibrary: [] });
-    addToLibrary('goodbye-friend');
-    const lib = libraryForCompanion(useLibraryStore.getState().myLibrary, 'pet', 'Grief Question');
-    expect(lib.map((b) => b.title)).toEqual(['Goodbye, Friend']);
-  });
-});

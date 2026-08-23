@@ -21,9 +21,32 @@ export interface CreateSessionInput {
   title?: string;
 }
 
+export interface PostMessageInput {
+  /** Backend profile id → sent as `X-Profile-Id` so the reply is generated in
+   * this companion's voice. */
+  profileId?: number;
+  /** IANA timezone (e.g. `America/New_York`) → `X-Client-Timezone`. */
+  timezone?: string;
+}
+
+export interface CompanionMessageReply {
+  /** The companion's generated reply text (assistant turn). */
+  reply: string;
+  /** The session's title after this message, if the backend (re)named it. */
+  sessionTitle?: string;
+}
+
 export interface ChatSessionService {
   /** Create a chat session for a new journal entry; returns its id. */
   createSession(input?: CreateSessionInput): Promise<{ sessionId: number }>;
+  /** Post a user message to a session and get the companion's reply. This is
+   * where companion generation happens now (backend AI), replacing the app's
+   * old direct-to-Anthropic route. */
+  postMessage(
+    sessionId: number,
+    message: string,
+    input?: PostMessageInput,
+  ): Promise<CompanionMessageReply>;
   /** Summaries of a profile's sessions, newest first (backend order). */
   listSessions(profileId: number): Promise<ChatSessionSummary[]>;
   /** One session's summary. */
@@ -63,6 +86,24 @@ export class ApiChatSessionService implements ChatSessionService {
       title: input.title?.trim() || undefined,
     });
     return { sessionId: res.session_id };
+  }
+
+  async postMessage(
+    sessionId: number,
+    message: string,
+    input: PostMessageInput = {},
+  ): Promise<CompanionMessageReply> {
+    const headers: Record<string, string> = {};
+    if (input.profileId != null) headers['X-Profile-Id'] = String(input.profileId);
+    if (input.timezone) headers['X-Client-Timezone'] = input.timezone;
+    const res = await apiClient.post<{
+      assistant: { role: string; text: string };
+      session_title?: string | null;
+    }>(`/chat/sessions/${sessionId}/messages`, { message }, { headers });
+    return {
+      reply: res.assistant?.text?.trim() ?? '',
+      sessionTitle: res.session_title ?? undefined,
+    };
   }
 
   async listSessions(profileId: number): Promise<ChatSessionSummary[]> {
