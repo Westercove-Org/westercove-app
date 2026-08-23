@@ -1,6 +1,6 @@
 import { CognitoAuthService, type AuthService } from './auth';
 import { ApiChatSessionService, type ChatSessionService } from './chat';
-import { ApiCompanionService, type CompanionService } from './companion';
+import { MockCompanionService, type CompanionService } from './companion';
 import { ApiLibraryService, type LibraryService } from './library';
 import { ApiContentService, type ContentService } from './content';
 import { ApiCrmService, type CrmService } from './crm';
@@ -29,7 +29,7 @@ export const services: {
   safety: new ApiSafetyService(),
   auth: new CognitoAuthService(),
   crm: new ApiCrmService(),
-  companion: new ApiCompanionService(),
+  companion: new MockCompanionService(),
   voice: new MockVoiceService(),
   content: new ApiContentService(),
   subscription: new ApiSubscriptionService(),

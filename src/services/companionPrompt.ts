@@ -1,12 +1,12 @@
 /**
- * The shape the client sends to `/api/chat`, and the system prompt the route
- * builds from it. Kept in its own module (no server-only imports) so the client
- * service and the API route share one contract.
+ * The companion request shape and the system prompt built from it. Companion
+ * generation now runs on the backend, so this prompt is no longer sent from the
+ * app; the module is retained for its shared types (used by the profile and
+ * onboarding surfaces) and as the canonical record of the voice rules.
  *
- * The prompt is ported from the Lovable demo's `/api/chat` route — the language
- * rules in particular are product decisions, not style preferences ("died", not
- * "passed away"), and should not be softened without the same conversation that
- * produced them.
+ * The language rules in particular are product decisions, not style preferences
+ * ("died", not "passed away"), and should not be softened without the same
+ * conversation that produced them.
  */
 
 export interface CompanionTurn {

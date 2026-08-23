@@ -11,8 +11,6 @@ import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
-import { DemoControls } from '@/features/questions/DemoControls';
-import { TestProfiles } from '@/features/profile/TestProfiles';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { TONE_LABELS } from '@/services/companionPrompt';
 import { useTheme } from '@/theme';
@@ -62,6 +60,7 @@ export default function ProfileScreen() {
   const { colors } = useTheme();
   const now = new Date();
 
+  const signOut = useSessionStore((s) => s.signOut);
   const fullName = useSessionStore((s) => s.session?.fullName ?? '');
   const setFullName = useSessionStore((s) => s.setFullName);
   const tone = useSessionStore((s) => s.session?.gateAnswers.tone ?? TONES[0]);
@@ -110,8 +109,6 @@ export default function ProfileScreen() {
 
   return (
     <Screen header={{ title: 'Profile', subtitle: formatHeaderDateTime(now), image: heroImage }}>
-      <TestProfiles />
-
       <SectionLabel>YOUR NAME</SectionLabel>
       <View style={styles.cardWrap}>
         <Card>
@@ -181,10 +178,19 @@ export default function ProfileScreen() {
         </Card>
       </View>
 
-      <DemoControls />
-
       <SectionLabel>{copy.profile.settings}</SectionLabel>
       <View style={styles.cardWrap}>{renderRows(SETTINGS)}</View>
+
+      <View style={styles.cardWrap}>
+        <Button
+          label="Sign out"
+          variant="secondary"
+          onPress={() => {
+            signOut();
+            router.replace('/launch');
+          }}
+        />
+      </View>
     </Screen>
   );
 }

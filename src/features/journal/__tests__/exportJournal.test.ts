@@ -1,4 +1,4 @@
-import { faithSummary, userEntries } from '@/features/journal/exportSelection';
+import { userEntries } from '@/features/journal/exportSelection';
 import type { Entry } from '@/features/journal/types';
 
 function entry(over: Partial<Entry> & { id: string; createdAt: string }): Entry {
@@ -50,33 +50,5 @@ describe('userEntries (journal export)', () => {
       ],
     );
     expect(out).toEqual([]);
-  });
-
-});
-
-describe('faithSummary', () => {
-  it('says nothing when the question was never answered', () => {
-    expect(faithSummary({})).toBe('');
-  });
-
-  it('names the tradition when one was given', () => {
-    expect(
-      faithSummary({ faithLanguage: 'Yes, I would like that', faithTradition: 'Buddhist' }),
-    ).toBe('Welcomes faith or spiritual language (Buddhist).');
-    expect(faithSummary({ faithLanguage: 'Some is okay', faithTradition: 'Jewish' })).toBe(
-      'Some faith or spiritual language is welcome (Jewish).',
-    );
-  });
-
-  it('never guesses at a tradition the person kept back', () => {
-    expect(
-      faithSummary({
-        faithLanguage: 'Yes, I would like that',
-        faithTradition: 'Prefer not to say',
-      }),
-    ).toBe('Welcomes faith or spiritual language.');
-    expect(faithSummary({ faithLanguage: 'No, please keep it out' })).toBe(
-      'Prefers that faith or spiritual language be kept out of this space.',
-    );
   });
 });
