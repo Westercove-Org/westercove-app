@@ -11,26 +11,33 @@ beforeEach(() => {
 });
 
 describe('profilesStore', () => {
-  it('createNew keeps existing profiles and activates the new blank one', async () => {
-    await useProfilesStore.getState().createNew();
-    const { profiles, activeId } = useProfilesStore.getState();
-    expect(profiles).toHaveLength(2);
-    expect(profiles[0]).toEqual({ id: 'p-1', name: 'Alice' }); // old one untouched
-    expect(activeId).not.toBe('p-1');
-    expect(profiles.find((p) => p.id === activeId)?.name).toBe(''); // new = blank
-  });
-
   it('setActiveName labels the active profile', () => {
     useProfilesStore.getState().setActiveName('Bob');
     expect(useProfilesStore.getState().profiles.find((p) => p.id === 'p-1')?.name).toBe('Bob');
   });
 
-  it('remove drops a non-active profile', async () => {
-    await useProfilesStore.getState().createNew();
-    const active = useProfilesStore.getState().activeId;
-    useProfilesStore.getState().remove('p-1');
-    const { profiles, activeId } = useProfilesStore.getState();
-    expect(profiles.some((p) => p.id === 'p-1')).toBe(false);
-    expect(activeId).toBe(active);
+  it('startRealUser collapses to the single default profile and runs once', async () => {
+    useProfilesStore.setState({
+      profiles: [
+        { id: 'demo-a', name: 'A' },
+        { id: 'demo-b', name: 'B' },
+      ],
+      activeId: 'demo-b',
+      initialized: ['demo-a', 'demo-b'],
+      realSignInDone: false,
+    });
+
+    useProfilesStore.getState().startRealUser();
+
+    let s = useProfilesStore.getState();
+    expect(s.profiles).toEqual([{ id: 'p-1', name: '' }]);
+    expect(s.activeId).toBe('p-1');
+    expect(s.realSignInDone).toBe(true);
+
+    // Idempotent: a second call after some drift is a no-op.
+    useProfilesStore.setState({ profiles: [{ id: 'x', name: 'later' }] });
+    useProfilesStore.getState().startRealUser();
+    s = useProfilesStore.getState();
+    expect(s.profiles).toEqual([{ id: 'x', name: 'later' }]);
   });
 });
