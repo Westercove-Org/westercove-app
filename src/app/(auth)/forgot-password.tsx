@@ -6,6 +6,7 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
+import { isEmail } from '@/features/auth/email';
 import { AuthError, services } from '@/services';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
@@ -29,8 +30,14 @@ export default function ForgotPasswordScreen() {
 
   const messageFor = (e: unknown) => (e instanceof AuthError ? e.message : c.genericError);
 
+  // Gate each step so the primary Button can disable instead of silently
+  // no-opping: a well-formed email to request a code, then a code + a
+  // policy-length (12+) password to reset. Cognito is the authority on both.
+  const canSend = isEmail(email);
+  const canSubmit = code.trim().length > 0 && newPassword.length >= 12;
+
   const onSend = async () => {
-    if (email.trim().length === 0 || busy) return;
+    if (!canSend || busy) return;
     setError(null);
     setBusy(true);
     try {
@@ -45,7 +52,7 @@ export default function ForgotPasswordScreen() {
   };
 
   const onSubmit = async () => {
-    if (code.trim().length === 0 || newPassword.length < 12 || busy) return;
+    if (!canSubmit || busy) return;
     setError(null);
     setBusy(true);
     try {
@@ -125,6 +132,7 @@ export default function ForgotPasswordScreen() {
           label={sent ? c.submit : c.send}
           variant="amethyst"
           loading={busy}
+          disabled={sent ? !canSubmit : !canSend}
           onPress={sent ? onSubmit : onSend}
         />
 
