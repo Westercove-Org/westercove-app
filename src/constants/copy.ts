@@ -87,7 +87,7 @@ export const copy = {
     newPasswordSubtitle: 'Set a password to finish setting up your account',
     newPassword: 'New password',
     newPasswordPlaceholder: 'Create a password',
-    newPasswordHint: 'At least 8 characters, with a mix of cases, a number, and a symbol.',
+    newPasswordHint: 'At least 12 characters, with a mix of cases, a number, and a symbol.',
     setPassword: 'Set password and continue',
     back: 'Back',
   },

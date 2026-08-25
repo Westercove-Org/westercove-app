@@ -32,7 +32,7 @@ export default function SignInScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const canSignIn = email.trim().length > 0 && password.length > 0;
-  const canSetPassword = newPassword.length >= 8;
+  const canSetPassword = newPassword.length >= 12;
 
   const messageFor = (e: unknown) =>
     e instanceof AuthError ? e.message : copy.signIn.genericError;
