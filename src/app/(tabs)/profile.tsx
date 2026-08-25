@@ -61,7 +61,12 @@ export default function ProfileScreen() {
   const now = new Date();
 
   const signOut = useSessionStore((s) => s.signOut);
-  const fullName = useSessionStore((s) => s.session?.fullName ?? '');
+  // Fall back to the gate's call name (the same source the Home greeting uses)
+  // so a returning user sees their name here instead of a blank "re-ask" field;
+  // fullName still wins when they set a distinct legal name for the journal.
+  const fullName = useSessionStore(
+    (s) => s.session?.fullName ?? s.session?.gateAnswers.callName ?? '',
+  );
   const setFullName = useSessionStore((s) => s.setFullName);
   const tone = useSessionStore((s) => s.session?.gateAnswers.tone ?? TONES[0]);
   const updateGate = useSessionStore((s) => s.updateGate);
