@@ -7,6 +7,7 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
+import { isEmail } from '@/features/auth/email';
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { useProfilesStore } from '@/features/profile/profilesStore';
 import { AuthError, NewPasswordRequiredError } from '@/services';
@@ -31,7 +32,7 @@ export default function SignInScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSignIn = email.trim().length > 0 && password.length > 0;
+  const canSignIn = isEmail(email) && password.length > 0;
   const canSetPassword = newPassword.length >= 12;
 
   const messageFor = (e: unknown) =>
@@ -164,6 +165,7 @@ export default function SignInScreen() {
             />
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={copy.signIn.forgot}
               style={styles.center}
               onPress={() => router.push('/forgot-password' as never)}
             >
