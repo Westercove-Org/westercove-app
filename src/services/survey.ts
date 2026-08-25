@@ -23,9 +23,18 @@ export interface ProfileSurveyData {
   promptError?: string;
 }
 
+/** One row of `GET /survey/profiles` (QuietRoom `ProfileSummary`). */
+export interface ProfileSummary {
+  id: number;
+  name: string;
+  promptStatus: 'pending' | 'ready' | 'failed';
+}
+
 export interface SurveyService {
   /** Submit the day-zero gate answers (partial allowed). */
   submitGate(answers: GateAnswers): Promise<SurveySubmitResult>;
+  /** List the signed-in user's saved survey profiles (empty when none yet). */
+  listProfiles(): Promise<ProfileSummary[]>;
   /** Read a profile's stored survey answers (backs the What I Know page). */
   getProfileAnswers(profileId: number): Promise<ProfileSurveyData>;
   /** Merge answer edits into a profile; omitted keys are kept server-side. */
@@ -92,6 +101,13 @@ export class ApiSurveyService implements SurveyService {
       profile_name: answers.lovedOneName?.trim() || undefined,
     });
     return { status: res.status, profileId: res.profile_id };
+  }
+
+  async listProfiles(): Promise<ProfileSummary[]> {
+    const rows = await apiClient.get<
+      Array<{ id: number; name: string; prompt_status?: ProfileSummary['promptStatus'] }>
+    >('/survey/profiles');
+    return rows.map((r) => ({ id: r.id, name: r.name, promptStatus: r.prompt_status ?? 'ready' }));
   }
 
   async getProfileAnswers(profileId: number): Promise<ProfileSurveyData> {

@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { lovedOneName, useSessionStore } from '@/features/auth/sessionStore';
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { useWhatIKnowStore } from '@/features/profile/whatIKnowStore';
+import { services } from '@/services';
 import {
   MAX_STAGE,
   QUALIFY_SECONDS,
@@ -88,6 +89,14 @@ export const useQuestionsStore = create<QuestionsState>()(
           ...(q.sets ? q.sets(v) : {}),
         }));
         useWhatIKnowStore.getState().addLearnedLine(q.toLine(v, lovedOneName()));
+        // Persist the answer to the backend profile so it survives reload and
+        // reaches the companion prompt — not just local zustand. Keyed by the
+        // cadence question id; the backend merges and keeps omitted answers.
+        // Fire-and-forget: saving a gentle answer never blocks on the network.
+        const profileId = useSessionStore.getState().session?.backendProfileId;
+        if (profileId != null) {
+          void services.survey.updateProfileAnswers(profileId, { [q.id]: v }).catch(() => {});
+        }
       },
 
       skip(q) {

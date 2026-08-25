@@ -51,6 +51,20 @@ export const useSessionStore = create<SessionState>()(
         // catches it and collects a permanent password, then calls
         // completeNewPassword below.
         set({ session: sessionFrom(await services.auth.signIn(email, password)) });
+        // Reconcile the freshly re-gated session with the server: a returning
+        // user who already has a survey profile finished the day-zero gate on a
+        // prior device/session, so skip re-asking it and scope backend calls to
+        // that profile. Best-effort — a failure just leaves the gate to be
+        // re-confirmed rather than stranding the user.
+        try {
+          const profiles = await services.survey.listProfiles();
+          if (profiles.length > 0) {
+            const s = get().session;
+            if (s) set({ session: { ...s, gateComplete: true, backendProfileId: profiles[0].id } });
+          }
+        } catch {
+          // offline / transient — keep the local gate as the fallback
+        }
       },
 
       async completeNewPassword(email, newPassword) {
