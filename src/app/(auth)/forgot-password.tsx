@@ -45,7 +45,7 @@ export default function ForgotPasswordScreen() {
   };
 
   const onSubmit = async () => {
-    if (code.trim().length === 0 || newPassword.length < 8 || busy) return;
+    if (code.trim().length === 0 || newPassword.length < 12 || busy) return;
     setError(null);
     setBusy(true);
     try {
