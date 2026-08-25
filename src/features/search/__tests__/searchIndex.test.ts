@@ -18,6 +18,13 @@ describe('search index', () => {
     expect(r.some((x) => x.kind === 'book')).toBe(true);
   });
 
+  it('matches a term that appears only in a book summary, not its title/author', () => {
+    // "veterinarians" is nowhere in any book title or author, only in summary
+    // copy — the regression the search bug produced ("Nothing matches yet.").
+    const r = search('veterinarians', 'discover');
+    expect(r.some((x) => x.kind === 'book')).toBe(true);
+  });
+
   it('finds an org and reading in the support scope', () => {
     expect(search('pet', 'support').some((x) => x.kind === 'org')).toBe(true);
     expect(search('glossary', 'support').some((x) => x.kind === 'reading')).toBe(true);
