@@ -102,7 +102,7 @@ export const copy = {
     codePlaceholder: '6-digit code',
     newPassword: 'New password',
     newPasswordPlaceholder: 'Create a password',
-    newPasswordHint: 'At least 8 characters, with a mix of cases, a number, and a symbol.',
+    newPasswordHint: 'At least 12 characters, with a mix of cases, a number, and a symbol.',
     send: 'Send reset code',
     submit: 'Reset password',
     sent: 'If that email is registered, a reset code is on its way.',
