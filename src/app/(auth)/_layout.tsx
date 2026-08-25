@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
@@ -11,6 +11,11 @@ import { useTheme } from '@/theme';
  */
 export default function AuthLayout() {
   const { colors } = useTheme();
+  // The banner lives in this persistent overlay (outside the Stack), so without
+  // this its expanded state would carry from one pre-auth screen to the next and
+  // the floating actions would overlap the newly navigated content. Keying it by
+  // route remounts it collapsed on each navigation.
+  const pathname = usePathname();
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack
@@ -23,7 +28,7 @@ export default function AuthLayout() {
       />
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         <View style={{ flex: 1 }} pointerEvents="none" />
-        <CrisisBanner />
+        <CrisisBanner key={pathname} />
       </View>
     </View>
   );
