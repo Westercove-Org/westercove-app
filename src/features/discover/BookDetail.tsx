@@ -23,6 +23,8 @@ const THROTTLED =
   'Your companion is caught up with summaries right now. Come back in a little while and this will be ready.';
 const RESEARCHING =
   'Your companion is still researching this book. It will fill in here once the summary is ready.';
+const FAILED =
+  'This summary could not be written right now. Please try again in a little while.';
 
 /** One book: its summary, the practices it offers, and whether it is shelved.
  *  Reached at `/book/:id` from Discover, the library, and search. */
@@ -50,11 +52,15 @@ export function BookDetail() {
   const backendId = book?.backendId;
   const [throttled, setThrottled] = useState(false);
   const [researching, setResearching] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const generateOnDemand = async (title: string, author: string, bookId: string) => {
     const { summary, rateLimited } = await services.content.generateBookSummary(title, author);
     if (summary) setSummary(bookId, summary);
     else if (rateLimited) setThrottled(true);
+    // A real failure (no summary, not throttled) must surface instead of leaving
+    // the "writing a summary" boilerplate up forever, which reads as masking.
+    else setFailed(true);
   };
 
   useEffect(() => {
@@ -63,6 +69,7 @@ export function BookDetail() {
     let timer: ReturnType<typeof setTimeout>;
     setThrottled(false);
     setResearching(false);
+    setFailed(false);
 
     if (backendId != null) {
       // Server-backed: poll the enrichment, bounded (max 4 tries, 6s apart) so a
@@ -158,7 +165,8 @@ export function BookDetail() {
         </View>
 
         <Text variant="body" style={styles.summary}>
-          {book.summary ?? (researching ? RESEARCHING : throttled ? THROTTLED : WAITING)}
+          {book.summary ??
+            (researching ? RESEARCHING : throttled ? THROTTLED : failed ? FAILED : WAITING)}
         </Text>
 
         {guidance.length > 0 ? (
