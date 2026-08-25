@@ -29,7 +29,9 @@ export function search(query: string, scope: SearchScope): SearchResult[] {
 
   if (scope === 'global' || scope === 'discover') {
     for (const b of BOOKS) {
-      if (`${b.title} ${b.author}`.toLowerCase().includes(q)) {
+      // Search the summary too: it is the book's most visible text on the
+      // Discover card, so a term the reader can plainly see there must match.
+      if (`${b.title} ${b.author} ${b.summary}`.toLowerCase().includes(q)) {
         results.push({ id: b.id, kind: 'book', title: b.title, subtitle: b.author });
       }
     }
