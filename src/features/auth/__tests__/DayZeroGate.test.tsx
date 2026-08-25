@@ -32,7 +32,10 @@ describe('DayZeroGate', () => {
   it('shows the first question and a step counter', async () => {
     const { getByText } = await renderWithProviders(<DayZeroGate />);
     expect(getByText('What would you like me to call you?')).toBeTruthy();
-    expect(getByText(/Step 1 of/)).toBeTruthy();
+    // Denominator is the fixed human-base count (4) and must not jump to 6 when
+    // the pet branch is chosen (8130) — the pet species/breed cards are
+    // un-numbered continuation steps.
+    expect(getByText('Step 1 of 4')).toBeTruthy();
   });
 
   it('adapts the steps: the pet branch (kind + breed) appears only for a pet', () => {
