@@ -25,6 +25,9 @@ interface CadenceStore {
   userSpoke: () => void;
   /** The user's entry classified as heavy → suspend the ask this session. */
   heavyEntry: () => void;
+  /** Persist a companion-asked question's answer, then refresh state. A non-empty
+   * answer key marks the question satisfied server-side (it won't be re-asked). */
+  answerQuestion: (questionId: string, value: string) => Promise<void>;
   /** "Not now" on a pending question. */
   deferQuestion: (questionId: string) => Promise<void>;
   /** "Skip this one" on a pending question. */
@@ -84,6 +87,18 @@ export const useCadenceStore = create<CadenceStore>((set) => {
     },
     heavyEntry() {
       report('heavy_entry');
+    },
+
+    async answerQuestion(questionId, value) {
+      const profileId = activeProfileId();
+      const v = value.trim();
+      if (profileId == null || !v) return;
+      try {
+        await services.survey.updateProfileAnswers(profileId, { [questionId]: v });
+        await useCadenceStore.getState().hydrate();
+      } catch {
+        // best-effort; the answer can be retried
+      }
     },
 
     async deferQuestion(questionId) {

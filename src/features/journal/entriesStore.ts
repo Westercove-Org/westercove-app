@@ -36,6 +36,9 @@ interface EntriesState {
   }) => Promise<{ id: string; level: SafetyLevel }>;
   continueEntry: (id: string, text: string) => Promise<SafetyLevel>;
   getEntry: (id: string) => Entry | undefined;
+  /** Clear a companion turn's pending 4-Doors question once it's answered,
+   * deferred, or skipped (so the quick-reply chips stop showing). */
+  clearPendingQuestion: (entryId: string, turnId: string) => void;
   /** Load the backend chat-session summaries for the persisted profile id.
    * No-op (clears) when there is no backend profile id yet. */
   refreshServerSessions: () => Promise<void>;
@@ -71,17 +74,17 @@ async function companionReply(
   sessionId: number | undefined,
   text: string,
   type: string,
-): Promise<string> {
+): Promise<{ response: string; question?: ConversationTurn['pendingQuestion'] }> {
   const offline = await services.companion.respond({ text, type, lovedOneName: lovedOneName() });
-  if (sessionId == null) return offline.response;
+  if (sessionId == null) return { response: offline.response };
   try {
-    const { reply } = await services.chat.postMessage(sessionId, text, {
+    const { reply, question } = await services.chat.postMessage(sessionId, text, {
       profileId: backendProfileId(),
       timezone: clientTimezone(),
     });
-    return reply || offline.response;
+    return { response: reply || offline.response, question };
   } catch {
-    return offline.response;
+    return { response: offline.response };
   }
 }
 
@@ -112,8 +115,10 @@ export const useEntriesStore = create<EntriesState>()(
       } catch {
         // Offline: the entry still saves; the reply comes from the fallback.
       }
-      const response = await companionReply(sessionId, text, type);
-      turns.push(turn('companion', response, at));
+      const { response, question } = await companionReply(sessionId, text, type);
+      const cturn = turn('companion', response, at);
+      if (question) cturn.pendingQuestion = question;
+      turns.push(cturn);
     } else if (justHeard) {
       turns.push(turn('companion', 'It is heard. It stays here.', at));
     }
@@ -143,8 +148,10 @@ export const useEntriesStore = create<EntriesState>()(
     const extra: ConversationTurn[] = [turn('user', text, at)];
     if (pre < SafetyLevel.High) {
       const sessionId = get().entries.find((e) => e.id === id)?.sessionId;
-      const response = await companionReply(sessionId, text, 'Journal');
-      extra.push(turn('companion', response, at));
+      const { response, question } = await companionReply(sessionId, text, 'Journal');
+      const cturn = turn('companion', response, at);
+      if (question) cturn.pendingQuestion = question;
+      extra.push(cturn);
     }
     // Authoritative tier for the entry's running safety level + crisis routing.
     const level = (await services.safety.classifyRemote(text)).level;
@@ -161,6 +168,21 @@ export const useEntriesStore = create<EntriesState>()(
 
   getEntry(id) {
     return get().entries.find((e) => e.id === id);
+  },
+
+  clearPendingQuestion(entryId, turnId) {
+    set((s) => ({
+      entries: s.entries.map((e) =>
+        e.id === entryId
+          ? {
+              ...e,
+              turns: e.turns.map((t) =>
+                t.id === turnId ? { ...t, pendingQuestion: undefined } : t,
+              ),
+            }
+          : e,
+      ),
+    }));
   },
 
   async refreshServerSessions() {

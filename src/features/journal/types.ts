@@ -4,6 +4,10 @@ export interface ConversationTurn {
   text: string;
   /** ISO timestamp. */
   at: string;
+  /** A staged 4-Doors question the companion asked at the end of this turn
+   * (question text already in `text`); drives the inline quick-reply chips.
+   * Cleared once the user answers, defers, or skips it. */
+  pendingQuestion?: { questionId: string; options: string[] };
 }
 
 export interface Entry {
