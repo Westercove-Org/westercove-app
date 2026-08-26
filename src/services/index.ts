@@ -1,4 +1,5 @@
 import { CognitoAuthService, type AuthService } from './auth';
+import { ApiCadenceService, type CadenceService } from './cadence';
 import { ApiChatSessionService, type ChatSessionService } from './chat';
 import { MockCompanionService, type CompanionService } from './companion';
 import { ApiLibraryService, type LibraryService } from './library';
@@ -23,6 +24,7 @@ export const services: {
   content: ContentService;
   subscription: SubscriptionService;
   chat: ChatSessionService;
+  cadence: CadenceService;
   survey: SurveyService;
   library: LibraryService;
 } = {
@@ -34,11 +36,13 @@ export const services: {
   content: new ApiContentService(),
   subscription: new ApiSubscriptionService(),
   chat: new ApiChatSessionService(),
+  cadence: new ApiCadenceService(),
   survey: new ApiSurveyService(),
   library: new ApiLibraryService(),
 };
 
 export * from './chat';
+export * from './cadence';
 export * from './library';
 export * from './safety';
 export * from './auth';

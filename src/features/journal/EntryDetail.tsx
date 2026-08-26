@@ -13,6 +13,7 @@ import { useSafetyRouter } from '@/features/safety/useSafetyRouter';
 import { InlineResourceCard } from '@/features/safety/InlineResourceCard';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionTimer } from '@/features/questions/useQuestionTimer';
+import { useCadenceJournalingTimer } from '@/features/cadence/useCadence';
 import { formatEntryTimestamp } from '@/lib/dateFormat';
 import { services } from '@/services';
 import { SafetyLevel } from '@/services/safety';
@@ -35,6 +36,7 @@ export function EntryDetail() {
 
   // Accumulate talk-time while this conversation screen is focused.
   useQuestionTimer();
+  useCadenceJournalingTimer();
 
   if (!entry) {
     return (
