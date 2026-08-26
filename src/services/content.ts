@@ -1,5 +1,4 @@
-import { apiClient } from '@/lib/http';
-import { HttpError } from '@/lib/http';
+import { apiClient, HttpError } from '@/lib/http';
 
 /** Organizations for a given loss type (Support → org detail). */
 export interface Organization {
