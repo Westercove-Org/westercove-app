@@ -15,6 +15,10 @@ interface SessionState {
   /** Finish an invited user's first login by setting a permanent password. */
   completeNewPassword: (email: string, newPassword: string) => Promise<void>;
   completeGate: (answers: GateAnswers) => void;
+  /** Finish the 4-Doors gate: the profile already exists server-side (POST
+   * /survey/gate returned its id), so mark the gate done, adopt the profile id,
+   * and carry the call name for the Home greeting. */
+  completeFourDoorsGate: (profileId: number, userName: string) => void;
   setEntitlement: (entitlement: Entitlement, sponsorOrganization?: string) => void;
   setFullName: (fullName: string) => void;
   updateGate: (partial: Partial<GateAnswers>) => void;
@@ -87,6 +91,19 @@ export const useSessionStore = create<SessionState>()(
             if (cur) set({ session: { ...cur, backendProfileId: profileId } });
           })
           .catch(() => {});
+      },
+
+      completeFourDoorsGate(profileId, userName) {
+        const s = get().session;
+        if (!s) return;
+        set({
+          session: {
+            ...s,
+            gateComplete: true,
+            backendProfileId: profileId,
+            gateAnswers: { ...s.gateAnswers, callName: userName.trim() },
+          },
+        });
       },
 
       setEntitlement(entitlement, sponsorOrganization) {

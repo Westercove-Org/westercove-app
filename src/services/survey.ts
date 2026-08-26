@@ -30,9 +30,35 @@ export interface ProfileSummary {
   promptStatus: 'pending' | 'ready' | 'failed';
 }
 
+/** Body for `POST /survey/gate` (4-Doors gate, behind the USE_FOUR_DOORS flag).
+ * Field presence depends on the chosen door; see `fourDoorsModel.buildGatePayload`. */
+export interface FourDoorsGateInput {
+  userName: string;
+  door: 1 | 2 | 3 | 4;
+  tone: string;
+  lovedOneName?: string;
+  whatChanged?: string;
+  relationship?: string;
+  doorSubtype?: string;
+  changeTiming?: string;
+  species?: string;
+  breed?: string;
+}
+
+/** Response from `POST /survey/gate`. */
+export interface FourDoorsGateResult {
+  profileId: number;
+  door: number;
+  doorSubtype?: string;
+  tone: string;
+  disenfranchised: boolean;
+}
+
 export interface SurveyService {
   /** Submit the day-zero gate answers (partial allowed). */
   submitGate(answers: GateAnswers): Promise<SurveySubmitResult>;
+  /** Submit the 4-Doors gate (behind USE_FOUR_DOORS); creates a door-typed profile. */
+  submitFourDoorsGate(input: FourDoorsGateInput): Promise<FourDoorsGateResult>;
   /** List the signed-in user's saved survey profiles (empty when none yet). */
   listProfiles(): Promise<ProfileSummary[]>;
   /** Read a profile's stored survey answers (backs the What I Know page). */
@@ -101,6 +127,34 @@ export class ApiSurveyService implements SurveyService {
       profile_name: answers.lovedOneName?.trim() || undefined,
     });
     return { status: res.status, profileId: res.profile_id };
+  }
+
+  async submitFourDoorsGate(input: FourDoorsGateInput): Promise<FourDoorsGateResult> {
+    const res = await apiClient.post<{
+      profile_id: number;
+      door: number;
+      door_subtype?: string | null;
+      tone: string;
+      disenfranchised: boolean;
+    }>('/survey/gate', {
+      user_name: input.userName,
+      door: input.door,
+      tone: input.tone,
+      loved_one_name: input.lovedOneName,
+      what_changed: input.whatChanged,
+      relationship: input.relationship,
+      door_subtype: input.doorSubtype,
+      change_timing: input.changeTiming,
+      species: input.species,
+      breed: input.breed,
+    });
+    return {
+      profileId: res.profile_id,
+      door: res.door,
+      doorSubtype: res.door_subtype ?? undefined,
+      tone: res.tone,
+      disenfranchised: res.disenfranchised,
+    };
   }
 
   async listProfiles(): Promise<ProfileSummary[]> {
