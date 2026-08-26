@@ -9,8 +9,11 @@ import { ChevronRightIcon, DownloadIcon, MicIcon, SendIcon } from '@/components/
 import { Card } from '@/components/ui/Card';
 import { EntryTag } from '@/components/ui/EntryTag';
 import { Text } from '@/components/ui/Text';
+import { USE_FOUR_DOORS } from '@/constants/flags';
 import { useSafetyRouter } from '@/features/safety/useSafetyRouter';
 import { InlineResourceCard } from '@/features/safety/InlineResourceCard';
+import { useCadenceStore } from '@/features/cadence/cadenceStore';
+import { QuickReplyChips } from '@/features/cadence/QuickReplyChips';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionTimer } from '@/features/questions/useQuestionTimer';
 import { useCadenceJournalingTimer } from '@/features/cadence/useCadence';
@@ -27,6 +30,7 @@ export function EntryDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const entry = useEntriesStore((s) => s.entries.find((e) => e.id === id));
   const continueEntry = useEntriesStore((s) => s.continueEntry);
+  const clearPendingQuestion = useEntriesStore((s) => s.clearPendingQuestion);
   const routeSafety = useSafetyRouter();
 
   const [text, setText] = useState('');
@@ -121,6 +125,26 @@ export function EntryDetail() {
               <Text variant="body" color="amethystText">
                 {t.text}
               </Text>
+              {USE_FOUR_DOORS && t.pendingQuestion ? (
+                <View style={styles.chips}>
+                  <QuickReplyChips
+                    options={t.pendingQuestion.options}
+                    onSelect={(value) => {
+                      const qid = t.pendingQuestion!.questionId;
+                      void useCadenceStore.getState().answerQuestion(qid, value);
+                      clearPendingQuestion(entry.id, t.id);
+                    }}
+                    onDefer={() => {
+                      void useCadenceStore.getState().deferQuestion(t.pendingQuestion!.questionId);
+                      clearPendingQuestion(entry.id, t.id);
+                    }}
+                    onSkip={() => {
+                      void useCadenceStore.getState().skipQuestion(t.pendingQuestion!.questionId);
+                      clearPendingQuestion(entry.id, t.id);
+                    }}
+                  />
+                </View>
+              ) : null}
             </Card>
           ),
         )}
@@ -230,6 +254,7 @@ const styles = StyleSheet.create({
   thread: { paddingHorizontal: spacing.screen, paddingTop: spacing.md, gap: spacing.md, paddingBottom: spacing.lg },
   userTurn: {},
   companionLabel: { marginBottom: spacing.xs, letterSpacing: 0.6 },
+  chips: { marginTop: spacing.md },
   micError: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xs },
   composeRow: {
     flexDirection: 'row',

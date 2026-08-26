@@ -46,6 +46,24 @@ describe('ApiChatSessionService', () => {
     expect(res).toEqual({ reply: 'I am here with you.', sessionTitle: 'A hard night' });
   });
 
+  it('surfaces a four_doors_question effect (question_id + options)', async () => {
+    post.mockResolvedValue({
+      assistant: { role: 'assistant', text: 'What steadies you?' },
+      effects: [
+        { type: 'journal_created', entry_id: 1, title: 'x' },
+        { type: 'four_doors_question', question_id: 'h-steady', options: ['A', 'B'] },
+      ],
+    });
+    const res = await new ApiChatSessionService().postMessage(42, 'hi');
+    expect(res.question).toEqual({ questionId: 'h-steady', options: ['A', 'B'] });
+  });
+
+  it('leaves question undefined when there is no such effect', async () => {
+    post.mockResolvedValue({ assistant: { role: 'assistant', text: 'ok' }, effects: [] });
+    const res = await new ApiChatSessionService().postMessage(42, 'hi');
+    expect(res.question).toBeUndefined();
+  });
+
   it('lists a profile\'s sessions, mapping snake_case → camelCase with defaults', async () => {
     get.mockResolvedValue({
       sessions: [

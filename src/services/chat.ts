@@ -29,11 +29,21 @@ export interface PostMessageInput {
   timezone?: string;
 }
 
+/** A staged 4-Doors question the companion voiced in this reply (the prompt text
+ * is already appended to `reply`); drives the inline quick-reply / defer-skip UI.
+ * Empty `options` = a free-text answer. */
+export interface FourDoorsQuestion {
+  questionId: string;
+  options: string[];
+}
+
 export interface CompanionMessageReply {
   /** The companion's generated reply text (assistant turn). */
   reply: string;
   /** The session's title after this message, if the backend (re)named it. */
   sessionTitle?: string;
+  /** Present when the reply carried a 4-Doors `four_doors_question` effect. */
+  question?: FourDoorsQuestion;
 }
 
 export interface ChatSessionService {
@@ -99,10 +109,15 @@ export class ApiChatSessionService implements ChatSessionService {
     const res = await apiClient.post<{
       assistant: { role: string; text: string };
       session_title?: string | null;
+      effects?: { type: string; question_id?: string; options?: string[] }[];
     }>(`/chat/sessions/${sessionId}/messages`, { message }, { headers });
+    const ask = res.effects?.find((e) => e.type === 'four_doors_question');
     return {
       reply: res.assistant?.text?.trim() ?? '',
       sessionTitle: res.session_title ?? undefined,
+      question: ask?.question_id
+        ? { questionId: ask.question_id, options: ask.options ?? [] }
+        : undefined,
     };
   }
 
