@@ -105,7 +105,7 @@ export class ApiSurveyService implements SurveyService {
 
   async listProfiles(): Promise<ProfileSummary[]> {
     const rows = await apiClient.get<
-      Array<{ id: number; name: string; prompt_status?: ProfileSummary['promptStatus'] }>
+      { id: number; name: string; prompt_status?: ProfileSummary['promptStatus'] }[]
     >('/survey/profiles');
     return rows.map((r) => ({ id: r.id, name: r.name, promptStatus: r.prompt_status ?? 'ready' }));
   }
