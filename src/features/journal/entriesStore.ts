@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { useCadenceStore } from '@/features/cadence/cadenceStore';
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
 import { SafetyLevel } from '@/services/safety';
@@ -10,6 +11,15 @@ import type { ConversationTurn, Entry } from './types';
 
 let counter = 100;
 const nextId = () => `t${counter++}`;
+
+/** Report the post-entry cadence signals (BE-4): the user spoke this session,
+ * and — at a high safety tier — the entry is "heavy" so the ask is suspended.
+ * No-op unless the 4-Doors flow is on (the cadence store guards each call). */
+function reportCadence(level: SafetyLevel): void {
+  const cadence = useCadenceStore.getState();
+  cadence.userSpoke();
+  if (level >= SafetyLevel.High) cadence.heavyEntry();
+}
 
 function turn(role: 'user' | 'companion', text: string, at = new Date()): ConversationTurn {
   return { id: nextId(), role, text, at: at.toISOString() };
@@ -123,6 +133,7 @@ export const useEntriesStore = create<EntriesState>()(
       sessionId,
     };
     set((s) => ({ entries: [entry, ...s.entries] }));
+    reportCadence(level);
     return { id, level };
   },
 
@@ -144,6 +155,7 @@ export const useEntriesStore = create<EntriesState>()(
           : e,
       ),
     }));
+    reportCadence(level);
     return level;
   },
 

@@ -19,6 +19,7 @@ import {
 } from '@/features/journal/entryTypes';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionTimer } from '@/features/questions/useQuestionTimer';
+import { useCadenceJournalingTimer } from '@/features/cadence/useCadence';
 import { SafetyLevel } from '@/services/safety';
 import { services } from '@/services';
 import { useTheme } from '@/theme';
@@ -43,6 +44,7 @@ export function NewEntry() {
 
   // Accumulate talk-time while composing a new entry too.
   useQuestionTimer();
+  useCadenceJournalingTimer();
 
   const onMic = async () => {
     setListening(true);

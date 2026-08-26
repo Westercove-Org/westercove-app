@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 
 import { WestercoveTabBar } from '@/components/WestercoveTabBar';
+import { useCadenceSession } from '@/features/cadence/useCadence';
 import { useTheme } from '@/theme';
 
 /**
@@ -10,6 +11,9 @@ import { useTheme } from '@/theme';
  */
 export default function TabsLayout() {
   const { colors } = useTheme();
+  // Reconcile 4-Doors cadence state + report the session open on entering the
+  // shell. No-op unless USE_FOUR_DOORS is on with a backend profile.
+  useCadenceSession();
   return (
     <Tabs
       tabBar={(props) => <WestercoveTabBar {...props} />}
