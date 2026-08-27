@@ -46,6 +46,30 @@ describe('ApiSignupService', () => {
     expect(mockGet).toHaveBeenCalledWith('/auth/signup/status/tok%2F1');
     expect(r).toEqual({ status: 'awaiting_payment' });
   });
+
+  it('verifyOnboardingToken GETs the url-encoded token and maps the hint', async () => {
+    mockGet.mockResolvedValue({ email_hint: 'j••@b.co', expires_at: '2026-01-01T00:00:00Z' });
+    const r = await svc.verifyOnboardingToken('tok/1');
+    expect(mockGet).toHaveBeenCalledWith('/auth/onboarding/verify/tok%2F1');
+    expect(r).toEqual({ emailHint: 'j••@b.co', expiresAt: '2026-01-01T00:00:00Z' });
+  });
+
+  it('completeOnboarding POSTs token + password', async () => {
+    mockPost.mockResolvedValue({ email: 'a@b.co' });
+    const r = await svc.completeOnboarding('tok_1', 'hunter2hunter2');
+    expect(mockPost).toHaveBeenCalledWith('/auth/onboarding/complete', {
+      token: 'tok_1',
+      password: 'hunter2hunter2',
+    });
+    expect(r).toEqual({ email: 'a@b.co' });
+  });
+
+  it('verifyEmailToken POSTs the token', async () => {
+    mockPost.mockResolvedValue({ email: 'a@b.co' });
+    const r = await svc.verifyEmailToken('tok_1');
+    expect(mockPost).toHaveBeenCalledWith('/auth/onboarding/verify-email', { token: 'tok_1' });
+    expect(r).toEqual({ email: 'a@b.co' });
+  });
 });
 
 describe('isSignupSuccessStatus', () => {

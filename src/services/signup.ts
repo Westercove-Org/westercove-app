@@ -32,10 +32,30 @@ export interface SignupStatusResult {
   status: string;
 }
 
+export interface OnboardingVerifyResult {
+  /** Masked email to render on the set-password screen, e.g. "j••@example.com". */
+  emailHint: string;
+  /** ISO expiry of the single-use onboarding token. */
+  expiresAt: string;
+}
+
 export interface SignupService {
   orgCode(input: { email: string; password: string; code: string }): Promise<OrgCodeSignupResult>;
   startPaymentCheckout(email: string): Promise<PaymentCheckoutResult>;
   getStatus(pendingSignupId: string): Promise<SignupStatusResult>;
+
+  // Onboarding completion via single-use token from the emailed deep link
+  // (Dwight's /auth/onboarding contract). Token is a URL path segment, never
+  // typed by the user.
+  /** Paid path: check the set-password token before rendering the form.
+   * 410 if invalid/expired. */
+  verifyOnboardingToken(token: string): Promise<OnboardingVerifyResult>;
+  /** Paid path: set the Cognito password AND flip email_verified. 410
+   * invalid/expired · 400 weak password · 409 already set up. */
+  completeOnboarding(token: string, password: string): Promise<{ email: string }>;
+  /** Org-code path: verify email only (user already has a password). 410
+   * invalid/expired/consumed. */
+  verifyEmailToken(token: string): Promise<{ email: string }>;
 }
 
 /** Terminal-success test for a polled status. Defensive against the backend
@@ -68,5 +88,25 @@ export class ApiSignupService implements SignupService {
       `/auth/signup/status/${encodeURIComponent(pendingSignupId)}`,
     );
     return { status: r.status };
+  }
+
+  async verifyOnboardingToken(token: string): Promise<OnboardingVerifyResult> {
+    const r = await apiClient.get<{ email_hint: string; expires_at: string }>(
+      `/auth/onboarding/verify/${encodeURIComponent(token)}`,
+    );
+    return { emailHint: r.email_hint, expiresAt: r.expires_at };
+  }
+
+  async completeOnboarding(token: string, password: string): Promise<{ email: string }> {
+    const r = await apiClient.post<{ email: string }>('/auth/onboarding/complete', {
+      token,
+      password,
+    });
+    return { email: r.email };
+  }
+
+  async verifyEmailToken(token: string): Promise<{ email: string }> {
+    const r = await apiClient.post<{ email: string }>('/auth/onboarding/verify-email', { token });
+    return { email: r.email };
   }
 }
