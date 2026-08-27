@@ -162,6 +162,35 @@ export const copy = {
     backToSignUp: 'Back to sign up',
   },
 
+  onboarding: {
+    // Paid path: set-password landing (/welcome/:token).
+    setPasswordTitle: 'Set your password',
+    checkingTitle: 'One moment',
+    checkingBody: 'Checking your link…',
+    settingUpFor: 'Setting up', // "Setting up <masked email>"
+    password: 'Password',
+    passwordPlaceholder: 'Create a password',
+    passwordHint: 'At least 12 characters, with a mix of cases, a number, and a symbol.',
+    setPassword: 'Set password and continue',
+    setting: 'Setting up…',
+    doneTitle: 'You’re all set',
+    doneBody: 'Your password is set and your email is confirmed. You can sign in now.',
+    // Org-code path: verify-only landing (/verify-email/:token).
+    verifyingTitle: 'Confirming your email',
+    verifyingBody: 'Hang tight while we confirm your email…',
+    verifiedTitle: 'Email confirmed',
+    verifiedBody: 'Your email is confirmed. You can sign in now.',
+    // Shared terminal states.
+    expiredTitle: 'This link has expired',
+    expiredBody: 'This link is no longer valid — it may have expired or already been used. Please start again or request a new one.',
+    alreadyTitle: 'Already set up',
+    alreadyBody: 'This account is already set up. You can sign in now.',
+    errorTitle: 'We hit a snag',
+    errorBody: 'We couldn’t complete this step. Please try again.',
+    goToSignIn: 'Go to sign in',
+    backToSignUp: 'Back to sign up',
+  },
+
   gate: {
     title: 'Getting to know you',
     step: 'Step', // "Step X of N"
