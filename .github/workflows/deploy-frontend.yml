@@ -1,0 +1,53 @@
+name: deploy-frontend
+
+# Build the Expo web SPA into a static nginx image, push to ECR, and force a new
+# deployment of the frontend service. AWS side (OIDC deploy role scoped to just
+# this ECR repo + service) is owned by infra (Oscar). Same-origin API: the base
+# URL is baked empty so requests are relative and the ALB path-routes them.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: true
+  
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_IMAGE: 920887851546.dkr.ecr.us-east-1.amazonaws.com/westercove-dev-frontend:latest
+  ECS_CLUSTER: westercove-dev-cluster
+  ECS_SERVICE: westercove-dev-frontend
+  
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::920887851546:role/westercove-app-frontend-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      # Fargate is amd64; must not inherit the runner/arch default.
+      - name: Build and push image
+        run: |
+          docker build --platform linux/amd64 \
+            --build-arg EXPO_PUBLIC_API_URL='' \
+            -t "$ECR_IMAGE" .
+          docker push "$ECR_IMAGE"
+
+      - name: Force new deployment
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --force-new-deployment
+  
