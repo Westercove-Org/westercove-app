@@ -6,6 +6,7 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
+import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
 import { services } from '@/services';
 import { HttpError } from '@/lib/http';
 import { useTheme } from '@/theme';
@@ -160,6 +161,7 @@ export default function WelcomeTokenScreen() {
       <Text variant="body" color="textMuted">
         {terminal.body}
       </Text>
+      {view === 'expired' || view === 'error' ? <ResendEmailButton /> : null}
       <Button label={terminal.label} variant="amethyst" onPress={() => router.replace(terminal.to)} />
     </Shell>
   );

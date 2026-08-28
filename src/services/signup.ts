@@ -56,6 +56,11 @@ export interface SignupService {
   /** Org-code path: verify email only (user already has a password). 410
    * invalid/expired/consumed. */
   verifyEmailToken(token: string): Promise<{ email: string }>;
+  /** Re-send the onboarding email (set-password or verify) for an email that
+   * still needs setup. Enumeration-safe: always resolves (generic 200) whether
+   * or not an account exists; the backend picks the right mail from Cognito
+   * state. Rate-limited (429 via the shared onboarding limiter). */
+  resendOnboardingEmail(email: string): Promise<void>;
 }
 
 /** Terminal-success test for a polled status. Defensive against the backend
@@ -108,5 +113,9 @@ export class ApiSignupService implements SignupService {
   async verifyEmailToken(token: string): Promise<{ email: string }> {
     const r = await apiClient.post<{ email: string }>('/auth/onboarding/verify-email', { token });
     return { email: r.email };
+  }
+
+  async resendOnboardingEmail(email: string): Promise<void> {
+    await apiClient.post('/auth/onboarding/resend', { email });
   }
 }

@@ -6,6 +6,7 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
+import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
 import { isSignupSuccessStatus, services } from '@/services';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
@@ -88,6 +89,9 @@ export default function SignUpReturnScreen() {
         <Text variant="body" color="textMuted" accessibilityRole={view === 'polling' ? 'alert' : undefined}>
           {s.body}
         </Text>
+        {view === 'success' || view === 'slow' || view === 'error' ? (
+          <ResendEmailButton />
+        ) : null}
         {view === 'polling' ? null : (
           <Button label={s.label} variant="amethyst" onPress={() => router.replace(s.to)} />
         )}

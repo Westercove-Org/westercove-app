@@ -198,6 +198,20 @@ export const copy = {
     backToSignUp: 'Back to sign up',
   },
 
+  // Resend the onboarding (set-password / verify) email. Enumeration-safe:
+  // the confirmation never says whether an account exists.
+  resend: {
+    prompt: 'Didn’t get the email?',
+    button: 'Resend email',
+    sending: 'Sending…',
+    sent: 'If your account still needs setup, we’ve re-sent the email — check your inbox (and spam).',
+    rateLimited: 'Please wait a moment before trying again.',
+    error: 'Couldn’t resend just now. Please try again in a moment.',
+    email: 'Email',
+    emailPlaceholder: 'you@example.com',
+    invalidEmail: 'Enter a valid email address.',
+  },
+
   gate: {
     title: 'Getting to know you',
     step: 'Step', // "Step X of N"

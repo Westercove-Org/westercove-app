@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { isEmail } from '@/features/auth/email';
+import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
 import { services } from '@/services';
 import { HttpError } from '@/lib/http';
 import { useTheme } from '@/theme';
@@ -228,6 +229,7 @@ export default function SignUpScreen() {
             <Text variant="body">
               {step === 'confirm' ? c.confirmBody : c.payCheckEmailBody}
             </Text>
+            <ResendEmailButton email={email} />
             <Button
               label={c.goToSignIn}
               variant="amethyst"

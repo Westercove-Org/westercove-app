@@ -70,6 +70,12 @@ describe('ApiSignupService', () => {
     expect(mockPost).toHaveBeenCalledWith('/auth/onboarding/verify-email', { token: 'tok_1' });
     expect(r).toEqual({ email: 'a@b.co' });
   });
+
+  it('resendOnboardingEmail POSTs the email (enumeration-safe, resolves void)', async () => {
+    mockPost.mockResolvedValue({ status: 'ok' });
+    await expect(svc.resendOnboardingEmail('a@b.co')).resolves.toBeUndefined();
+    expect(mockPost).toHaveBeenCalledWith('/auth/onboarding/resend', { email: 'a@b.co' });
+  });
 });
 
 describe('isSignupSuccessStatus', () => {
