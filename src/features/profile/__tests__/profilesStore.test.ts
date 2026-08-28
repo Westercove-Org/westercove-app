@@ -16,6 +16,11 @@ describe('profilesStore', () => {
     expect(useProfilesStore.getState().profiles.find((p) => p.id === 'p-1')?.name).toBe('Bob');
   });
 
+  it('setActiveName falls back to a neutral "Profile N" for a self door (no loved-one)', () => {
+    useProfilesStore.getState().setActiveName('   ');
+    expect(useProfilesStore.getState().profiles.find((p) => p.id === 'p-1')?.name).toBe('Profile 1');
+  });
+
   it('startRealUser collapses to the single default profile and runs once', async () => {
     useProfilesStore.setState({
       profiles: [

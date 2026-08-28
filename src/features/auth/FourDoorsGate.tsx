@@ -67,7 +67,9 @@ export function FourDoorsGate() {
     try {
       const { profileId } = await services.survey.submitFourDoorsGate(buildGatePayload(answers));
       const name = answers.userName.trim();
-      useProfilesStore.getState().setActiveName(name);
+      // The profile LABEL is the loved-one's name, not the user's (self door →
+      // empty → a neutral "Profile N"). The user's name is a separate field.
+      useProfilesStore.getState().setActiveName(answers.lovedOneName?.trim() ?? '');
       // Marks the gate complete + adopts the profile id; the auth guard then
       // redirects to the tab shell.
       completeFourDoorsGate(profileId, name);
