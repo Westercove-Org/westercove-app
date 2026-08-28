@@ -107,9 +107,11 @@ export function NewEntry() {
         <Text variant="screenTitle" style={styles.title} accessibilityRole="header">
           New entry
         </Text>
-        <Text variant="body" color="heading">
-          For {lovedOne}
-        </Text>
+        {lovedOne ? (
+          <Text variant="body" color="heading">
+            For {lovedOne}
+          </Text>
+        ) : null}
         <Text variant="bodySmall" color="textMuted" style={styles.desc}>
           Write as much or as little as you like. You can keep journaling, or tap Home when you
           are ready.
