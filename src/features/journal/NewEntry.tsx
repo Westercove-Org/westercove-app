@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -6,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
+import { DriftingPhoto } from '@/components/DriftingPhoto';
 import { ChevronRightIcon, DownloadIcon, MicIcon, SendIcon } from '@/components/icons';
 import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
@@ -72,7 +72,7 @@ export function NewEntry() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <Image source={heroImage} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <DriftingPhoto source={heroImage} />
         <LinearGradient
           colors={['rgba(246,241,231,0.2)', 'rgba(246,241,231,0)', 'rgba(246,241,231,0.94)']}
           locations={[0, 0.4, 1]}
