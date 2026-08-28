@@ -40,11 +40,17 @@ describe('ApiSignupService', () => {
     expect(r.checkoutUrl).toBeNull();
   });
 
-  it('getStatus GETs the url-encoded token', async () => {
+  it('getStatus GETs the url-encoded token; missing email → null (pre-#80 dev)', async () => {
     mockGet.mockResolvedValue({ status: 'awaiting_payment' });
     const r = await svc.getStatus('tok/1');
     expect(mockGet).toHaveBeenCalledWith('/auth/signup/status/tok%2F1');
-    expect(r).toEqual({ status: 'awaiting_payment' });
+    expect(r).toEqual({ status: 'awaiting_payment', email: null });
+  });
+
+  it('getStatus passes through the account email on a terminal status (bug7)', async () => {
+    mockGet.mockResolvedValue({ status: 'active', email: 'a@b.co' });
+    const r = await svc.getStatus('tok_1');
+    expect(r).toEqual({ status: 'active', email: 'a@b.co' });
   });
 
   it('verifyOnboardingToken GETs the url-encoded token and maps the hint', async () => {

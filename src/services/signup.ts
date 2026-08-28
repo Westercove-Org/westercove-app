@@ -30,6 +30,11 @@ export interface SignupStatusResult {
   /** Poll while "awaiting_payment"; "expired" is terminal failure; any other
    * terminal value ("active", "created_pending_verification") = success. */
   status: string;
+  /** Account email for the pending signup (sv2-bug7-be, PR #80). Non-null for a
+   * real token; null for unknown/probed tokens (enumeration posture) or the rare
+   * undecryptable row. Used to prefill + lock the email on the return screen and
+   * to wire the resend button — never taken from the URL (PII). */
+  email: string | null;
 }
 
 export interface OnboardingVerifyResult {
@@ -89,10 +94,11 @@ export class ApiSignupService implements SignupService {
   }
 
   async getStatus(pendingSignupId: string): Promise<SignupStatusResult> {
-    const r = await apiClient.get<{ status: string }>(
+    const r = await apiClient.get<{ status: string; email?: string | null }>(
       `/auth/signup/status/${encodeURIComponent(pendingSignupId)}`,
     );
-    return { status: r.status };
+    // Tolerate the field being absent until PR #80 deploys to dev (missing == null).
+    return { status: r.status, email: r.email ?? null };
   }
 
   async verifyOnboardingToken(token: string): Promise<OnboardingVerifyResult> {
