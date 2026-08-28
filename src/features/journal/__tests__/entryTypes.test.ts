@@ -1,6 +1,8 @@
 import {
   ENTRY_PLACEHOLDERS,
   ENTRY_TYPES,
+  ENTRY_TYPE_ENUM,
+  entryTypeEnum,
   isEntryType,
 } from '@/features/journal/entryTypes';
 
@@ -15,6 +17,15 @@ describe('entry types', () => {
     for (const t of ENTRY_TYPES) {
       expect(ENTRY_PLACEHOLDERS[t].length).toBeGreaterThan(0);
     }
+  });
+
+  it('maps every label to a backend enum, and unknown labels to undefined', () => {
+    for (const t of ENTRY_TYPES) expect(entryTypeEnum(t)).toBe(ENTRY_TYPE_ENUM[t]);
+    expect(entryTypeEnum('Grief Question')).toBe('grief_question');
+    expect(entryTypeEnum('Forgiveness')).toBe('forgive');
+    expect(entryTypeEnum('Emotions')).toBe('emotions');
+    expect(entryTypeEnum('Nonsense')).toBeUndefined();
+    expect(entryTypeEnum(undefined)).toBeUndefined();
   });
 
   it('isEntryType guards correctly', () => {
