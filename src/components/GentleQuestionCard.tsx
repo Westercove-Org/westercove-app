@@ -48,19 +48,36 @@ function QuestionForm({ q }: { q: CadenceQuestion }) {
   const [choice, setChoice] = useState<string | null>(null);
   const [multi, setMulti] = useState<string[]>([]);
   const [librarySkipped, setLibrarySkipped] = useState(false);
+  // Recording the answer advances the card, but that re-render is async — so
+  // without immediate feedback the Save button stays live and a second tap
+  // fires a duplicate save before the card moves on. Latch on save: disable +
+  // confirm, and reset if the user edits the answer (card lingering edge case).
+  const [saved, setSaved] = useState(false);
 
   const isLibrary = q.input === 'library';
   const canSave =
     q.input === 'text' ? text.trim().length > 0 : q.input === 'choice' ? choice !== null : multi.length > 0;
 
   const onSave = () => {
+    if (saved) return;
+    setSaved(true);
     if (q.input === 'text') recordAnswer(q, text);
     else if (q.input === 'choice' && choice) recordAnswer(q, choice);
     else if (q.input === 'multi' && multi.length) recordAnswer(q, multi.join(', '));
   };
 
-  const toggleMulti = (opt: string) =>
+  const onChangeText = (t: string) => {
+    setText(t);
+    if (saved) setSaved(false);
+  };
+  const onChoose = (opt: string) => {
+    setChoice(opt);
+    if (saved) setSaved(false);
+  };
+  const toggleMulti = (opt: string) => {
+    if (saved) setSaved(false);
     setMulti((m) => (m.includes(opt) ? m.filter((x) => x !== opt) : [...m, opt]));
+  };
 
   return (
     <View style={styles.wrap}>
@@ -109,7 +126,7 @@ function QuestionForm({ q }: { q: CadenceQuestion }) {
             {q.input === 'text' ? (
               <TextInput
                 value={text}
-                onChangeText={setText}
+                onChangeText={onChangeText}
                 placeholder="Only if you would like to. There is no hurry."
                 placeholderTextColor={colors.textMuted}
                 multiline
@@ -125,7 +142,7 @@ function QuestionForm({ q }: { q: CadenceQuestion }) {
                     key={opt}
                     label={opt}
                     selected={choice === opt}
-                    onPress={() => setChoice(opt)}
+                    onPress={() => onChoose(opt)}
                   />
                 ))}
               </View>
@@ -145,7 +162,11 @@ function QuestionForm({ q }: { q: CadenceQuestion }) {
             ) : null}
 
             <View style={styles.actions}>
-              <Button label="Save" onPress={onSave} disabled={!canSave} />
+              <Button
+                label={saved ? 'Saved ✓' : 'Save'}
+                onPress={onSave}
+                disabled={!canSave || saved}
+              />
               <Button label="Not now" variant="secondary" onPress={dismissCheckin} />
               {q.optional ? (
                 <Button label="Skip this one" variant="secondary" onPress={() => skip(q)} />
