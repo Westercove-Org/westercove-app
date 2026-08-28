@@ -162,6 +162,7 @@ export const copy = {
     slowBody: 'Your payment is still being confirmed. If you paid, you’ll get an email to set your password shortly — you can safely close this page.',
     errorTitle: 'We hit a snag',
     errorBody: 'We couldn’t confirm your signup. If you completed payment, check your email for a link to set your password; otherwise please try again.',
+    emailLabel: 'Your email',
     goToSignIn: 'Go to sign in',
     backToSignUp: 'Back to sign up',
   },

@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
@@ -9,7 +9,7 @@ import { copy } from '@/constants/copy';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
 import { isSignupSuccessStatus, services } from '@/services';
 import { useTheme } from '@/theme';
-import { spacing } from '@/theme/tokens';
+import { radii, spacing } from '@/theme/tokens';
 
 const heroImage = require('../../../../assets/images/westercove_hero_valley.jpg');
 
@@ -38,6 +38,9 @@ export default function SignUpReturnScreen() {
   const [view, setView] = useState<View_>(
     status === 'cancelled' ? 'cancelled' : pendingSignupId ? 'polling' : 'error',
   );
+  // Account email from the status poll (never from the URL — PII). Prefills and
+  // locks the field on success so the user can just Resend or sign in.
+  const [email, setEmail] = useState<string | null>(null);
   const pollsRef = useRef(0);
 
   useEffect(() => {
@@ -48,8 +51,9 @@ export default function SignUpReturnScreen() {
     const tick = async () => {
       pollsRef.current += 1;
       try {
-        const { status: s } = await services.signup.getStatus(pendingSignupId);
+        const { status: s, email: e } = await services.signup.getStatus(pendingSignupId);
         if (!active) return;
+        if (e) setEmail(e);
         if (s === 'expired') return setView('expired');
         if (isSignupSuccessStatus(s)) return setView('success');
         // still awaiting_payment → keep polling until the cap.
@@ -89,8 +93,21 @@ export default function SignUpReturnScreen() {
         <Text variant="body" color="textMuted" accessibilityRole={view === 'polling' ? 'alert' : undefined}>
           {s.body}
         </Text>
+        {email ? (
+          <View style={styles.fieldBlock}>
+            <Text variant="cardTitle">{c.emailLabel}</Text>
+            <View style={[styles.inputBox, { borderColor: colors.line, backgroundColor: colors.card }]}>
+              <TextInput
+                value={email}
+                editable={false}
+                accessibilityLabel={c.emailLabel}
+                style={[styles.input, { color: colors.textMuted }]}
+              />
+            </View>
+          </View>
+        ) : null}
         {view === 'success' || view === 'slow' || view === 'error' ? (
-          <ResendEmailButton />
+          <ResendEmailButton email={email ?? undefined} />
         ) : null}
         {view === 'polling' ? null : (
           <Button label={s.label} variant="amethyst" onPress={() => router.replace(s.to)} />
@@ -107,4 +124,15 @@ const styles = StyleSheet.create({
     paddingBottom: 88,
     gap: spacing.lg,
   },
+  fieldBlock: { gap: spacing.sm },
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderRadius: radii.card,
+    paddingHorizontal: spacing.lg,
+    minHeight: 56,
+  },
+  input: { flex: 1, fontSize: 15, minHeight: 48 },
 });
