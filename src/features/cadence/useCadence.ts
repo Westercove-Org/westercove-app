@@ -1,5 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 
 import { useCadenceStore } from './cadenceStore';
 
@@ -9,15 +10,24 @@ const FLUSH_EVERY_SECONDS = 60;
 
 /**
  * Mount once inside the signed-in shell: reconcile the server cadence state on
- * entry and report the session open. Both are no-ops unless USE_FOUR_DOORS is on
- * and a backend profile exists (the store guards them), so this is inert for the
- * current flow.
+ * entry and report the session open — including on every return to the
+ * foreground, since a gap makes that a new session. The server computes the
+ * away-gap from the event timestamps, so there is no client away-timer; we just
+ * re-emit `app_open` when the app becomes active. All calls are no-ops unless
+ * USE_FOUR_DOORS is on and a backend profile exists (the store guards them).
  */
 export function useCadenceSession() {
   useEffect(() => {
     const store = useCadenceStore.getState();
     void store.hydrate();
     store.appOpen();
+
+    let prev = AppState.currentState;
+    const sub = AppState.addEventListener('change', (next) => {
+      if (prev !== 'active' && next === 'active') useCadenceStore.getState().appOpen();
+      prev = next;
+    });
+    return () => sub.remove();
   }, []);
 }
 
