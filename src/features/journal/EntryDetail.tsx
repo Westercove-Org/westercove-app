@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/Text';
 import { USE_FOUR_DOORS } from '@/constants/flags';
 import { useSafetyRouter } from '@/features/safety/useSafetyRouter';
 import { InlineResourceCard } from '@/features/safety/InlineResourceCard';
+import { ServerResources } from '@/features/safety/ServerResources';
 import { useCadenceStore } from '@/features/cadence/cadenceStore';
 import { QuickReplyChips } from '@/features/cadence/QuickReplyChips';
 import { useEntriesStore } from '@/features/journal/entriesStore';
@@ -160,6 +161,9 @@ export function EntryDetail() {
         ) : null}
 
         {entry.safetyLevel === SafetyLevel.Elevated ? <InlineResourceCard /> : null}
+        {/* The backend's crisis-resource card, whenever it sent one (self-hides
+            when there are no server resources). */}
+        {entry.safetyLevel >= SafetyLevel.Elevated ? <ServerResources /> : null}
 
         {/* The same gentle question Home offers: writing here is exactly when a
             person is most likely to have an answer for it. */}

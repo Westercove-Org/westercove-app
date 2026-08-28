@@ -5,8 +5,9 @@ import { useSessionStore } from '@/features/auth/sessionStore';
 import { useCadenceStore } from '@/features/cadence/cadenceStore';
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
-import { SafetyLevel } from '@/services/safety';
-import type { ChatSessionSummary } from '@/services/chat';
+import { SafetyLevel, levelForTier } from '@/services/safety';
+import { useSafetyStore } from '@/features/safety/safetyStore';
+import type { ChatSessionSummary, CompanionSafety } from '@/services/chat';
 import type { ConversationTurn, Entry } from './types';
 
 let counter = 100;
@@ -74,18 +75,39 @@ async function companionReply(
   sessionId: number | undefined,
   text: string,
   type: string,
-): Promise<{ response: string; question?: ConversationTurn['pendingQuestion'] }> {
+): Promise<{
+  response: string;
+  question?: ConversationTurn['pendingQuestion'];
+  safety?: CompanionSafety;
+}> {
   const offline = await services.companion.respond({ text, type, lovedOneName: lovedOneName() });
   if (sessionId == null) return { response: offline.response };
   try {
-    const { reply, question } = await services.chat.postMessage(sessionId, text, {
+    const { reply, question, safety } = await services.chat.postMessage(sessionId, text, {
       profileId: backendProfileId(),
       timezone: clientTimezone(),
     });
-    return { response: reply || offline.response, question };
+    return { response: reply || offline.response, question, safety };
   } catch {
     return { response: offline.response };
   }
+}
+
+/**
+ * The entry's authoritative safety level, plus publishing the crisis context so
+ * the surfaces can render the server's resources. Prefer the chat turn's server
+ * `safety` (session-ratcheted, carries the resource card); fall back to the
+ * standalone remote classifier when the turn had none (offline, no session, or a
+ * Level 3/4 entry that skipped the chat call). Never below the instant local
+ * pre-flight — fail-safe toward showing help.
+ */
+async function resolveSafety(text: string, safety: CompanionSafety | undefined): Promise<SafetyLevel> {
+  const pre = services.safety.classify(text).level;
+  if (safety) {
+    useSafetyStore.getState().setFromServer(safety);
+    return Math.max(pre, levelForTier(safety.tier)) as SafetyLevel;
+  }
+  return (await services.safety.classifyRemote(text)).level;
 }
 
 export const useEntriesStore = create<EntriesState>()(
@@ -106,6 +128,7 @@ export const useEntriesStore = create<EntriesState>()(
     // user asked to be "just heard". Otherwise create the backend session that
     // backs this entry and let the backend generate the companion reply. The gate
     // uses the instant local pre-flight; the authoritative tier is fetched below.
+    let safety: CompanionSafety | undefined;
     if (pre < SafetyLevel.High && !justHeard) {
       try {
         ({ sessionId } = await services.chat.createSession({
@@ -115,17 +138,19 @@ export const useEntriesStore = create<EntriesState>()(
       } catch {
         // Offline: the entry still saves; the reply comes from the fallback.
       }
-      const { response, question } = await companionReply(sessionId, text, type);
-      const cturn = turn('companion', response, at);
-      if (question) cturn.pendingQuestion = question;
+      const reply = await companionReply(sessionId, text, type);
+      const cturn = turn('companion', reply.response, at);
+      if (reply.question) cturn.pendingQuestion = reply.question;
       turns.push(cturn);
+      safety = reply.safety;
     } else if (justHeard) {
       turns.push(turn('companion', 'It is heard. It stays here.', at));
     }
 
-    // Authoritative tier from the backend classifier (never below the local
-    // pre-flight); this is what we persist and what drives the crisis surfaces.
-    const level = (await services.safety.classifyRemote(text)).level;
+    // Authoritative tier — the chat turn's server safety when present, else the
+    // standalone classifier; never below the local pre-flight. Drives the entry's
+    // level, the crisis surfaces, and (via the safety store) their resources.
+    const level = await resolveSafety(text, safety);
     const id = `e${Date.now()}`;
     const entry: Entry = {
       id,
@@ -146,15 +171,17 @@ export const useEntriesStore = create<EntriesState>()(
     const pre = services.safety.classify(text).level;
     const at = new Date();
     const extra: ConversationTurn[] = [turn('user', text, at)];
+    let safety: CompanionSafety | undefined;
     if (pre < SafetyLevel.High) {
       const sessionId = get().entries.find((e) => e.id === id)?.sessionId;
-      const { response, question } = await companionReply(sessionId, text, 'Journal');
-      const cturn = turn('companion', response, at);
-      if (question) cturn.pendingQuestion = question;
+      const reply = await companionReply(sessionId, text, 'Journal');
+      const cturn = turn('companion', reply.response, at);
+      if (reply.question) cturn.pendingQuestion = reply.question;
       extra.push(cturn);
+      safety = reply.safety;
     }
     // Authoritative tier for the entry's running safety level + crisis routing.
-    const level = (await services.safety.classifyRemote(text)).level;
+    const level = await resolveSafety(text, safety);
     set((s) => ({
       entries: s.entries.map((e) =>
         e.id === id
@@ -192,13 +219,25 @@ export const useEntriesStore = create<EntriesState>()(
       return;
     }
     try {
-      set({ serverSessions: await services.chat.listSessions(profileId) });
+      const sessions = await services.chat.listSessions(profileId);
+      // Reconcile each entry's level with its session's server-ratcheted tier so
+      // a reload keeps a crisis entry at its tier (and its support surfaces) even
+      // if it was first classified offline. Never downgrades.
+      const tierBySession = new Map(sessions.map((s) => [s.id, levelForTier(s.safetyTier)]));
+      set((s) => ({
+        serverSessions: sessions,
+        entries: s.entries.map((e) => {
+          const t = e.sessionId != null ? tierBySession.get(e.sessionId) : undefined;
+          return t != null && t > e.safetyLevel ? { ...e, safetyLevel: t } : e;
+        }),
+      }));
     } catch {
       // Offline / transient: keep whatever we last loaded.
     }
   },
 
   resetForProfile() {
+    useSafetyStore.getState().clear();
     set({ entries: [], serverSessions: [] });
   },
     }),
