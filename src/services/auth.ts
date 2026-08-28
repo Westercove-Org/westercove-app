@@ -69,9 +69,13 @@ function userPool(): CognitoUserPool {
   const UserPoolId = process.env.EXPO_PUBLIC_COGNITO_USER_POOL_ID;
   const ClientId = process.env.EXPO_PUBLIC_COGNITO_CLIENT_ID;
   if (!UserPoolId || !ClientId) {
-    throw new AuthError(
-      'Sign-in is not configured yet. Set EXPO_PUBLIC_COGNITO_USER_POOL_ID and EXPO_PUBLIC_COGNITO_CLIENT_ID.',
+    // These are inlined at build time (EXPO_PUBLIC_* docker build-args). Missing
+    // = a build/deploy misconfiguration, not something the end user can fix — so
+    // surface a neutral message and keep the actionable detail in the console.
+    console.error(
+      'Cognito config missing at build time: pass EXPO_PUBLIC_COGNITO_USER_POOL_ID and EXPO_PUBLIC_COGNITO_CLIENT_ID as docker build-args.',
     );
+    throw new AuthError('Sign-in is temporarily unavailable. Please try again shortly.', 'ConfigMissing');
   }
   poolCache = new CognitoUserPool({ UserPoolId, ClientId });
   return poolCache;

@@ -4,10 +4,18 @@
 FROM node:20-bookworm-slim AS build
 WORKDIR /app
 
-# EXPO_PUBLIC_* is inlined into the bundle at build time, so the API base URL is
-# a build arg, not a runtime env. Empty => relative, same-origin requests.
+# EXPO_PUBLIC_* is inlined into the bundle at build time, so these are build
+# args, not runtime env (ECS env never reaches the browser bundle). Empty API
+# URL => relative, same-origin requests.
 ARG EXPO_PUBLIC_API_URL=""
 ENV EXPO_PUBLIC_API_URL=$EXPO_PUBLIC_API_URL
+
+# Cognito user-pool + SPA app-client IDs. PUBLIC client identifiers (no secret),
+# required for browser SRP sign-in — must be inlined at export time.
+ARG EXPO_PUBLIC_COGNITO_USER_POOL_ID=""
+ENV EXPO_PUBLIC_COGNITO_USER_POOL_ID=$EXPO_PUBLIC_COGNITO_USER_POOL_ID
+ARG EXPO_PUBLIC_COGNITO_CLIENT_ID=""
+ENV EXPO_PUBLIC_COGNITO_CLIENT_ID=$EXPO_PUBLIC_COGNITO_CLIENT_ID
 
 COPY package.json package-lock.json ./
 RUN npm ci
