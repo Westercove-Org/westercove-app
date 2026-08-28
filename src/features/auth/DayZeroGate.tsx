@@ -84,8 +84,9 @@ export function DayZeroGate() {
     const i = seq.indexOf(stepId);
     if (i >= seq.length - 1) {
       completeGate(next);
-      // Label this test profile with the name the user chose.
-      useProfilesStore.getState().setActiveName(next.callName?.trim() ?? '');
+      // The profile LABEL is the loved-one's name (self door → empty → a neutral
+      // "Profile N"), not the user's callName — that's a separate field.
+      useProfilesStore.getState().setActiveName(next.lovedOneName?.trim() ?? '');
     } else {
       setStepId(seq[i + 1]);
     }

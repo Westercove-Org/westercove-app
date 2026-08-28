@@ -99,10 +99,16 @@ export const useProfilesStore = create<ProfilesState>()(
       },
 
       setActiveName(name) {
-        const label = name.trim();
-        set((s) => ({
-          profiles: s.profiles.map((p) => (p.id === s.activeId ? { ...p, name: label } : p)),
-        }));
+        set((s) => {
+          const idx = s.profiles.findIndex((p) => p.id === s.activeId);
+          // A profile's label is the loved-one's name; a self-door profile (no
+          // loved-one) gets a neutral "Profile N". Callers pass the loved-one
+          // name (empty for the self door).
+          const label = name.trim() || `Profile ${idx >= 0 ? idx + 1 : s.profiles.length + 1}`;
+          return {
+            profiles: s.profiles.map((p) => (p.id === s.activeId ? { ...p, name: label } : p)),
+          };
+        });
       },
     }),
     {
