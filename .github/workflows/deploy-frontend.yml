@@ -41,6 +41,8 @@ jobs:
         run: |
           docker build --platform linux/amd64 \
             --build-arg EXPO_PUBLIC_API_URL='' \
+            --build-arg EXPO_PUBLIC_COGNITO_USER_POOL_ID='us-east-1_LCAAKP7s6' \
+            --build-arg EXPO_PUBLIC_COGNITO_CLIENT_ID='6k23q0pm8n1m0u74e8ai79pcud' \
             -t "$ECR_IMAGE" .
           docker push "$ECR_IMAGE"
 
