@@ -54,6 +54,18 @@ export function BookDetail() {
   const [researching, setResearching] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  // Reset the per-book request state when the shown book changes. Doing this in
+  // render (the React-recommended "adjust state when a prop changes" pattern)
+  // instead of synchronously inside the effect avoids the cascading-render lint
+  // and clears a prior book's status before paint rather than after.
+  const [statusBookId, setStatusBookId] = useState(book?.id);
+  if (book?.id !== statusBookId) {
+    setStatusBookId(book?.id);
+    setThrottled(false);
+    setResearching(false);
+    setFailed(false);
+  }
+
   const generateOnDemand = async (title: string, author: string, bookId: string) => {
     const { summary, rateLimited } = await services.content.generateBookSummary(title, author);
     if (summary) setSummary(bookId, summary);
@@ -67,31 +79,32 @@ export function BookDetail() {
     if (!needsSummary || !book) return;
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
-    setThrottled(false);
-    setResearching(false);
-    setFailed(false);
 
-    if (backendId != null) {
-      // Server-backed: poll the enrichment, bounded (max 4 tries, 6s apart) so a
-      // "still researching" book fills in without a retry-storm.
-      let attempts = 0;
-      const poll = async () => {
-        const status = await refreshBookSummary(book.id);
-        if (!active) return;
-        if (status === 'pending' || status === 'researching') {
-          setResearching(true);
-          if (++attempts < 4) timer = setTimeout(poll, 6000);
-        } else {
-          setResearching(false);
-          // approved / needs_review already wrote the summary; failed → fall back.
-          if (status === 'failed') void generateOnDemand(book.title, book.author, book.id);
-        }
-      };
-      void poll();
-    } else {
-      // No backend id (offline / pre-profile): single on-demand request, no retry.
-      void generateOnDemand(book.title, book.author, book.id);
-    }
+    // All state updates below happen only after an await, off the synchronous
+    // effect pass (kept in an async IIFE so it reads as such to the linter).
+    void (async () => {
+      if (backendId != null) {
+        // Server-backed: poll the enrichment, bounded (max 4 tries, 6s apart) so
+        // a "still researching" book fills in without a retry-storm.
+        let attempts = 0;
+        const poll = async () => {
+          const status = await refreshBookSummary(book.id);
+          if (!active) return;
+          if (status === 'pending' || status === 'researching') {
+            setResearching(true);
+            if (++attempts < 4) timer = setTimeout(poll, 6000);
+          } else {
+            setResearching(false);
+            // approved / needs_review already wrote the summary; failed → fall back.
+            if (status === 'failed') await generateOnDemand(book.title, book.author, book.id);
+          }
+        };
+        await poll();
+      } else {
+        // No backend id (offline / pre-profile): single on-demand request, no retry.
+        await generateOnDemand(book.title, book.author, book.id);
+      }
+    })();
 
     return () => {
       active = false;
@@ -188,6 +201,13 @@ export function BookDetail() {
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={
+            isCustom
+              ? 'Remove from your library'
+              : inLibrary
+                ? 'In your profile library'
+                : 'Add to your profile library'
+          }
           onPress={() => {
             if (inLibrary) {
               removeFromLibrary(book.id);
