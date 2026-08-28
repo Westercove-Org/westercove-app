@@ -55,13 +55,15 @@ export default function SignUpScreen() {
   const [step, setStep] = useState<Step>('entry');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const emailValid = isEmail(email);
   const passwordValid = password.length >= MIN_PASSWORD;
-  const canJoin = passwordValid && code.trim().length > 0 && !busy;
+  const passwordsMatch = password === confirmPassword;
+  const canJoin = passwordValid && passwordsMatch && code.trim().length > 0 && !busy;
 
   const goOrgCode = () => {
     setError(null);
@@ -93,6 +95,7 @@ export default function SignUpScreen() {
   const onJoin = async () => {
     setError(null);
     if (!passwordValid) return setError(c.passwordHint);
+    if (!passwordsMatch) return setError(c.passwordMismatch);
     if (!code.trim()) return setError(c.codePlaceholder);
     setBusy(true);
     try {
@@ -183,6 +186,14 @@ export default function SignUpScreen() {
             <Text variant="bodySmall" color="textMuted">
               {c.passwordHint}
             </Text>
+            {field(c.confirmPassword, confirmPassword, setConfirmPassword, c.confirmPasswordPlaceholder, {
+              secureTextEntry: true,
+            })}
+            {confirmPassword.length > 0 && !passwordsMatch ? (
+              <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
+                {c.passwordMismatch}
+              </Text>
+            ) : null}
             {field(c.code, code, setCode, c.codePlaceholder, { autoCapitalize: 'characters' })}
             <Button
               label={busy ? c.joining : c.join}

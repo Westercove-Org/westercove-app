@@ -33,8 +33,11 @@ export default function WelcomeTokenScreen() {
   const [view, setView] = useState<View_>(token ? 'checking' : 'error');
   const [emailHint, setEmailHint] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const passwordsMatch = password === confirmPassword;
 
   useEffect(() => {
     if (!token) return;
@@ -57,6 +60,7 @@ export default function WelcomeTokenScreen() {
 
   const onSetPassword = async () => {
     if (!token || password.length < MIN_PASSWORD || busy) return;
+    if (!passwordsMatch) return setError(c.passwordMismatch);
     setError(null);
     setBusy(true);
     try {
@@ -111,11 +115,31 @@ export default function WelcomeTokenScreen() {
             {c.passwordHint}
           </Text>
         </View>
+        <View style={styles.fieldBlock}>
+          <Text variant="cardTitle">{c.confirmPassword}</Text>
+          <View style={[styles.inputBox, { borderColor: colors.line }]}>
+            <TextInput
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder={c.confirmPasswordPlaceholder}
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+              autoCapitalize="none"
+              accessibilityLabel={c.confirmPassword}
+              style={[styles.input, { color: colors.textPrimary }]}
+            />
+          </View>
+          {confirmPassword.length > 0 && !passwordsMatch ? (
+            <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
+              {c.passwordMismatch}
+            </Text>
+          ) : null}
+        </View>
         <Button
           label={busy ? c.setting : c.setPassword}
           variant="amethyst"
           loading={busy}
-          disabled={password.length < MIN_PASSWORD || busy}
+          disabled={password.length < MIN_PASSWORD || !passwordsMatch || busy}
           onPress={onSetPassword}
         />
       </Shell>
