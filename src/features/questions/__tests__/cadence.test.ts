@@ -25,6 +25,13 @@ describe('cadence', () => {
     expect(nextQuestion(base())?.id).toBe('about');
   });
 
+  it('suppresses the whole check-in when there is no name (Door-3 / pre-gate)', () => {
+    // No loved-one name → no one to ask about → no fabricated/empty name.
+    expect(nextQuestion(base({ name: '' }))).toBeNull();
+    expect(nextQuestion(base({ name: '   ' }))).toBeNull();
+    expect(hasCheckin(base({ name: '' }))).toBe(false);
+  });
+
   it('prioritises safety questions once they unlock', () => {
     // At stage 2 the safety pair unlocks; safety outranks the still-unanswered warm openers.
     expect(nextQuestion(base({ journalStage: 2 }))?.tier).toBe('safety');

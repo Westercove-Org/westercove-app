@@ -512,6 +512,10 @@ export function currentStage(s: CadenceState): number {
 /** The next question to surface: unanswered + stage-unlocked + deps met, chosen
  *  safety-first then by list order. */
 export function nextQuestion(s: CadenceState): CadenceQuestion | null {
+  // Every cadence question is a loved-one question ("Tell me about {name}", …).
+  // With no name — a Door-3 loss or pre-gate — there is no one to ask about, so
+  // suppress the check-in rather than interpolate a fabricated or empty name.
+  if (!s.name?.trim()) return null;
   const qs = questionsFor(s.module ?? 'pet');
   const answered = new Set(s.answeredIds ?? []);
   const stage = currentStage(s);

@@ -170,14 +170,13 @@ export const useSessionStore = create<SessionState>()(
 );
 
 /**
- * The loved one's name for compose/questions ("For Lily", "[name]" tokens).
- * Falls back to a seeded default so the flow reads naturally before the gate
- * has captured a real name.
+ * The loved one's name for compose/questions, or '' when there is none — a
+ * Door-3 loss (no person) or pre-gate. Never invents a name: callers suppress
+ * the name token when this is empty rather than showing a fabricated one to a
+ * grieving user.
  */
 export function lovedOneName(): string {
-  return (
-    useSessionStore.getState().session?.gateAnswers.lovedOneName?.trim() || 'Lily'
-  );
+  return useSessionStore.getState().session?.gateAnswers.lovedOneName?.trim() ?? '';
 }
 
 /** Derived routing status from the session. */
