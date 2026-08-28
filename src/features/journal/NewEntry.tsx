@@ -51,6 +51,9 @@ export function NewEntry() {
     try {
       const transcript = await services.voice.capture();
       setText((t) => (t ? `${t} ${transcript}` : transcript));
+    } catch {
+      // Mic denied / unavailable / no speech: leave the field for typing rather
+      // than inserting anything or throwing an unhandled rejection.
     } finally {
       setListening(false);
     }

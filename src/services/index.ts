@@ -9,7 +9,7 @@ import { ApiSafetyService, type SafetyService } from './safety';
 import { ApiSignupService, type SignupService } from './signup';
 import { ApiSubscriptionService, type SubscriptionService } from './subscription';
 import { ApiSurveyService, type SurveyService } from './survey';
-import { MockVoiceService, type VoiceService } from './voice';
+import { createVoiceService, type VoiceService } from './voice';
 
 /**
  * The service registry. Every service is an interface with a Mock… impl now
@@ -34,7 +34,7 @@ export const services: {
   auth: new CognitoAuthService(),
   crm: new ApiCrmService(),
   companion: new MockCompanionService(),
-  voice: new MockVoiceService(),
+  voice: createVoiceService(),
   content: new ApiContentService(),
   subscription: new ApiSubscriptionService(),
   signup: new ApiSignupService(),
