@@ -38,7 +38,7 @@ function san(s: string): string {
 
 /**
  * Ask the backend for a theme overview of the user's journal. The backend
- * (`POST /journal/summary`) builds it from the profile's server-side entries and
+ * (`POST /api/journal/summary`) builds it from the profile's server-side entries and
  * holds the AI key. Returns '' when there is no backend profile yet, or when the
  * summary is unavailable (offline, or a 502 before Bedrock/Anthropic is enabled)
  * — the PDF then falls back to the verbatim entries.
@@ -47,7 +47,7 @@ async function fetchSummary(): Promise<string> {
   const profileId = useSessionStore.getState().session?.backendProfileId;
   if (profileId == null) return '';
   try {
-    const res = await apiClient.post<{ summary?: string }>('/journal/summary', {
+    const res = await apiClient.post<{ summary?: string }>('/api/journal/summary', {
       profile_id: profileId,
     });
     return (res.summary ?? '').trim();

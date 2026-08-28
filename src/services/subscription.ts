@@ -62,12 +62,13 @@ export class MockSubscriptionService implements SubscriptionService {
 
 /**
  * Real billing over the shared `apiClient`. Mirrors QuietRoom's billing routes
- * (all under `/account`):
- *  - GET  /account/subscription          → SubscriptionStatus
- *  - POST /account/subscription/restore  → { entitlement }
- *  - POST /account/license               → { entitlement, sponsor_organization? }
- *  - POST /account/deletion              → { deletion_scheduled_at }
- *  - DELETE /account/deletion
+ * (all under `/api/account` — namespaced so the bare /account SPA route isn't
+ * captured by the backend on a hard refresh, BUG-C):
+ *  - GET  /api/account/subscription          → SubscriptionStatus
+ *  - POST /api/account/subscription/restore  → { entitlement }
+ *  - POST /api/account/license               → { entitlement, sponsor_organization? }
+ *  - POST /api/account/deletion              → { deletion_scheduled_at }
+ *  - DELETE /api/account/deletion
  */
 export class ApiSubscriptionService implements SubscriptionService {
   async getStatus(): Promise<SubscriptionStatus> {
@@ -75,7 +76,7 @@ export class ApiSubscriptionService implements SubscriptionService {
       entitlement: Entitlement;
       trial_ends_on?: string | null;
       price?: string | null;
-    }>('/account/subscription');
+    }>('/api/account/subscription');
     return {
       entitlement: r.entitlement,
       trialEndsOn: r.trial_ends_on ? formatDate(r.trial_ends_on) : undefined,
@@ -84,26 +85,26 @@ export class ApiSubscriptionService implements SubscriptionService {
   }
 
   async restore(): Promise<Entitlement> {
-    const r = await apiClient.post<{ entitlement: Entitlement }>('/account/subscription/restore');
+    const r = await apiClient.post<{ entitlement: Entitlement }>('/api/account/subscription/restore');
     return r.entitlement;
   }
 
   async redeemLicense(code: string): Promise<LicenseRedeemResult> {
     const r = await apiClient.post<{ entitlement: Entitlement; sponsor_organization?: string | null }>(
-      '/account/license',
+      '/api/account/license',
       { code },
     );
     return { entitlement: r.entitlement, sponsorOrganization: r.sponsor_organization ?? undefined };
   }
 
   async scheduleDeletion(confirmEmail: string): Promise<{ deletesOn: string }> {
-    const r = await apiClient.post<{ deletion_scheduled_at: string }>('/account/deletion', {
+    const r = await apiClient.post<{ deletion_scheduled_at: string }>('/api/account/deletion', {
       confirm_email: confirmEmail,
     });
     return { deletesOn: formatDate(r.deletion_scheduled_at) };
   }
 
   async cancelDeletion(): Promise<void> {
-    await apiClient.delete('/account/deletion');
+    await apiClient.delete('/api/account/deletion');
   }
 }
