@@ -5,6 +5,10 @@ export interface Organization {
   id: string;
   name: string;
   description: string;
+  /** Where tapping the card takes the user. The mock supplies a web-search URL
+   * for the org name (no real directory wired yet, ticket notion-fe-cleanup #4);
+   * a real GET /organizations would return each org's own site. */
+  url: string;
 }
 
 /** Result of a book-summary request. `summary` is null when none could be
@@ -37,16 +41,22 @@ export class MockContentService implements ContentService {
 
   async organizationsFor(lossType: string): Promise<Organization[]> {
     await new Promise((r) => setTimeout(r, 300));
+    const search = (name: string) =>
+      `https://www.google.com/search?q=${encodeURIComponent(name)}`;
+    const network = `${lossType} loss support network`;
+    const resources = `Grief resources for ${lossType.toLowerCase()} loss`;
     return [
       {
         id: `${lossType}-1`,
-        name: `${lossType} loss support network`,
+        name: network,
         description: 'Peer support, resources, and a warm line for this kind of loss.',
+        url: search(network),
       },
       {
         id: `${lossType}-2`,
-        name: `Grief resources for ${lossType.toLowerCase()} loss`,
+        name: resources,
         description: 'Reading, groups, and organizations by region.',
+        url: search(resources),
       },
     ];
   }

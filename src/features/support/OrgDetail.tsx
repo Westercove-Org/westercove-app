@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
@@ -53,12 +53,25 @@ export function OrgDetail() {
               </Card>
             ))
           : orgs.map((org) => (
-              <Card key={org.id}>
-                <Text variant="cardTitle">{org.name}</Text>
-                <Text variant="bodySmall" color="textMuted" style={styles.desc}>
-                  {org.description}
-                </Text>
-              </Card>
+              <Pressable
+                key={org.id}
+                accessibilityRole="link"
+                accessibilityLabel={`${org.name}. ${org.description} Opens in your browser.`}
+                onPress={() => Linking.openURL(org.url)}
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <Card>
+                  <View style={styles.row}>
+                    <View style={styles.orgText}>
+                      <Text variant="cardTitle">{org.name}</Text>
+                      <Text variant="bodySmall" color="textMuted" style={styles.desc}>
+                        {org.description}
+                      </Text>
+                    </View>
+                    <ChevronRightIcon size={20} color={colors.textMuted} />
+                  </View>
+                </Card>
+              </Pressable>
             ))}
       </ScrollView>
       <CrisisBanner compact />
@@ -83,4 +96,7 @@ const styles = StyleSheet.create({
   },
   list: { paddingHorizontal: spacing.screen, paddingTop: spacing.sm, gap: spacing.cardGap },
   desc: { marginTop: spacing.xs },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  orgText: { flex: 1 },
+  pressed: { opacity: 0.6 },
 });
