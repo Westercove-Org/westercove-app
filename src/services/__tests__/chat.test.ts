@@ -46,6 +46,22 @@ describe('ApiChatSessionService', () => {
     expect(res).toEqual({ reply: 'I am here with you.', sessionTitle: 'A hard night' });
   });
 
+  it('sends entry_type in the message body when a chip type is given', async () => {
+    post.mockResolvedValue({ assistant: { role: 'assistant', text: 'ok' } });
+    await new ApiChatSessionService().postMessage(42, 'hi', { entryType: 'grief_question' });
+    expect(post).toHaveBeenCalledWith(
+      '/chat/sessions/42/messages',
+      { message: 'hi', entry_type: 'grief_question' },
+      { headers: {} },
+    );
+  });
+
+  it('omits entry_type from the body when none is given', async () => {
+    post.mockResolvedValue({ assistant: { role: 'assistant', text: 'ok' } });
+    await new ApiChatSessionService().postMessage(42, 'hi');
+    expect(post).toHaveBeenCalledWith('/chat/sessions/42/messages', { message: 'hi' }, { headers: {} });
+  });
+
   it('surfaces a four_doors_question effect (question_id + options)', async () => {
     post.mockResolvedValue({
       assistant: { role: 'assistant', text: 'What steadies you?' },

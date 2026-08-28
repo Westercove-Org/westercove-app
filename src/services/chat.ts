@@ -27,6 +27,10 @@ export interface PostMessageInput {
   profileId?: number;
   /** IANA timezone (e.g. `America/New_York`) → `X-Client-Timezone`. */
   timezone?: string;
+  /** Backend JournalEntryType enum for this turn (from the entry-type chip), so
+   * the server selects the guided/book-bearing reply. Absent or unknown → a
+   * normal chat turn. Sent as `entry_type` in the body. */
+  entryType?: string;
 }
 
 /** A staged 4-Doors question the companion voiced in this reply (the prompt text
@@ -168,12 +172,14 @@ export class ApiChatSessionService implements ChatSessionService {
     const headers: Record<string, string> = {};
     if (input.profileId != null) headers['X-Profile-Id'] = String(input.profileId);
     if (input.timezone) headers['X-Client-Timezone'] = input.timezone;
+    const body: { message: string; entry_type?: string } = { message };
+    if (input.entryType) body.entry_type = input.entryType;
     const res = await apiClient.post<{
       assistant: { role: string; text: string };
       session_title?: string | null;
       effects?: { type: string; question_id?: string; options?: string[] }[];
       safety?: RawSafety | null;
-    }>(`/chat/sessions/${sessionId}/messages`, { message }, { headers });
+    }>(`/chat/sessions/${sessionId}/messages`, body, { headers });
     const ask = res.effects?.find((e) => e.type === 'four_doors_question');
     return {
       reply: res.assistant?.text?.trim() ?? '',

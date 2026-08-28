@@ -8,6 +8,7 @@ import { services } from '@/services';
 import { SafetyLevel, levelForTier } from '@/services/safety';
 import { useSafetyStore } from '@/features/safety/safetyStore';
 import type { ChatSessionSummary, CompanionSafety } from '@/services/chat';
+import { entryTypeEnum } from './entryTypes';
 import type { ConversationTurn, Entry } from './types';
 
 let counter = 100;
@@ -86,6 +87,9 @@ async function companionReply(
     const { reply, question, safety } = await services.chat.postMessage(sessionId, text, {
       profileId: backendProfileId(),
       timezone: clientTimezone(),
+      // The entry-type chip → backend enum, so the server picks the guided/book
+      // reply for this turn. Unknown label → undefined → a normal turn.
+      entryType: entryTypeEnum(type),
     });
     return { response: reply || offline.response, question, safety };
   } catch {
