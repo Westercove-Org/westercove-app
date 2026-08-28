@@ -3,9 +3,11 @@ import { useEffect } from 'react';
 
 import { sessionStatus, useSessionStore } from './sessionStore';
 
-/** Route groups that must remain reachable in every session state (crisis is
- * never gated by auth or subscription). */
-const ALWAYS_ALLOWED = new Set(['crisis', 'support-mode']);
+/** Routes that must remain reachable in every session state: crisis surfaces
+ * (never gated by auth or subscription), and the branded 404 — otherwise the
+ * guard redirects a genuinely-unknown route to /launch (or /gate) before
+ * +not-found can render. */
+const ALWAYS_ALLOWED = new Set(['crisis', 'support-mode', '+not-found']);
 
 /**
  * Redirects based on session status: unauthenticated → the arrival flow,
