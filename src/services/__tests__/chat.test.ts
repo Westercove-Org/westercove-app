@@ -81,6 +81,48 @@ describe('ApiChatSessionService', () => {
     ]);
   });
 
+  it('maps the server safety block (tier_3 + resources) onto camelCase', async () => {
+    post.mockResolvedValue({
+      assistant: { role: 'assistant', text: 'I am here with you.' },
+      safety: {
+        level: 4,
+        tier: 'tier_3',
+        support_mode: true,
+        trigger_categories: ['self_harm'],
+        threat_to_others: false,
+        tier3_active: true,
+        resources: {
+          headline: 'Support is available right now',
+          disclaimer: 'If you are in immediate danger, call 911.',
+          items: [
+            { id: 'lifeline', label: 'Call or text 988', href: 'tel:988', description: 'Suicide & Crisis Lifeline' },
+          ],
+        },
+      },
+    });
+
+    const res = await new ApiChatSessionService().postMessage(42, 'i want to die');
+
+    expect(res.safety).toEqual({
+      tier: 'tier_3',
+      supportMode: true,
+      triggerCategories: ['self_harm'],
+      threatToOthers: false,
+      tier3Active: true,
+      resources: {
+        headline: 'Support is available right now',
+        disclaimer: 'If you are in immediate danger, call 911.',
+        items: [{ id: 'lifeline', label: 'Call or text 988', href: 'tel:988', description: 'Suicide & Crisis Lifeline' }],
+      },
+    });
+  });
+
+  it('treats a missing safety block as no safety (⇒ none downstream)', async () => {
+    post.mockResolvedValue({ assistant: { role: 'assistant', text: 'ok' } });
+    const res = await new ApiChatSessionService().postMessage(42, 'hi');
+    expect(res.safety).toBeUndefined();
+  });
+
   it('gets one session summary', async () => {
     get.mockResolvedValue({ id: 8, created_at: '2026-08-19T00:00:00Z', title: 'Note', entry_type: 'journal', safety_tier: 'none' });
 

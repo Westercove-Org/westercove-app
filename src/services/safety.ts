@@ -96,6 +96,12 @@ const TIER_TO_LEVEL: Record<string, SafetyLevel> = {
   tier_3: SafetyLevel.Critical,
 };
 
+/** Map a backend crisis tier (`none`|`tier_1..3`) to the app's four-level scale;
+ * unknown/absent ⇒ Normal. Shared with the chat-response safety path. */
+export function levelForTier(tier: string | undefined): SafetyLevel {
+  return (tier && TIER_TO_LEVEL[tier]) || SafetyLevel.Normal;
+}
+
 /**
  * Authoritative safety via the backend classifier (`POST /safety/classify`),
  * with the local keyword pass as an instant, offline-safe pre-flight and floor.

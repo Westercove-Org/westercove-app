@@ -37,6 +37,35 @@ export interface FourDoorsQuestion {
   options: string[];
 }
 
+export type SafetyTier = 'none' | 'tier_1' | 'tier_2' | 'tier_3';
+
+export interface SafetyResourceItem {
+  id: string;
+  label: string;
+  href: string;
+  description?: string;
+}
+
+/** The crisis-resource card the backend built for this tier (headline +
+ * disclaimer + a list of professional resources). */
+export interface SafetyResources {
+  headline: string;
+  disclaimer: string;
+  items: SafetyResourceItem[];
+}
+
+/** Server-assessed safety for this chat turn. The tier is ratcheted server-side
+ * per session (it never downgrades), so it — not a separate local classify — is
+ * the source of truth. Absent on the wire ⇒ treat as `none`. */
+export interface CompanionSafety {
+  tier: SafetyTier;
+  supportMode?: boolean;
+  resources?: SafetyResources;
+  triggerCategories?: string[];
+  threatToOthers?: boolean;
+  tier3Active?: boolean;
+}
+
 export interface CompanionMessageReply {
   /** The companion's generated reply text (assistant turn). */
   reply: string;
@@ -44,6 +73,39 @@ export interface CompanionMessageReply {
   sessionTitle?: string;
   /** Present when the reply carried a 4-Doors `four_doors_question` effect. */
   question?: FourDoorsQuestion;
+  /** Server safety for this turn (tier + crisis resources). Absent ⇒ `none`. */
+  safety?: CompanionSafety;
+}
+
+/** Raw snake_case `safety` block on the chat-message response. */
+interface RawSafety {
+  level?: number;
+  tier?: string;
+  support_mode?: boolean;
+  trigger_categories?: string[];
+  threat_to_others?: boolean;
+  tier3_active?: boolean;
+  resources?: {
+    headline?: string;
+    disclaimer?: string;
+    items?: SafetyResourceItem[];
+  } | null;
+}
+
+/** Map the raw `safety` block onto `CompanionSafety`. Missing block ⇒ undefined
+ * (the caller treats that as `none`); a present block with no tier ⇒ `none`. */
+function toSafety(s: RawSafety | null | undefined): CompanionSafety | undefined {
+  if (!s) return undefined;
+  const tier = (s.tier as SafetyTier | undefined) ?? 'none';
+  const r = s.resources;
+  return {
+    tier,
+    supportMode: s.support_mode,
+    triggerCategories: s.trigger_categories,
+    threatToOthers: s.threat_to_others,
+    tier3Active: s.tier3_active,
+    resources: r ? { headline: r.headline ?? '', disclaimer: r.disclaimer ?? '', items: r.items ?? [] } : undefined,
+  };
 }
 
 export interface ChatSessionService {
@@ -110,6 +172,7 @@ export class ApiChatSessionService implements ChatSessionService {
       assistant: { role: string; text: string };
       session_title?: string | null;
       effects?: { type: string; question_id?: string; options?: string[] }[];
+      safety?: RawSafety | null;
     }>(`/chat/sessions/${sessionId}/messages`, { message }, { headers });
     const ask = res.effects?.find((e) => e.type === 'four_doors_question');
     return {
@@ -118,6 +181,7 @@ export class ApiChatSessionService implements ChatSessionService {
       question: ask?.question_id
         ? { questionId: ask.question_id, options: ask.options ?? [] }
         : undefined,
+      safety: toSafety(res.safety),
     };
   }
 

@@ -9,6 +9,7 @@ import { copy } from '@/constants/copy';
 import { callLine, textLine } from '@/lib/crisisLinks';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
+import { ServerResources } from './ServerResources';
 
 /**
  * Level 3 (High Risk): Support Mode — a calmer, full-width state with reduced
@@ -56,6 +57,9 @@ export function SupportMode() {
             onPress={() => textLine('741741', 'HOME')}
           />
         </View>
+
+        {/* The backend's professional-resource card for this tier, when present. */}
+        <ServerResources padded={false} />
 
         <Pressable
           accessibilityRole="button"
