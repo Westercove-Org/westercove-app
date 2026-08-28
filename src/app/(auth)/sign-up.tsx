@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
@@ -80,9 +80,15 @@ export default function SignUpScreen() {
         setBusy(false);
         return;
       }
-      // Hosted-checkout redirect. On Expo web this navigates the browser; back
-      // to /signup-return?status=&pending_signup_id= (Stripe return URL, #55).
-      await Linking.openURL(checkoutUrl);
+      // Hosted-checkout redirect. On web, same-tab navigation (Linking.openURL
+      // maps to window.open → a NEW tab, so Stripe's return would land in a
+      // detached tab and the app tab would stay stale). Stripe returns to
+      // /signup/return?status=&pending_signup_id= (Stripe return URL, #55).
+      if (Platform.OS === 'web') {
+        window.location.assign(checkoutUrl);
+      } else {
+        await Linking.openURL(checkoutUrl);
+      }
     } catch (e) {
       setError(checkoutErrorMessage(e));
       setBusy(false);

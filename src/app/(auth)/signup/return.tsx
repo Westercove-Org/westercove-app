@@ -10,7 +10,7 @@ import { isSignupSuccessStatus, services } from '@/services';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
 
-const heroImage = require('../../../assets/images/westercove_hero_valley.jpg');
+const heroImage = require('../../../../assets/images/westercove_hero_valley.jpg');
 
 const POLL_INTERVAL_MS = 2500;
 const MAX_POLLS = 24; // ~60s
@@ -19,7 +19,8 @@ type View_ = 'cancelled' | 'polling' | 'success' | 'expired' | 'error' | 'slow';
 
 /**
  * Stripe Checkout return handler (paid path). Stripe redirects back to
- * /signup-return?status=success|cancelled&pending_signup_id=… (#55). We read
+ * /signup/return?status=success|cancelled&pending_signup_id=… (#55) — the path
+ * must match the backend SIGNUP_CHECKOUT_SUCCESS_URL/_CANCEL_URL base. We read
  * the opaque pending_signup_id from the query and poll the status endpoint —
  * nothing depends on the pre-redirect screen state surviving. Poll while
  * "awaiting_payment" (webhook can lag the redirect), stop on "expired" (which
