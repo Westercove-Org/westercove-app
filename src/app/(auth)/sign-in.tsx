@@ -182,8 +182,13 @@ export default function SignInScreen() {
               <View style={[styles.line, { backgroundColor: colors.line }]} />
             </View>
             <Text variant="bodySmall" color="textMuted" style={styles.center}>
-              {copy.signIn.inviteOnly}
+              {copy.signIn.createAccountPrompt}
             </Text>
+            <Button
+              label={copy.signIn.createAccount}
+              variant="secondary"
+              onPress={() => router.push('/sign-up')}
+            />
           </>
         )}
 

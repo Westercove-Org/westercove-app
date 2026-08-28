@@ -42,10 +42,9 @@ function checkoutErrorMessage(e: unknown): string {
 }
 
 /**
- * Signup v2 (self-serve), final Option-A flow. Intentionally UNLINKED from
- * sign-in until QA — reach it at /sign-up directly. Same backend contract as
- * the retired QuietRoom SPA; Stripe uses the hosted-checkout redirect (works on
- * Expo web, the deploy target).
+ * Signup v2 (self-serve), final Option-A flow. Linked from sign-in
+ * ("Create an account"). Same backend contract as the retired QuietRoom SPA;
+ * Stripe uses the hosted-checkout redirect (works on Expo web, the deploy target).
  */
 export default function SignUpScreen() {
   const router = useRouter();
