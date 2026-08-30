@@ -67,6 +67,20 @@ export default function LaunchScreen() {
             {copy.launch.begin}
           </Text>
         </Pressable>
+
+        {/* Secondary path for a new user who wants to sign up directly. Still
+            routes through the disclaimer (18+ / crisis notice) before /sign-up —
+            never straight to sign-up. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={copy.launch.createAccount}
+          onPress={() => router.push({ pathname: '/disclaimer', params: { intent: 'signup' } })}
+          style={({ pressed }) => [styles.createAccount, pressed && { opacity: 0.7 }]}
+        >
+          <Text color={AMETHYST} style={styles.createAccountText}>
+            {copy.launch.createAccount}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -97,4 +111,11 @@ const styles = StyleSheet.create({
     marginTop: 36,
   },
   beginText: { fontSize: 17, fontWeight: '500' },
+  createAccount: {
+    marginTop: 16,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createAccountText: { fontSize: 15, fontWeight: '500', textDecorationLine: 'underline' },
 });

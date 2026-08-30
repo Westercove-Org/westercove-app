@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { HeroHeader } from '@/components/HeroHeader';
@@ -14,6 +14,11 @@ const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
 export default function DisclaimerScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  // A new user arriving via the launch "Create an account" CTA continues to
+  // sign-up after acknowledging the notice; everyone else continues to sign-in.
+  // Either way the 18+ / crisis notice is shown first — never bypassed.
+  const { intent } = useLocalSearchParams<{ intent?: string }>();
+  const next = intent === 'signup' ? '/sign-up' : '/sign-in';
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -34,7 +39,7 @@ export default function DisclaimerScreen() {
           <Button
             label={copy.disclaimerScreen.continue}
             variant="amethyst"
-            onPress={() => router.push('/sign-in')}
+            onPress={() => router.push(next)}
           />
           <Pressable
             accessibilityRole="button"

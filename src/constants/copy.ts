@@ -57,6 +57,7 @@ export const copy = {
   launch: {
     tagline: 'Here for you when the world goes quiet.',
     begin: 'Begin',
+    createAccount: 'Create an account',
     haveAccount: 'I already have an account',
   },
 
