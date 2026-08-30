@@ -4,8 +4,8 @@ import { apiClient } from '@/lib/http';
  * Signup v2 (self-serve) over the shared `apiClient`. Same backend contract as
  * the retired QuietRoom SPA (QuietRoom/backend, unchanged):
  *  - POST /auth/signup/org-code        {email,password,code} → {status,email}
- *  - POST /auth/signup/payment/checkout {email}              → {pending_signup_id, checkout_url}
- *  - GET  /auth/signup/status/{id}                            → {status}
+ *  - POST /auth/signup/payment/checkout {email,password}     → {pending_signup_id, checkout_url}
+ *  - GET  /auth/signup/status/{id}                            → {status,email}
  *
  * Enumeration-safe: the entry endpoints return a generic 200 even when the
  * email already has an account (that user gets a "log in" email), so the UI
@@ -46,7 +46,10 @@ export interface OnboardingVerifyResult {
 
 export interface SignupService {
   orgCode(input: { email: string; password: string; code: string }): Promise<OrgCodeSignupResult>;
-  startPaymentCheckout(email: string): Promise<PaymentCheckoutResult>;
+  /** Paid path: set the account password up front (Cognito) and start Stripe
+   * checkout. Mirrors org-code — the password is stored now; the emailed link is
+   * verify-only. `checkout_url` null ⇒ email already registered (enum-safe). */
+  startPaymentCheckout(input: { email: string; password: string }): Promise<PaymentCheckoutResult>;
   getStatus(pendingSignupId: string): Promise<SignupStatusResult>;
 
   // Onboarding completion via single-use token from the emailed deep link
@@ -85,10 +88,10 @@ export class ApiSignupService implements SignupService {
     return { status: r.status, email: r.email };
   }
 
-  async startPaymentCheckout(email: string): Promise<PaymentCheckoutResult> {
+  async startPaymentCheckout(input: { email: string; password: string }): Promise<PaymentCheckoutResult> {
     const r = await apiClient.post<{ pending_signup_id: string; checkout_url: string | null }>(
       '/auth/signup/payment/checkout',
-      { email },
+      { email: input.email, password: input.password },
     );
     return { pendingSignupId: r.pending_signup_id, checkoutUrl: r.checkout_url };
   }

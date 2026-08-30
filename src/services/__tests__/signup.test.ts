@@ -27,16 +27,19 @@ describe('ApiSignupService', () => {
     expect(r).toEqual({ status: 'created_pending_verification', email: 'a@b.co' });
   });
 
-  it('startPaymentCheckout POSTs email only and maps snake_case to camelCase', async () => {
+  it('startPaymentCheckout POSTs email + password and maps snake_case to camelCase', async () => {
     mockPost.mockResolvedValue({ pending_signup_id: 'tok_1', checkout_url: 'https://stripe/x' });
-    const r = await svc.startPaymentCheckout('a@b.co');
-    expect(mockPost).toHaveBeenCalledWith('/auth/signup/payment/checkout', { email: 'a@b.co' });
+    const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB' });
+    expect(mockPost).toHaveBeenCalledWith('/auth/signup/payment/checkout', {
+      email: 'a@b.co',
+      password: 'sup3rsecret!AB',
+    });
     expect(r).toEqual({ pendingSignupId: 'tok_1', checkoutUrl: 'https://stripe/x' });
   });
 
   it('passes through a null checkout_url (already-registered, enumeration-safe)', async () => {
     mockPost.mockResolvedValue({ pending_signup_id: 'tok_2', checkout_url: null });
-    const r = await svc.startPaymentCheckout('a@b.co');
+    const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB' });
     expect(r.checkoutUrl).toBeNull();
   });
 
