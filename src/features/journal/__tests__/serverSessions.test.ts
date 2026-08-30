@@ -114,6 +114,31 @@ describe('backend chat-session wiring', () => {
     expect(e.safetyLevel).toBe(1);
   });
 
+  it('falls back to a single user turn when a session entry has no transcript labels', async () => {
+    setSession({ backendProfileId: 7 });
+    jest.spyOn(services.chat, 'listSessions').mockResolvedValue([]);
+    jest.spyOn(services.journal, 'list').mockResolvedValue([
+      {
+        id: 3,
+        date: '2026-08-30',
+        time: '10:00:00',
+        title: 'Note',
+        entry: 'just a plain note with no labels',
+        reflection: null,
+        entryType: 'journal',
+        profileId: 7,
+        createdAt: '2026-08-30T14:00:00Z',
+      },
+    ]);
+
+    await useEntriesStore.getState().refreshServerSessions();
+
+    const [e] = useEntriesStore.getState().entries;
+    expect(e.turns.map((t) => [t.role, t.text])).toEqual([
+      ['user', 'just a plain note with no labels'],
+    ]);
+  });
+
   it('completeGate stashes the backend profile id returned by submit', async () => {
     setSession({});
     jest
