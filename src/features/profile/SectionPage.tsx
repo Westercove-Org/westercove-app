@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
 import { ChevronRightIcon } from '@/components/icons';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Text } from '@/components/ui/Text';
+import { copy } from '@/constants/copy';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
 
@@ -40,7 +41,7 @@ export const SECTIONS: Record<string, { title: string; empty: string }> = {
   help: { title: 'Help', empty: 'Answers and support will appear here.' },
   legal: {
     title: 'Legal',
-    empty: 'Terms of Service, Privacy Policy, and the wellness-companion disclaimer.',
+    empty: 'The wellness-companion disclaimer.',
   },
 };
 
@@ -63,9 +64,23 @@ export function SectionPage({ slug }: { slug: string }) {
         </Pressable>
         <Text variant="screenTitle">{meta.title}</Text>
       </View>
-      <View style={styles.body}>
-        <EmptyState message={meta.empty} />
-      </View>
+      {slug === 'legal' ? (
+        <ScrollView contentContainerStyle={styles.legal}>
+          <Text variant="body" style={styles.para}>
+            {copy.disclaimerScreen.body1}
+          </Text>
+          <Text variant="body" style={styles.para}>
+            {copy.disclaimerScreen.body2}
+          </Text>
+          <Text variant="body" color="textMuted" style={styles.para}>
+            {copy.disclaimerScreen.body3}
+          </Text>
+        </ScrollView>
+      ) : (
+        <View style={styles.body}>
+          <EmptyState message={meta.empty} />
+        </View>
+      )}
       <CrisisBanner compact />
     </View>
   );
@@ -87,4 +102,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   body: { flex: 1, justifyContent: 'center' },
+  legal: {
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+    paddingBottom: 88,
+    gap: spacing.lg,
+  },
+  para: { fontSize: 17, lineHeight: 27 },
 });

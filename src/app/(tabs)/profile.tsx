@@ -37,7 +37,7 @@ const SETTINGS: Row[] = [
   { label: 'Account', section: 'account' },
   { label: 'Subscription', section: 'subscription' },
   { label: 'Help', section: 'help' },
-  { label: 'Legal', subtitle: 'Terms, Privacy, Disclaimer', section: 'legal' },
+  { label: 'Legal', subtitle: 'Wellness-companion disclaimer', section: 'legal' },
 ];
 
 /** Initials for an avatar: two words give two letters, one gives one. */
