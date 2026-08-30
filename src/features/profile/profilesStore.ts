@@ -63,11 +63,16 @@ export async function reloadProfileStores(id: string, fresh = false): Promise<vo
   } else {
     await Promise.all([
       useSessionStore.persist.rehydrate(),
-      useEntriesStore.persist.rehydrate(),
       useQuestionsStore.persist.rehydrate(),
       useLibraryStore.persist.rehydrate(),
       useWhatIKnowStore.persist.rehydrate(),
     ]);
+    // Journal entries are server-authoritative now (no on-device persistence),
+    // so load them for the just-rehydrated active profile instead of reading a
+    // storage namespace. Reset first so the previous profile's in-memory entries
+    // never leak into this one (safe now that no persist auto-saves on reset).
+    useEntriesStore.getState().resetForProfile();
+    await useEntriesStore.getState().refreshServerSessions();
   }
   useWhatIKnowStore.getState().hydrateFromSession();
 }

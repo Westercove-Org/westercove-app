@@ -1,14 +1,13 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { useCadenceStore } from '@/features/cadence/cadenceStore';
-import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
 import { SafetyLevel, levelForTier } from '@/services/safety';
 import { useSafetyStore } from '@/features/safety/safetyStore';
 import type { ChatSessionSummary, CompanionSafety } from '@/services/chat';
-import { entryTypeEnum } from './entryTypes';
+import type { JournalRecord } from '@/services/journal';
+import { entryTypeEnum, labelForEntryType } from './entryTypes';
 import type { ConversationTurn, Entry } from './types';
 
 let counter = 100;
@@ -27,6 +26,65 @@ function turn(role: 'user' | 'companion', text: string, at = new Date()): Conver
   return { id: nextId(), role, text, at: at.toISOString() };
 }
 
+/**
+ * Rebuild conversation turns from a server journal record read back after a
+ * reload (the app is online-only now — entry bodies are not persisted on-device).
+ * A command entry stores the user's text in `entry` and the companion's reply in
+ * `reflection` → two turns. A session entry stores the whole conversation in
+ * `entry` as the backend's labelled transcript ("You: …\n\nCompanion: …") with a
+ * null reflection → split it back into turns.
+ *
+ * ponytail: the transcript split assumes the backend's fixed `You:`/`Companion:`
+ * labels (format_chat_session_transcript). A user message that itself contains a
+ * line like "\n\nCompanion:" could mis-split; if no label is found we fall back
+ * to a single user turn of the raw text. Upgrade path is the P3
+ * fe-journal-conversation-history endpoint (structured turns from the server).
+ */
+function recordToTurns(r: JournalRecord, at: Date): ConversationTurn[] {
+  if (r.reflection != null) {
+    const turns = [turn('user', r.entry, at)];
+    if (r.reflection.trim()) turns.push(turn('companion', r.reflection, at));
+    return turns;
+  }
+  const parts = r.entry.split(/\n\n(?=(?:You|Companion): )/);
+  const turns: ConversationTurn[] = [];
+  for (const p of parts) {
+    const m = /^(You|Companion): ([\s\S]*)$/.exec(p);
+    if (m) turns.push(turn(m[1] === 'You' ? 'user' : 'companion', m[2].trim(), at));
+  }
+  return turns.length ? turns : [turn('user', r.entry.trim(), at)];
+}
+
+/** Map a server journal record to the app's Entry. `sessionId` links it to its
+ * chat session (so continuing the entry reaches the same server session), and
+ * `level` is the session's server-ratcheted safety tier. */
+function recordToEntry(
+  r: JournalRecord,
+  sessionId: number | undefined,
+  level: SafetyLevel,
+): Entry {
+  const at = new Date(r.createdAt);
+  return {
+    id: `j${r.id}`,
+    type: labelForEntryType(r.entryType),
+    headline: r.title,
+    createdAt: r.createdAt,
+    turns: recordToTurns(r, at),
+    safetyLevel: level,
+    sessionId,
+  };
+}
+
+/** The server journal id an in-memory (live) entry corresponds to, via its chat
+ * session's linked `journalEntryId`. Used to dedupe live entries against the
+ * ones the journal API returns for the same rows. */
+function liveJournalId(
+  entry: Entry,
+  sessionById: Map<number, ChatSessionSummary>,
+): number | undefined {
+  return entry.sessionId != null ? sessionById.get(entry.sessionId)?.journalEntryId : undefined;
+}
+
 interface EntriesState {
   entries: Entry[];
   /** Chat-session summaries fetched from the backend for the active profile. */
@@ -41,8 +99,10 @@ interface EntriesState {
   /** Clear a companion turn's pending 4-Doors question once it's answered,
    * deferred, or skipped (so the quick-reply chips stop showing). */
   clearPendingQuestion: (entryId: string, turnId: string) => void;
-  /** Load the backend chat-session summaries for the persisted profile id.
-   * No-op (clears) when there is no backend profile id yet. */
+  /** Load this profile's server-authoritative journal entries (online-only; no
+   * on-device persistence) plus the chat-session summaries that carry their
+   * safety tier, merging with any live entries from this session. No-op (keeps
+   * in-memory entries, clears sessions) when there is no backend profile id. */
   refreshServerSessions: () => Promise<void>;
   /** Reset to seed data (used when switching to a fresh test profile). */
   resetForProfile: () => void;
@@ -114,9 +174,7 @@ async function resolveSafety(text: string, safety: CompanionSafety | undefined):
   return (await services.safety.classifyRemote(text)).level;
 }
 
-export const useEntriesStore = create<EntriesState>()(
-  persist(
-    (set, get) => ({
+export const useEntriesStore = create<EntriesState>()((set, get) => ({
   entries: [],
   serverSessions: [],
 
@@ -219,22 +277,56 @@ export const useEntriesStore = create<EntriesState>()(
   async refreshServerSessions() {
     const profileId = useSessionStore.getState().session?.backendProfileId;
     if (profileId == null) {
+      // No backend profile (e.g. offline / pre-survey): keep any in-memory
+      // entries from this session; there is nothing server-side to load.
       set({ serverSessions: [] });
       return;
     }
     try {
-      const sessions = await services.chat.listSessions(profileId);
-      // Reconcile each entry's level with its session's server-ratcheted tier so
-      // a reload keeps a crisis entry at its tier (and its support surfaces) even
-      // if it was first classified offline. Never downgrades.
-      const tierBySession = new Map(sessions.map((s) => [s.id, levelForTier(s.safetyTier)]));
-      set((s) => ({
-        serverSessions: sessions,
-        entries: s.entries.map((e) => {
-          const t = e.sessionId != null ? tierBySession.get(e.sessionId) : undefined;
-          return t != null && t > e.safetyLevel ? { ...e, safetyLevel: t } : e;
-        }),
-      }));
+      // The journal is server-authoritative now (online-only; no on-device
+      // persistence of entry bodies). Load the persisted entries for this
+      // profile and the chat-session summaries that carry their safety tier.
+      const [sessions, records] = await Promise.all([
+        services.chat.listSessions(profileId),
+        services.journal.list(profileId),
+      ]);
+      const sessionById = new Map(sessions.map((s) => [s.id, s]));
+      // A session's journal_entry_id links it to the journal row (Dwight's
+      // contract): map that id → the session (for continue) and its tier.
+      const sessionByJournalId = new Map<number, ChatSessionSummary>();
+      for (const s of sessions) {
+        if (s.journalEntryId != null) sessionByJournalId.set(s.journalEntryId, s);
+      }
+      set((state) => {
+        // Live entries created this session keep their rich turns / pending
+        // questions; dedupe them against the server rows by journal id.
+        const liveByJournalId = new Map<number, Entry>();
+        for (const e of state.entries) {
+          const jid = liveJournalId(e, sessionById);
+          if (jid != null) liveByJournalId.set(jid, e);
+        }
+        const merged: Entry[] = records.map((r) => {
+          const session = sessionByJournalId.get(r.id);
+          const level = session ? levelForTier(session.safetyTier) : SafetyLevel.Normal;
+          const live = liveByJournalId.get(r.id);
+          if (live) {
+            // Keep the richer live entry; only ratchet its tier up. Never down.
+            return level > live.safetyLevel ? { ...live, safetyLevel: level } : live;
+          }
+          return recordToEntry(r, session?.id, level);
+        });
+        // In-memory entries with no server row yet (offline create, or the
+        // journal link not written) survive so nothing the user just wrote drops.
+        const serverIds = new Set(records.map((r) => r.id));
+        const leftovers = state.entries.filter((e) => {
+          const jid = liveJournalId(e, sessionById);
+          return jid == null || !serverIds.has(jid);
+        });
+        const entries = [...merged, ...leftovers].sort((a, b) =>
+          b.createdAt.localeCompare(a.createdAt),
+        );
+        return { serverSessions: sessions, entries };
+      });
     } catch {
       // Offline / transient: keep whatever we last loaded.
     }
@@ -244,12 +336,4 @@ export const useEntriesStore = create<EntriesState>()(
     useSafetyStore.getState().clear();
     set({ entries: [], serverSessions: [] });
   },
-    }),
-    {
-      // Cached entries are readable offline; only the entries are persisted.
-      name: 'westercove.entries',
-      storage: createJSONStorage(() => scopedStorage('entries')),
-      partialize: (s) => ({ entries: s.entries }),
-    },
-  ),
-);
+}));
