@@ -17,7 +17,7 @@ const heroImage = require('../../../assets/images/westercove_hero_valley.jpg');
 
 const MIN_PASSWORD = 12;
 
-type Step = 'entry' | 'orgCode' | 'confirm' | 'payCheckEmail';
+type Step = 'entry' | 'orgCode' | 'pay' | 'confirm' | 'payCheckEmail';
 
 /** Enumeration-safe signup error copy: never reveal account existence. 429 =
  * rate limit; otherwise a neutral fallback (the server detail, when present, is
@@ -64,6 +64,7 @@ export default function SignUpScreen() {
   const passwordValid = password.length >= MIN_PASSWORD;
   const passwordsMatch = password === confirmPassword;
   const canJoin = passwordValid && passwordsMatch && code.trim().length > 0 && !busy;
+  const canPay = passwordValid && passwordsMatch && !busy;
 
   const goOrgCode = () => {
     setError(null);
@@ -71,12 +72,25 @@ export default function SignUpScreen() {
     setStep('orgCode');
   };
 
-  const goPay = async () => {
+  // Paid now collects the password up front (mirrors org-code); the checkout POST
+  // sets it in Cognito, and the emailed link only verifies. So the pay path first
+  // gathers the password, then starts checkout.
+  const goToPay = () => {
     setError(null);
     if (!emailValid) return setError(c.invalidEmail);
+    setStep('pay');
+  };
+
+  const goPay = async () => {
+    setError(null);
+    if (!passwordValid) return setError(c.passwordHint);
+    if (!passwordsMatch) return setError(c.passwordMismatch);
     setBusy(true);
     try {
-      const { checkoutUrl } = await services.signup.startPaymentCheckout(email.trim());
+      const { checkoutUrl } = await services.signup.startPaymentCheckout({
+        email: email.trim(),
+        password,
+      });
       if (checkoutUrl === null) {
         // Already-registered (enumeration-safe): generic check-email, no redirect.
         setStep('payCheckEmail');
@@ -115,7 +129,13 @@ export default function SignUpScreen() {
   };
 
   const subtitle =
-    step === 'orgCode' ? c.orgCodeSubtitle : step === 'entry' ? c.entrySubtitle : undefined;
+    step === 'orgCode'
+      ? c.orgCodeSubtitle
+      : step === 'pay'
+        ? c.paySubtitle
+        : step === 'entry'
+          ? c.entrySubtitle
+          : undefined;
 
   const field = (
     label: string,
@@ -180,7 +200,7 @@ export default function SignUpScreen() {
               {c.howToJoin}
             </Text>
             {pathCard(c.orgCodeOption, c.orgCodeOptionHint, goOrgCode)}
-            {pathCard(busy ? c.payStarting : c.payOption, c.payOptionHint, goPay)}
+            {pathCard(c.payOption, c.payOptionHint, goToPay)}
           </>
         ) : null}
 
@@ -207,6 +227,45 @@ export default function SignUpScreen() {
               loading={busy}
               disabled={!canJoin}
               onPress={onJoin}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={c.back}
+              onPress={() => {
+                setError(null);
+                setStep('entry');
+              }}
+              style={styles.center}
+            >
+              <Text variant="body" color="textMuted">
+                {c.back}
+              </Text>
+            </Pressable>
+          </>
+        ) : null}
+
+        {step === 'pay' ? (
+          <>
+            {field(c.password, password, setPassword, c.passwordPlaceholder, {
+              secureTextEntry: true,
+            })}
+            <Text variant="bodySmall" color="textMuted">
+              {c.passwordHint}
+            </Text>
+            {field(c.confirmPassword, confirmPassword, setConfirmPassword, c.confirmPasswordPlaceholder, {
+              secureTextEntry: true,
+            })}
+            {confirmPassword.length > 0 && !passwordsMatch ? (
+              <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
+                {c.passwordMismatch}
+              </Text>
+            ) : null}
+            <Button
+              label={busy ? c.payStarting : c.payContinue}
+              variant="amethyst"
+              loading={busy}
+              disabled={!canPay}
+              onPress={goPay}
             />
             <Pressable
               accessibilityRole="button"
