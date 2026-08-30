@@ -60,3 +60,14 @@ export const ENTRY_TYPE_ENUM: Record<EntryType, string> = {
 export function entryTypeEnum(label: string | undefined): string | undefined {
   return isEntryType(label) ? ENTRY_TYPE_ENUM[label] : undefined;
 }
+
+const LABEL_BY_ENUM: Record<string, EntryType> = Object.fromEntries(
+  (Object.entries(ENTRY_TYPE_ENUM) as [EntryType, string][]).map(([label, e]) => [e, label]),
+);
+
+/** The picker label for a backend `JournalEntryType` enum, for rendering server
+ * entries read back from the journal API. Backend-only enums with no client
+ * label (e.g. `rage`, `community`) fall back to `Journal`. */
+export function labelForEntryType(entryType: string | undefined): EntryType {
+  return (entryType && LABEL_BY_ENUM[entryType]) || 'Journal';
+}
