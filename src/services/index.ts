@@ -5,6 +5,7 @@ import { MockCompanionService, type CompanionService } from './companion';
 import { ApiLibraryService, type LibraryService } from './library';
 import { ApiContentService, type ContentService } from './content';
 import { ApiCrmService, type CrmService } from './crm';
+import { ApiJournalService, type JournalService } from './journal';
 import { ApiSafetyService, type SafetyService } from './safety';
 import { ApiSignupService, type SignupService } from './signup';
 import { ApiSubscriptionService, type SubscriptionService } from './subscription';
@@ -29,6 +30,7 @@ export const services: {
   cadence: CadenceService;
   survey: SurveyService;
   library: LibraryService;
+  journal: JournalService;
 } = {
   safety: new ApiSafetyService(),
   auth: new CognitoAuthService(),
@@ -42,11 +44,13 @@ export const services: {
   cadence: new ApiCadenceService(),
   survey: new ApiSurveyService(),
   library: new ApiLibraryService(),
+  journal: new ApiJournalService(),
 };
 
 export * from './chat';
 export * from './cadence';
 export * from './library';
+export * from './journal';
 export * from './safety';
 export * from './auth';
 export * from './crm';
