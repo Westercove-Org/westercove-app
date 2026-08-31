@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { EyeIcon, EyeOffIcon } from '@/components/icons';
 import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
@@ -17,7 +18,7 @@ const heroImage = require('../../../assets/images/westercove_hero_valley.jpg');
 
 const MIN_PASSWORD = 12;
 
-type Step = 'entry' | 'orgCode' | 'pay' | 'confirm' | 'payCheckEmail';
+type Step = 'entry' | 'orgCode' | 'confirm' | 'payCheckEmail';
 
 /** Enumeration-safe signup error copy: never reveal account existence. 429 =
  * rate limit; otherwise a neutral fallback (the server detail, when present, is
@@ -46,6 +47,10 @@ function checkoutErrorMessage(e: unknown): string {
  * Signup v2 (self-serve), final Option-A flow. Linked from sign-in
  * ("Create an account"). Same backend contract as the retired QuietRoom SPA;
  * Stripe uses the hosted-checkout redirect (works on Expo web, the deploy target).
+ *
+ * One screen collects email + password + confirm (fe-signup-merge-password);
+ * the two join methods are the cards below the form. Pay starts checkout
+ * straight from here; the org-code path just needs its one code field next.
  */
 export default function SignUpScreen() {
   const router = useRouter();
@@ -56,35 +61,43 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Return-key focus chaining across the merged form (email -> password -> confirm).
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+
   const emailValid = isEmail(email);
   const passwordValid = password.length >= MIN_PASSWORD;
   const passwordsMatch = password === confirmPassword;
-  const canJoin = passwordValid && passwordsMatch && code.trim().length > 0 && !busy;
-  const canPay = passwordValid && passwordsMatch && !busy;
+  // Both join methods need a valid email + matching password before proceeding.
+  const canProceed = emailValid && passwordValid && passwordsMatch && !busy;
+  const canJoin = canProceed && code.trim().length > 0;
+
+  /** Guard shared by both paths before leaving the merged form. */
+  const validateForm = (): boolean => {
+    if (!emailValid) return setError(c.invalidEmail), false;
+    if (!passwordValid) return setError(c.passwordHint), false;
+    if (!passwordsMatch) return setError(c.passwordMismatch), false;
+    return true;
+  };
 
   const goOrgCode = () => {
     setError(null);
-    if (!emailValid) return setError(c.invalidEmail);
+    if (!validateForm()) return;
     setStep('orgCode');
   };
 
-  // Paid now collects the password up front (mirrors org-code); the checkout POST
-  // sets it in Cognito, and the emailed link only verifies. So the pay path first
-  // gathers the password, then starts checkout.
-  const goToPay = () => {
-    setError(null);
-    if (!emailValid) return setError(c.invalidEmail);
-    setStep('pay');
-  };
-
+  // Paid path collects the password up front (mirrors org-code); the checkout
+  // POST sets it in Cognito, and the emailed link only verifies. Checkout starts
+  // straight from the merged form — no intermediate password screen.
   const goPay = async () => {
     setError(null);
-    if (!passwordValid) return setError(c.passwordHint);
-    if (!passwordsMatch) return setError(c.passwordMismatch);
+    if (!validateForm()) return;
     setBusy(true);
     try {
       const { checkoutUrl } = await services.signup.startPaymentCheckout({
@@ -114,9 +127,8 @@ export default function SignUpScreen() {
 
   const onJoin = async () => {
     setError(null);
-    if (!passwordValid) return setError(c.passwordHint);
-    if (!passwordsMatch) return setError(c.passwordMismatch);
-    if (!code.trim()) return setError(c.codePlaceholder);
+    if (!validateForm()) return;
+    if (!code.trim()) return setError(c.codeRequired);
     setBusy(true);
     try {
       await services.signup.orgCode({ email: email.trim(), password, code: code.trim() });
@@ -129,13 +141,7 @@ export default function SignUpScreen() {
   };
 
   const subtitle =
-    step === 'orgCode'
-      ? c.orgCodeSubtitle
-      : step === 'pay'
-        ? c.paySubtitle
-        : step === 'entry'
-          ? c.entrySubtitle
-          : undefined;
+    step === 'orgCode' ? c.orgCodeSubtitle : step === 'entry' ? c.entrySubtitle : undefined;
 
   const field = (
     label: string,
@@ -143,6 +149,7 @@ export default function SignUpScreen() {
     onChangeText: (t: string) => void,
     placeholder: string,
     extra?: object,
+    trailing?: React.ReactNode,
   ) => (
     <View style={styles.fieldBlock}>
       <Text variant="cardTitle">{label}</Text>
@@ -157,21 +164,34 @@ export default function SignUpScreen() {
           style={[styles.input, { color: colors.textPrimary }]}
           {...extra}
         />
+        {trailing}
       </View>
     </View>
+  );
+
+  /** Show/hide eye toggle, one per password field (independent state). */
+  const eyeToggle = (shown: boolean, onToggle: () => void) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={shown ? 'Hide password' : 'Show password'}
+      onPress={onToggle}
+      hitSlop={8}
+    >
+      {shown ? (
+        <EyeOffIcon size={20} color={colors.textMuted} />
+      ) : (
+        <EyeIcon size={20} color={colors.textMuted} />
+      )}
+    </Pressable>
   );
 
   const pathCard = (label: string, hint: string, onPress: () => void) => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      disabled={!emailValid || busy}
+      disabled={!canProceed}
       onPress={onPress}
-      style={[
-        styles.pathCard,
-        { borderColor: colors.line },
-        (!emailValid || busy) && styles.disabled,
-      ]}
+      style={[styles.pathCard, { borderColor: colors.line }, !canProceed && styles.disabled]}
     >
       <Text variant="cardTitle">{label}</Text>
       <Text variant="bodySmall" color="textMuted">
@@ -183,7 +203,7 @@ export default function SignUpScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <HeroHeader variant="compact" title={c.title} subtitle={subtitle} image={heroImage} />
-      <ScrollView contentContainerStyle={styles.form}>
+      <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
         {error ? (
           <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
             {error}
@@ -192,80 +212,103 @@ export default function SignUpScreen() {
 
         {step === 'entry' ? (
           <>
-            {field(c.email, email, setEmail, c.emailPlaceholder, {
-              autoComplete: 'email',
-              keyboardType: 'email-address',
-            })}
-            <Text variant="body" color="textMuted">
-              {c.howToJoin}
-            </Text>
-            {pathCard(c.orgCodeOption, c.orgCodeOptionHint, goOrgCode)}
-            {pathCard(c.payOption, c.payOptionHint, goToPay)}
-          </>
-        ) : null}
-
-        {step === 'orgCode' ? (
-          <>
-            {field(c.password, password, setPassword, c.passwordPlaceholder, {
-              secureTextEntry: true,
-            })}
+            {/* Entry fields inlined (not via field()) so the return-key focus
+                handlers read refs as trusted JSX event handlers. */}
+            <View style={styles.fieldBlock}>
+              <Text variant="cardTitle">{c.email}</Text>
+              <View style={[styles.inputBox, { borderColor: colors.line }]}>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder={c.emailPlaceholder}
+                  placeholderTextColor={colors.textMuted}
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                  autoFocus
+                  returnKeyType="next"
+                  submitBehavior="submit"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  accessibilityLabel={c.email}
+                  style={[styles.input, { color: colors.textPrimary }]}
+                />
+              </View>
+            </View>
+            <View style={styles.fieldBlock}>
+              <Text variant="cardTitle">{c.password}</Text>
+              <View style={[styles.inputBox, { borderColor: colors.line }]}>
+                <TextInput
+                  ref={passwordRef}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder={c.passwordPlaceholder}
+                  placeholderTextColor={colors.textMuted}
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  secureTextEntry={!showPw}
+                  returnKeyType="next"
+                  submitBehavior="submit"
+                  onSubmitEditing={() => confirmRef.current?.focus()}
+                  accessibilityLabel={c.password}
+                  style={[styles.input, { color: colors.textPrimary }]}
+                />
+                {eyeToggle(showPw, () => setShowPw((v) => !v))}
+              </View>
+            </View>
             <Text variant="bodySmall" color="textMuted">
               {c.passwordHint}
             </Text>
-            {field(c.confirmPassword, confirmPassword, setConfirmPassword, c.confirmPasswordPlaceholder, {
-              secureTextEntry: true,
-            })}
+            <View style={styles.fieldBlock}>
+              <Text variant="cardTitle">{c.confirmPassword}</Text>
+              <View style={[styles.inputBox, { borderColor: colors.line }]}>
+                <TextInput
+                  ref={confirmRef}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder={c.confirmPasswordPlaceholder}
+                  placeholderTextColor={colors.textMuted}
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  secureTextEntry={!showConfirm}
+                  returnKeyType="done"
+                  accessibilityLabel={c.confirmPassword}
+                  style={[styles.input, { color: colors.textPrimary }]}
+                />
+                {eyeToggle(showConfirm, () => setShowConfirm((v) => !v))}
+              </View>
+            </View>
             {confirmPassword.length > 0 && !passwordsMatch ? (
               <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
                 {c.passwordMismatch}
               </Text>
             ) : null}
-            {field(c.code, code, setCode, c.codePlaceholder, { autoCapitalize: 'characters' })}
+            <Text variant="body" color="textMuted">
+              {c.howToJoin}
+            </Text>
+            {pathCard(c.orgCodeOption, c.orgCodeOptionHint, goOrgCode)}
+            {pathCard(busy ? c.payStarting : c.payOption, c.payOptionHint, goPay)}
+          </>
+        ) : null}
+
+        {step === 'orgCode' ? (
+          <>
+            {field(c.code, code, setCode, c.codePlaceholder, {
+              autoCapitalize: 'characters',
+              autoFocus: true,
+              returnKeyType: 'go',
+              onSubmitEditing: () => {
+                if (canJoin) onJoin();
+              },
+            })}
             <Button
               label={busy ? c.joining : c.join}
               variant="amethyst"
               loading={busy}
               disabled={!canJoin}
               onPress={onJoin}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={c.back}
-              onPress={() => {
-                setError(null);
-                setStep('entry');
-              }}
-              style={styles.center}
-            >
-              <Text variant="body" color="textMuted">
-                {c.back}
-              </Text>
-            </Pressable>
-          </>
-        ) : null}
-
-        {step === 'pay' ? (
-          <>
-            {field(c.password, password, setPassword, c.passwordPlaceholder, {
-              secureTextEntry: true,
-            })}
-            <Text variant="bodySmall" color="textMuted">
-              {c.passwordHint}
-            </Text>
-            {field(c.confirmPassword, confirmPassword, setConfirmPassword, c.confirmPasswordPlaceholder, {
-              secureTextEntry: true,
-            })}
-            {confirmPassword.length > 0 && !passwordsMatch ? (
-              <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
-                {c.passwordMismatch}
-              </Text>
-            ) : null}
-            <Button
-              label={busy ? c.payStarting : c.payContinue}
-              variant="amethyst"
-              loading={busy}
-              disabled={!canPay}
-              onPress={goPay}
             />
             <Pressable
               accessibilityRole="button"
