@@ -1,4 +1,19 @@
-import { buildGatePayload, canAdvance, type GateState } from '@/features/auth/fourDoorsModel';
+import {
+  buildGatePayload,
+  canAdvance,
+  moduleForDoor,
+  type GateState,
+} from '@/features/auth/fourDoorsModel';
+
+describe('fourDoorsModel.moduleForDoor (door is canonical, mode derived)', () => {
+  it('door 4 (pet) derives module pet, every other door human', () => {
+    expect(moduleForDoor(4)).toBe('pet');
+    expect(moduleForDoor(1)).toBe('human');
+    expect(moduleForDoor(2)).toBe('human');
+    expect(moduleForDoor(3)).toBe('human');
+    expect(moduleForDoor(undefined)).toBe('human');
+  });
+});
 
 describe('fourDoorsModel.buildGatePayload', () => {
   const base = { userName: '  Rae  ', toneLabel: 'Direct and tactful' } as const;

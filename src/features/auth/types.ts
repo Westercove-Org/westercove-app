@@ -17,6 +17,12 @@ export interface GateAnswers {
   callName?: string;
   lovedOneName?: string;
   relationship?: string;
+  /**
+   * The 4-Doors loss signal (v4). CANONICAL: `mode` below is DERIVED from this
+   * (via `moduleForDoor`), never set independently. Undefined on the legacy
+   * DayZero gate, which sets `mode` directly. Mirrors `Door` in fourDoorsModel.
+   */
+  door?: 1 | 2 | 3 | 4;
   mode: GateMode;
   /** Free-text animal kind (pet path), e.g. "Dog". */
   species?: string;

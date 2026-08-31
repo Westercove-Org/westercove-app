@@ -10,9 +10,20 @@
  * and timing, D4 species) are sent as their display strings; the backend maps
  * D3 "what changed" onto the sub-type itself.
  */
+import type { GateMode } from '@/features/auth/types';
 import type { FourDoorsGateInput } from '@/services/survey';
 
 export type Door = 1 | 2 | 3 | 4;
+
+/**
+ * Door → book module. `door` is the CANONICAL loss signal (v4 retired the
+ * pet/human split): the module/`mode` is DERIVED from it here and NOWHERE else.
+ * Do not set `mode` independently or treat it as authoritative — always derive
+ * it from the door. Door 4 (pet) → 'pet'; every other door → 'human'.
+ */
+export function moduleForDoor(door: Door | undefined): GateMode {
+  return door === 4 ? 'pet' : 'human';
+}
 
 export const DOOR_OPTIONS: { door: Door; label: string }[] = [
   { door: 1, label: 'A person I love died' },

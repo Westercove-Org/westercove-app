@@ -66,13 +66,13 @@ export function FourDoorsGate() {
     setBusy(true);
     try {
       const { profileId } = await services.survey.submitFourDoorsGate(buildGatePayload(answers));
-      const name = answers.userName.trim();
       // The profile LABEL is the loved-one's name, not the user's (self door →
       // empty → a neutral "Profile N"). The user's name is a separate field.
       useProfilesStore.getState().setActiveName(answers.lovedOneName?.trim() ?? '');
-      // Marks the gate complete + adopts the profile id; the auth guard then
+      // Marks the gate complete, adopts the profile id, and copies the answers
+      // into the session (door canonical, mode derived); the auth guard then
       // redirects to the tab shell.
-      completeFourDoorsGate(profileId, name);
+      completeFourDoorsGate(profileId, answers);
     } catch {
       setError('Something went wrong setting up your companion. Please try again.');
       setBusy(false);
@@ -116,7 +116,7 @@ export function FourDoorsGate() {
           {step === 'door' && (
             <>
               <Text variant="screenTitle" style={styles.question} accessibilityRole="header">
-                What brings you to Westercove?
+                What brings you here?
               </Text>
               <View style={styles.options}>
                 {DOOR_OPTIONS.map((o) => (
