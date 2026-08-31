@@ -7,7 +7,6 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
-import { TRIAL_DAYS, TRIAL_PRICE, firstChargeDate } from '@/constants/billing';
 import { isEmail } from '@/features/auth/email';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
 import { services } from '@/services';
@@ -290,15 +289,6 @@ export default function SignUpScreen() {
               {c.howToJoin}
             </Text>
             {pathCard(c.orgCodeOption, c.orgCodeOptionHint, goOrgCode)}
-            {/* Trial disclosure — stated plainly BEFORE card entry (the card is
-                collected on Stripe's hosted page after "Pay to join"). No fine
-                print: free length, the price after, and the exact first-charge date. */}
-            <View style={[styles.trialBox, { borderColor: colors.line, backgroundColor: colors.card }]}>
-              <Text variant="cardTitle">{`Free for ${TRIAL_DAYS} days`}</Text>
-              <Text variant="bodySmall" color="textMuted">
-                {`You will not be charged today. After your ${TRIAL_DAYS}-day free trial, Westercove is ${TRIAL_PRICE}. Your card will first be charged on ${firstChargeDate()}. Cancel any time before then and you will not be charged.`}
-              </Text>
-            </View>
             {pathCard(busy ? c.payStarting : c.payOption, c.payOptionHint, goPay)}
           </>
         ) : null}
@@ -362,13 +352,6 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   fieldBlock: { gap: spacing.sm },
-  trialBox: {
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderRadius: radii.card,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
