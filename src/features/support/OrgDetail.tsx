@@ -56,7 +56,9 @@ export function OrgDetail() {
               <Pressable
                 key={org.id}
                 accessibilityRole="link"
-                accessibilityLabel={`${org.name}. ${org.description} Opens in your browser.`}
+                accessibilityLabel={`${org.name}. ${org.description} ${
+                  org.url.startsWith('mailto:') ? 'Opens your mail app.' : 'Opens in your browser.'
+                }`}
                 onPress={() => Linking.openURL(org.url)}
                 style={({ pressed }) => pressed && styles.pressed}
               >

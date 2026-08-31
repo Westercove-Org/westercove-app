@@ -5,9 +5,8 @@ export interface Organization {
   id: string;
   name: string;
   description: string;
-  /** Where tapping the card takes the user. The mock supplies a web-search URL
-   * for the org name (no real directory wired yet, ticket notion-fe-cleanup #4);
-   * a real GET /organizations would return each org's own site. */
+  /** Where tapping the card takes the user — a `mailto:` for a contact card, or
+   * an `https:` org site once a real directory is wired. */
   url: string;
 }
 
@@ -39,24 +38,15 @@ export class MockContentService implements ContentService {
     };
   }
 
-  async organizationsFor(lossType: string): Promise<Organization[]> {
-    await new Promise((r) => setTimeout(r, 300));
-    const search = (name: string) =>
-      `https://www.google.com/search?q=${encodeURIComponent(name)}`;
-    const network = `${lossType} loss support network`;
-    const resources = `Grief resources for ${lossType.toLowerCase()} loss`;
+  // ponytail: one real support contact for now (human decision, tk-815b), not a
+  // per-loss org directory. lossType is ignored until a real directory is wired.
+  async organizationsFor(_lossType: string): Promise<Organization[]> {
     return [
       {
-        id: `${lossType}-1`,
-        name: network,
-        description: 'Peer support, resources, and a warm line for this kind of loss.',
-        url: search(network),
-      },
-      {
-        id: `${lossType}-2`,
-        name: resources,
-        description: 'Reading, groups, and organizations by region.',
-        url: search(resources),
+        id: 'westercove-support',
+        name: 'Westercove Support',
+        description: 'Reach our team any time at support@westercove.com.',
+        url: 'mailto:support@westercove.com',
       },
     ];
   }

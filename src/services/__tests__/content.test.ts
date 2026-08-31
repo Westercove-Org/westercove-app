@@ -22,10 +22,16 @@ describe('MockContentService', () => {
     expect(rateLimited).toBe(false);
   });
 
-  it('returns organizations for a loss type', async () => {
+  it('returns the single Westercove Support contact card (loss-agnostic for now)', async () => {
     const orgs = await svc.organizationsFor('Pet');
-    expect(orgs.length).toBeGreaterThan(0);
-    expect(orgs[0].name).toContain('Pet');
+    expect(orgs).toEqual([
+      {
+        id: 'westercove-support',
+        name: 'Westercove Support',
+        description: 'Reach our team any time at support@westercove.com.',
+        url: 'mailto:support@westercove.com',
+      },
+    ]);
   });
 });
 
