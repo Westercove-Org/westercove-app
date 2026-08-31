@@ -30,7 +30,16 @@ describe('entry types', () => {
 
   it('isEntryType guards correctly', () => {
     expect(isEntryType('Memory')).toBe(true);
+    // 'Question' is an alias, not a canonical chip type.
     expect(isEntryType('Question')).toBe(false);
     expect(isEntryType(undefined)).toBe(false);
+  });
+
+  // nt-guided-chip-bug: the visible chip must reach the guided (book-bearing)
+  // reply. Both the canonical 'Grief Question' and the bare 'Question' alias
+  // resolve to the same guided enum, so neither silently drops to a normal turn.
+  it('routes both Question labels to the guided enum', () => {
+    expect(entryTypeEnum('Grief Question')).toBe('grief_question');
+    expect(entryTypeEnum('Question')).toBe('grief_question');
   });
 });

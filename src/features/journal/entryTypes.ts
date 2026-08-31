@@ -55,10 +55,25 @@ export const ENTRY_TYPE_ENUM: Record<EntryType, string> = {
   Struggle: 'struggle',
 };
 
+/**
+ * Non-canonical labels that must still reach a real entry type. The visible chip
+ * is 'Grief Question', but a bare 'Question' (beta's label, saved/downloaded
+ * entries, any shorthand surface) must NOT drop to a normal, book-less turn —
+ * it maps to the same guided enum so both labels unlock the guided reply
+ * (nt-guided-chip-bug). These are aliases only: they are not shown as chips and
+ * are not canonical `EntryType`s (`isEntryType` stays false for them).
+ */
+const ENTRY_TYPE_ALIASES: Record<string, EntryType> = {
+  Question: 'Grief Question',
+};
+
 /** The backend enum for an entry-type label, or undefined for an unknown label
- * (the server then treats the turn as a normal one). */
+ * (the server then treats the turn as a normal one). Canonical labels resolve
+ * directly; known aliases resolve through their canonical type. */
 export function entryTypeEnum(label: string | undefined): string | undefined {
-  return isEntryType(label) ? ENTRY_TYPE_ENUM[label] : undefined;
+  if (isEntryType(label)) return ENTRY_TYPE_ENUM[label];
+  const alias = label ? ENTRY_TYPE_ALIASES[label] : undefined;
+  return alias ? ENTRY_TYPE_ENUM[alias] : undefined;
 }
 
 const LABEL_BY_ENUM: Record<string, EntryType> = Object.fromEntries(
