@@ -6,6 +6,7 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
+import { TRIAL_DAYS, TRIAL_PRICE, firstChargeDate } from '@/constants/billing';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
 import { isSignupSuccessStatus, services } from '@/services';
 import { useTheme } from '@/theme';
@@ -86,12 +87,19 @@ export default function SignUpReturnScreen() {
   };
   const s = screen[view];
 
+  // On success the trial has started and NOTHING was charged — say so plainly,
+  // with the first-charge date and price, instead of "your payment went through".
+  const body =
+    view === 'success'
+      ? `Your ${TRIAL_DAYS}-day free trial has started, and you have not been charged. Your first charge, ${TRIAL_PRICE}, will be on ${firstChargeDate()}. We have sent a verification email to confirm your address — open it, then sign in.`
+      : s.body;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <HeroHeader variant="compact" title={s.title} image={heroImage} />
       <ScrollView contentContainerStyle={styles.form}>
         <Text variant="body" color="textMuted" accessibilityRole={view === 'polling' ? 'alert' : undefined}>
-          {s.body}
+          {body}
         </Text>
         {email ? (
           <View style={styles.fieldBlock}>
