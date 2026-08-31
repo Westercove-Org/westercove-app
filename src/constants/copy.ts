@@ -153,8 +153,10 @@ export const copy = {
   signUpReturn: {
     confirmingTitle: 'Confirming your payment',
     confirmingBody: 'Hang tight while we finish setting up your account…',
-    successTitle: 'Check your email',
-    successBody: 'Your payment went through. We’ve sent a verification email to confirm your address — open it to finish, then sign in with the password you chose.',
+    successTitle: 'Your free trial has started',
+    // Success body is built in the screen (it interpolates the trial length,
+    // price, and first-charge date). This stays as a plain-text fallback.
+    successBody: 'Your free trial has started, and you have not been charged yet. We’ve sent a verification email to confirm your address — open it to finish, then sign in with the password you chose.',
     cancelledTitle: 'No charge was made',
     cancelledBody: 'Your checkout was cancelled and nothing was charged. You can try again or join with an organization code.',
     expiredTitle: 'Payment window lapsed',
