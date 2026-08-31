@@ -7,12 +7,13 @@
  *
  * TRIAL_DAYS: 14 — confirmed against Dwight's trial backend (#127,
  *   trial_period_days=14).
- * TRIAL_PRICE: ⚠️ UNVERIFIED display string. Confirm the exact amount + interval
- *   against the Stripe product with Dwight/Stanley BEFORE this merges. (Currently
- *   the value MockSubscriptionService has shown; not authoritative.)
+ * TRIAL_PRICE: human-confirmed authoritative display price. It MUST match the
+ *   live Stripe price object — a mismatch means this screen lies to the user
+ *   before they hand over a card. A price change is a one-line edit here, never
+ *   a hunt across screens.
  */
 export const TRIAL_DAYS = 14;
-export const TRIAL_PRICE = '$8.99 / month';
+export const TRIAL_PRICE = '$0.99 / month';
 
 /** Plain, urgency-free date the trial's first charge lands: TRIAL_DAYS from
  * `from` (default now). Same format as the Subscription screen's dates. */
