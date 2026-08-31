@@ -120,8 +120,23 @@ export class UnavailableVoiceService implements VoiceService {
   }
 }
 
-/** Pick the real web recognizer when the platform supports it, else the
- * unavailable fallback. */
+/**
+ * Pick the real web recognizer when the platform supports it, else the
+ * unavailable fallback.
+ *
+ * Native on-device STT (iOS/Android) is STAGED, not active: it needs
+ * `@react-native-voice/voice`, which is a custom native module and so only runs
+ * in an EAS dev build — not Expo Go or web — and this app is currently the
+ * managed workflow (no ios/android dirs). The mic-permission strings are already
+ * in app.json (NSMicrophoneUsageDescription / NSSpeechRecognitionUsageDescription
+ * / RECORD_AUDIO), so activating it when native builds ship is FE-local:
+ *   1. `npm i @react-native-voice/voice` (+ an EAS dev build).
+ *   2. add a `NativeVoiceService` here wrapping its `Voice.start`/`onSpeechResults`
+ *      (transcript only — never store or upload audio, same contract as web).
+ *   3. branch below on `Platform.OS !== 'web'` to return it.
+ * Until then native correctly falls through to UnavailableVoiceService, so the
+ * mic never lies about listening. (fe-mic-native-followup — staged, not active.)
+ */
 export function createVoiceService(): VoiceService {
   return WebVoiceService.isSupported() ? new WebVoiceService() : new UnavailableVoiceService();
 }
