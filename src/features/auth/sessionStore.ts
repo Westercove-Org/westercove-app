@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
 import type { AuthResult } from '@/services/auth';
+import { moduleForDoor, type GateState } from './fourDoorsModel';
 import type { Entitlement, GateAnswers, Session } from './types';
 
 export type SessionStatus = 'unauthenticated' | 'needs-gate' | 'ready';
@@ -17,8 +18,11 @@ interface SessionState {
   completeGate: (answers: GateAnswers) => void;
   /** Finish the 4-Doors gate: the profile already exists server-side (POST
    * /survey/gate returned its id), so mark the gate done, adopt the profile id,
-   * and carry the call name for the Home greeting. */
-  completeFourDoorsGate: (profileId: number, userName: string) => void;
+   * and copy the gate answers into the session so the companion, profile,
+   * discover/questions module, and journal export all see them (the answers
+   * would otherwise reach only the server). `door` is stored canonical; `mode`
+   * is derived from it. */
+  completeFourDoorsGate: (profileId: number, answers: GateState) => void;
   setEntitlement: (entitlement: Entitlement, sponsorOrganization?: string) => void;
   setFullName: (fullName: string) => void;
   updateGate: (partial: Partial<GateAnswers>) => void;
@@ -93,7 +97,7 @@ export const useSessionStore = create<SessionState>()(
           .catch(() => {});
       },
 
-      completeFourDoorsGate(profileId, userName) {
+      completeFourDoorsGate(profileId, answers) {
         const s = get().session;
         if (!s) return;
         set({
@@ -101,7 +105,18 @@ export const useSessionStore = create<SessionState>()(
             ...s,
             gateComplete: true,
             backendProfileId: profileId,
-            gateAnswers: { ...s.gateAnswers, callName: userName.trim() },
+            gateAnswers: {
+              ...s.gateAnswers,
+              callName: answers.userName.trim(),
+              lovedOneName: answers.lovedOneName?.trim() || undefined,
+              relationship: answers.relationship?.trim() || undefined,
+              species: answers.species,
+              breed: answers.breed?.trim() || undefined,
+              tone: answers.toneLabel,
+              // `door` is canonical; `mode` is DERIVED from it, never set on its own.
+              door: answers.door,
+              mode: moduleForDoor(answers.door),
+            },
           },
         });
       },

@@ -58,4 +58,44 @@ describe('session store', () => {
     useSessionStore.getState().completeGate({ mode: 'human', skipped: [], callName: 'Sam' });
     expect(sessionStatus(useSessionStore.getState().session)).toBe('ready');
   });
+
+  // nt-four-doors-audit gap #1: the gate answers must reach the SESSION, not just
+  // the server — otherwise the companion and journal export lose the person's name.
+  it('completeFourDoorsGate copies the gate answers into the session', async () => {
+    jest.spyOn(services.auth, 'signIn').mockResolvedValue(authResult);
+    await useSessionStore.getState().signIn('a@b.com', 'pw');
+    useSessionStore.getState().completeFourDoorsGate(7, {
+      userName: '  Rae  ',
+      door: 1,
+      lovedOneName: '  Mara  ',
+      relationship: ' my mother ',
+      toneLabel: 'Direct and tactful',
+    });
+    const g = useSessionStore.getState().session?.gateAnswers;
+    // lovedOneName survives the gate → reaches companion + journal export (both read this field).
+    expect(g?.lovedOneName).toBe('Mara');
+    expect(g?.callName).toBe('Rae');
+    // tone reaches the profile instead of defaulting.
+    expect(g?.tone).toBe('Direct and tactful');
+    // door is canonical; mode derived from it (door 1 → human).
+    expect(g?.door).toBe(1);
+    expect(g?.mode).toBe('human');
+    expect(sessionStatus(useSessionStore.getState().session)).toBe('ready');
+  });
+
+  it('completeFourDoorsGate derives module pet for a Door-4 (pet) user', async () => {
+    jest.spyOn(services.auth, 'signIn').mockResolvedValue(authResult);
+    await useSessionStore.getState().signIn('a@b.com', 'pw');
+    useSessionStore.getState().completeFourDoorsGate(9, {
+      userName: 'Rae',
+      door: 4,
+      lovedOneName: 'Biscuit',
+      species: 'Dog',
+      toneLabel: 'Gentle and warm',
+    });
+    const g = useSessionStore.getState().session?.gateAnswers;
+    expect(g?.mode).toBe('pet');
+    expect(g?.door).toBe(4);
+    expect(g?.species).toBe('Dog');
+  });
 });
