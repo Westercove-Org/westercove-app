@@ -13,7 +13,7 @@ import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { formatHeaderDateTime } from '@/lib/dateFormat';
 import { TONE_LABELS } from '@/services/companionPrompt';
-import { useTheme } from '@/theme';
+import { useTheme, useThemeMode, type ThemeMode } from '@/theme';
 import { spacing } from '@/theme/tokens';
 
 type Row = { label: string; subtitle?: string; section: string };
@@ -54,6 +54,14 @@ const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
 /** Tones the companion-tone row cycles through: the same labels the gate offers
  *  and the companion prompt understands. */
 const TONES = TONE_LABELS;
+
+/** Appearance row cycles Light → Dark → System (device-local, not synced). */
+const THEME_MODES: ThemeMode[] = ['light', 'dark', 'system'];
+const THEME_LABELS: Record<ThemeMode, string> = {
+  light: 'Light',
+  dark: 'Dark',
+  system: 'System (match device)',
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -96,6 +104,12 @@ export default function ProfileScreen() {
   const cycleTone = () => {
     const i = TONES.findIndex((t) => t === tone);
     updateGate({ tone: TONES[(i + 1) % TONES.length] });
+  };
+
+  const { mode: themeMode, setMode: setThemeMode } = useThemeMode();
+  const cycleTheme = () => {
+    const i = THEME_MODES.indexOf(themeMode);
+    setThemeMode(THEME_MODES[(i + 1) % THEME_MODES.length]);
   };
 
   const renderRows = (rows: Row[]) => (
@@ -179,6 +193,18 @@ export default function ProfileScreen() {
             subtitle={tone}
             chevron
             onPress={cycleTone}
+          />
+        </Card>
+      </View>
+
+      <SectionLabel>APPEARANCE</SectionLabel>
+      <View style={styles.cardWrap}>
+        <Card padded={false}>
+          <ListRow
+            label="Theme"
+            subtitle={THEME_LABELS[themeMode]}
+            chevron
+            onPress={cycleTheme}
           />
         </Card>
       </View>
