@@ -15,7 +15,7 @@ import { InlineResourceCard } from '@/features/safety/InlineResourceCard';
 import { ServerResources } from '@/features/safety/ServerResources';
 import { useCadenceStore } from '@/features/cadence/cadenceStore';
 import { QuickReplyChips } from '@/features/cadence/QuickReplyChips';
-import { useEntriesStore } from '@/features/journal/entriesStore';
+import { journalIdOf, useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionTimer } from '@/features/questions/useQuestionTimer';
 import { useCadenceJournalingTimer } from '@/features/cadence/useCadence';
 import { formatEntryTimestamp } from '@/lib/dateFormat';
@@ -31,6 +31,8 @@ export function EntryDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const entry = useEntriesStore((s) => s.entries.find((e) => e.id === id));
   const continueEntry = useEntriesStore((s) => s.continueEntry);
+  const renameEntry = useEntriesStore((s) => s.renameEntry);
+  const serverSessions = useEntriesStore((s) => s.serverSessions);
   const clearPendingQuestion = useEntriesStore((s) => s.clearPendingQuestion);
   const routeSafety = useSafetyRouter();
 
@@ -38,6 +40,10 @@ export function EntryDetail() {
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [titleBusy, setTitleBusy] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
 
   // Accumulate talk-time while this conversation screen is focused.
   useQuestionTimer();
@@ -77,6 +83,38 @@ export function EntryDetail() {
     if (level >= SafetyLevel.High) routeSafety({ level });
   };
 
+  // Rename is only offered once the entry is persisted server-side (a resolvable
+  // journal id), since it writes the encrypted title via PATCH /api/journal/{id}.
+  const canRename = journalIdOf(entry, serverSessions) != null;
+
+  // Continue-adding only works on chat-originated entries: it posts to the
+  // entry's chat session, which the backend re-syncs into the journal row. A
+  // standalone entry (manual / command badge) has no session, so continuing it
+  // would only append locally and be lost on reload — hide the compose box.
+  const canContinue = entry.sessionId != null;
+
+  const startRename = () => {
+    setTitleError(null);
+    setTitleDraft(entry.headline);
+    setEditingTitle(true);
+  };
+
+  const onSaveTitle = async () => {
+    const next = titleDraft.trim();
+    if (!next || titleBusy) return;
+    if (next === entry.headline) return setEditingTitle(false);
+    setTitleBusy(true);
+    setTitleError(null);
+    try {
+      await renameEntry(entry.id, next);
+      setEditingTitle(false);
+    } catch (e) {
+      setTitleError(e instanceof Error ? e.message : 'Could not rename this entry.');
+    } finally {
+      setTitleBusy(false);
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
@@ -106,9 +144,68 @@ export function EntryDetail() {
           <Text variant="meta" style={styles.stamp}>
             {formatEntryTimestamp(new Date(entry.createdAt))}
           </Text>
-          <Text variant="screenTitle" style={styles.headline}>
-            {entry.headline}
-          </Text>
+          {editingTitle ? (
+            <View style={styles.titleEdit}>
+              <TextInput
+                value={titleDraft}
+                onChangeText={setTitleDraft}
+                placeholder="Entry title"
+                placeholderTextColor={colors.textMuted}
+                accessibilityLabel="Entry title"
+                autoFocus
+                style={[styles.titleInput, { color: colors.textPrimary, borderColor: colors.line }]}
+              />
+              <View style={styles.titleActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Save title"
+                  disabled={titleBusy || !titleDraft.trim()}
+                  onPress={onSaveTitle}
+                  style={styles.titleBtn}
+                >
+                  <Text variant="body" color="amethystText">
+                    {titleBusy ? 'Saving…' : 'Save'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel rename"
+                  onPress={() => {
+                    setEditingTitle(false);
+                    setTitleError(null);
+                  }}
+                  style={styles.titleBtn}
+                >
+                  <Text variant="body" color="textMuted">
+                    Cancel
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.headlineRow}>
+              <Text variant="screenTitle" style={styles.headline}>
+                {entry.headline}
+              </Text>
+              {canRename ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Rename entry"
+                  onPress={startRename}
+                  style={styles.rename}
+                >
+                  <Text variant="bodySmall" color="amethystText">
+                    Rename
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          )}
+          {titleError ? (
+            <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert" style={styles.stamp}>
+              {titleError}
+            </Text>
+          ) : null}
         </View>
       </View>
 
@@ -170,7 +267,7 @@ export function EntryDetail() {
         <GentleQuestionCard />
       </ScrollView>
 
-      {micError ? (
+      {canContinue && micError ? (
         <Text
           variant="bodySmall"
           color="textMuted"
@@ -181,6 +278,7 @@ export function EntryDetail() {
         </Text>
       ) : null}
 
+      {canContinue ? (
       <View style={styles.composeRow}>
         <TextInput
           value={text}
@@ -221,6 +319,7 @@ export function EntryDetail() {
           <SendIcon size={22} color={colors.onAccent} />
         </Pressable>
       </View>
+      ) : null}
 
       <CrisisBanner compact />
     </View>
@@ -245,7 +344,24 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, paddingTop: spacing.sm },
   tagRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   stamp: { marginTop: spacing.xs },
-  headline: { marginTop: spacing.sm },
+  headlineRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  headline: { marginTop: spacing.sm, flexShrink: 1 },
+  rename: { minHeight: 44, justifyContent: 'flex-end', paddingBottom: 2 },
+  titleEdit: { marginTop: spacing.sm, gap: spacing.sm },
+  titleInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    minHeight: 48,
+    fontSize: 17,
+  },
+  titleActions: { flexDirection: 'row', gap: spacing.lg },
+  titleBtn: { minHeight: 44, justifyContent: 'center' },
   download: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -24,4 +24,8 @@ export interface Entry {
   safetyLevel: number;
   /** Backend chat-session id, once the session has been created for this entry. */
   sessionId?: number;
+  /** Server journal-entry id (the `/api/journal/{id}` key), once known — set for
+   * entries loaded from the server and stamped onto live entries on refresh.
+   * Drives edit (title rename) via `journalService.update`. */
+  journalId?: number;
 }

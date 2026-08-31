@@ -139,6 +139,52 @@ describe('backend chat-session wiring', () => {
     ]);
   });
 
+  it('renameEntry PATCHes the title to the journal row and updates the headline', async () => {
+    useEntriesStore.setState({
+      entries: [
+        { id: 'j5', type: 'Journal', headline: 'Old title', createdAt: '2026-08-30T00:00:00Z', turns: [], safetyLevel: 1, journalId: 5 },
+      ],
+      serverSessions: [],
+    });
+    const upd = jest.spyOn(services.journal, 'update').mockResolvedValue({
+      id: 5, date: '2026-08-30', time: '00:00:00', title: 'New title', entry: '', reflection: null, entryType: 'journal', profileId: 7, createdAt: '2026-08-30T00:00:00Z',
+    });
+
+    await useEntriesStore.getState().renameEntry('j5', '  New title  ');
+
+    expect(upd).toHaveBeenCalledWith(5, { title: 'New title' });
+    expect(useEntriesStore.getState().entries[0].headline).toBe('New title');
+  });
+
+  it('renameEntry resolves the journal id from a j<n> id when unstamped', async () => {
+    useEntriesStore.setState({
+      entries: [
+        { id: 'j9', type: 'Journal', headline: 'Old', createdAt: '2026-08-30T00:00:00Z', turns: [], safetyLevel: 1 },
+      ],
+      serverSessions: [],
+    });
+    const upd = jest.spyOn(services.journal, 'update').mockResolvedValue({
+      id: 9, date: '2026-08-30', time: '00:00:00', title: 'Renamed', entry: '', reflection: null, entryType: 'journal', profileId: 7, createdAt: '2026-08-30T00:00:00Z',
+    });
+
+    await useEntriesStore.getState().renameEntry('j9', 'Renamed');
+
+    expect(upd).toHaveBeenCalledWith(9, { title: 'Renamed' });
+  });
+
+  it('renameEntry throws when the entry is not yet persisted (no journal id)', async () => {
+    useEntriesStore.setState({
+      entries: [
+        { id: 'e123', type: 'Journal', headline: 'Local', createdAt: '2026-08-30T00:00:00Z', turns: [], safetyLevel: 1 },
+      ],
+      serverSessions: [],
+    });
+    const upd = jest.spyOn(services.journal, 'update');
+
+    await expect(useEntriesStore.getState().renameEntry('e123', 'New')).rejects.toThrow();
+    expect(upd).not.toHaveBeenCalled();
+  });
+
   it('completeGate stashes the backend profile id returned by submit', async () => {
     setSession({});
     jest

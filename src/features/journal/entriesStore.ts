@@ -72,7 +72,27 @@ function recordToEntry(
     turns: recordToTurns(r, at),
     safetyLevel: level,
     sessionId,
+    journalId: r.id,
   };
+}
+
+/** The server journal-entry id for an entry, when resolvable: the stamped
+ * `journalId`, else parsed from a `j<n>` id (server-loaded entry), else looked
+ * up from the linked chat session's `journalEntryId`. Undefined ⇒ not yet
+ * persisted server-side, so it can't be edited via `/api/journal` yet. */
+export function journalIdOf(
+  entry: Entry,
+  serverSessions: ChatSessionSummary[],
+): number | undefined {
+  if (entry.journalId != null) return entry.journalId;
+  if (entry.id.startsWith('j')) {
+    const n = Number(entry.id.slice(1));
+    if (Number.isInteger(n)) return n;
+  }
+  if (entry.sessionId != null) {
+    return serverSessions.find((s) => s.id === entry.sessionId)?.journalEntryId ?? undefined;
+  }
+  return undefined;
 }
 
 /** The server journal id an in-memory (live) entry corresponds to, via its chat
@@ -95,6 +115,10 @@ interface EntriesState {
     justHeard?: boolean;
   }) => Promise<{ id: string; level: SafetyLevel }>;
   continueEntry: (id: string, text: string) => Promise<SafetyLevel>;
+  /** Rename a saved entry's title, persisted to the encrypted journal row via
+   * `PATCH /api/journal/{id}`. Throws if the entry isn't persisted server-side
+   * yet (no resolvable journal id). */
+  renameEntry: (id: string, title: string) => Promise<void>;
   getEntry: (id: string) => Entry | undefined;
   /** Clear a companion turn's pending 4-Doors question once it's answered,
    * deferred, or skipped (so the quick-reply chips stop showing). */
@@ -255,6 +279,24 @@ export const useEntriesStore = create<EntriesState>()((set, get) => ({
     return level;
   },
 
+  async renameEntry(id, title) {
+    const next = title.trim();
+    if (!next) return;
+    const entry = get().entries.find((e) => e.id === id);
+    if (!entry || next === entry.headline) return;
+    const journalId = journalIdOf(entry, get().serverSessions);
+    if (journalId == null) {
+      throw new Error('This entry is still saving — try renaming again in a moment.');
+    }
+    // Persist to the encrypted title column, then reflect it locally.
+    await services.journal.update(journalId, { title: next });
+    set((s) => ({
+      entries: s.entries.map((e) =>
+        e.id === id ? { ...e, headline: next, journalId } : e,
+      ),
+    }));
+  },
+
   getEntry(id) {
     return get().entries.find((e) => e.id === id);
   },
@@ -310,8 +352,13 @@ export const useEntriesStore = create<EntriesState>()((set, get) => ({
           const level = session ? levelForTier(session.safetyTier) : SafetyLevel.Normal;
           const live = liveByJournalId.get(r.id);
           if (live) {
-            // Keep the richer live entry; only ratchet its tier up. Never down.
-            return level > live.safetyLevel ? { ...live, safetyLevel: level } : live;
+            // Keep the richer live entry; stamp its now-known journal id and only
+            // ratchet its tier up. Never downgrade.
+            return {
+              ...live,
+              journalId: r.id,
+              safetyLevel: Math.max(live.safetyLevel, level),
+            };
           }
           return recordToEntry(r, session?.id, level);
         });
