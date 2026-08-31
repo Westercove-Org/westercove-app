@@ -87,6 +87,12 @@ export function EntryDetail() {
   // journal id), since it writes the encrypted title via PATCH /api/journal/{id}.
   const canRename = journalIdOf(entry, serverSessions) != null;
 
+  // Continue-adding only works on chat-originated entries: it posts to the
+  // entry's chat session, which the backend re-syncs into the journal row. A
+  // standalone entry (manual / command badge) has no session, so continuing it
+  // would only append locally and be lost on reload — hide the compose box.
+  const canContinue = entry.sessionId != null;
+
   const startRename = () => {
     setTitleError(null);
     setTitleDraft(entry.headline);
@@ -261,7 +267,7 @@ export function EntryDetail() {
         <GentleQuestionCard />
       </ScrollView>
 
-      {micError ? (
+      {canContinue && micError ? (
         <Text
           variant="bodySmall"
           color="textMuted"
@@ -272,6 +278,7 @@ export function EntryDetail() {
         </Text>
       ) : null}
 
+      {canContinue ? (
       <View style={styles.composeRow}>
         <TextInput
           value={text}
@@ -312,6 +319,7 @@ export function EntryDetail() {
           <SendIcon size={22} color={colors.onAccent} />
         </Pressable>
       </View>
+      ) : null}
 
       <CrisisBanner compact />
     </View>
