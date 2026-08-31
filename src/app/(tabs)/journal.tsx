@@ -8,6 +8,7 @@ import { Screen } from '@/components/Screen';
 import { Chip } from '@/components/ui/Chip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SectionLabel } from '@/components/ui/SectionLabel';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { copy } from '@/constants/copy';
 import { ENTRY_PLACEHOLDERS, ENTRY_TYPES, type EntryType } from '@/features/journal/entryTypes';
 import { useEntriesStore } from '@/features/journal/entriesStore';
@@ -25,11 +26,20 @@ export default function JournalScreen() {
   const entries = useEntriesStore((s) => s.entries);
   const refreshServerSessions = useEntriesStore((s) => s.refreshServerSessions);
   const [filter, setFilter] = useState<string>('All');
+  // Whether the first server load has resolved, so the empty-state only shows
+  // when the journal is genuinely empty — not in the gap before entries hydrate.
+  const [loaded, setLoaded] = useState(false);
 
-  // Pull the backend chat-session summaries for this profile when the journal
-  // opens (no-op until the survey submit has stashed a backend profile id).
+  // Load this profile's server entries when the journal opens (no-op until the
+  // survey submit has stashed a backend profile id).
   useEffect(() => {
-    void refreshServerSessions();
+    let active = true;
+    void refreshServerSessions().finally(() => {
+      if (active) setLoaded(true);
+    });
+    return () => {
+      active = false;
+    };
   }, [refreshServerSessions]);
 
   const shown = filter === 'All' ? entries : entries.filter((e) => e.type === filter);
@@ -55,7 +65,13 @@ export default function JournalScreen() {
       </View>
 
       <SectionLabel>{copy.journal.entries}</SectionLabel>
-      {shown.length === 0 ? (
+      {!loaded && shown.length === 0 ? (
+        <View style={styles.loading} accessibilityLabel="Loading your journal">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} height={64} />
+          ))}
+        </View>
+      ) : shown.length === 0 ? (
         <EmptyState
           message={copy.journal.empty}
           action={{ label: `Start a new ${composeType} entry`, onPress: compose }}
@@ -83,4 +99,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.lg,
   },
+  loading: { paddingHorizontal: spacing.screen, paddingTop: spacing.cardGap, gap: spacing.cardGap },
 });
