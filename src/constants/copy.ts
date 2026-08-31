@@ -115,10 +115,8 @@ export const copy = {
 
   signUp: {
     title: 'Create your account',
-    entrySubtitle: 'Start with your email, then choose how to join',
-    orgCodeSubtitle: 'Set a password and enter your organization code',
-    paySubtitle: 'Set a password, then continue to payment',
-    payContinue: 'Continue to payment',
+    entrySubtitle: 'Set up your account, then choose how to join',
+    orgCodeSubtitle: 'Enter your organization code',
     email: 'Email',
     emailPlaceholder: 'you@example.com',
     howToJoin: 'How would you like to join?',
