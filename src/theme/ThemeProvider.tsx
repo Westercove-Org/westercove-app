@@ -22,7 +22,9 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function WestercoveThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
-  const [mode, setMode] = useState<ThemeMode>('system');
+  // Default to light for everyone — including dark-OS devices (fe-default-light-theme).
+  // A user who explicitly picks 'system' or 'dark' via setMode still wins.
+  const [mode, setMode] = useState<ThemeMode>('light');
 
   const value = useMemo<ThemeContextValue>(() => {
     const resolved =
