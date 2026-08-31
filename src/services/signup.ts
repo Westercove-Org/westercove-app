@@ -4,7 +4,7 @@ import { apiClient } from '@/lib/http';
  * Signup v2 (self-serve) over the shared `apiClient`. Same backend contract as
  * the retired QuietRoom SPA (QuietRoom/backend, unchanged):
  *  - POST /auth/signup/org-code        {email,password,code} → {status,email}
- *  - POST /auth/signup/payment/checkout {email,password}     → {pending_signup_id, checkout_url}
+ *  - POST /auth/signup/payment/checkout {email,password}     → {pending_signup_id, checkout_url, status}
  *  - GET  /auth/signup/status/{id}                            → {status,email}
  *
  * Enumeration-safe: the entry endpoints return a generic 200 even when the
@@ -21,9 +21,14 @@ export interface OrgCodeSignupResult {
 
 export interface PaymentCheckoutResult {
   pendingSignupId: string;
-  /** Stripe Checkout URL to redirect to, OR null when the email already has an
-   * account (enumeration-safe): show a generic check-email screen, no redirect. */
+  /** Stripe Checkout URL to redirect to when `status === 'checkout'`; null for
+   * `already_registered`. Key on `status`, not this — see `status`. */
   checkoutUrl: string | null;
+  /** Explicit outcome (BE PR #118): `checkout` → open `checkoutUrl`;
+   * `already_registered` → the email already has an account (also covers the
+   * foreign-provenance Cognito case), so don't open a URL — point the user to
+   * sign-in (the backend emailed them a login nudge). */
+  status: string;
 }
 
 export interface SignupStatusResult {
@@ -89,11 +94,15 @@ export class ApiSignupService implements SignupService {
   }
 
   async startPaymentCheckout(input: { email: string; password: string }): Promise<PaymentCheckoutResult> {
-    const r = await apiClient.post<{ pending_signup_id: string; checkout_url: string | null }>(
-      '/auth/signup/payment/checkout',
-      { email: input.email, password: input.password },
-    );
-    return { pendingSignupId: r.pending_signup_id, checkoutUrl: r.checkout_url };
+    const r = await apiClient.post<{
+      pending_signup_id: string;
+      checkout_url: string | null;
+      status?: string;
+    }>('/auth/signup/payment/checkout', { email: input.email, password: input.password });
+    // status is authoritative (PR #118). Tolerate its absence pre-deploy by
+    // inferring from the url (null ⇒ already_registered) — the old behavior.
+    const status = r.status ?? (r.checkout_url ? 'checkout' : 'already_registered');
+    return { pendingSignupId: r.pending_signup_id, checkoutUrl: r.checkout_url, status };
   }
 
   async getStatus(pendingSignupId: string): Promise<SignupStatusResult> {

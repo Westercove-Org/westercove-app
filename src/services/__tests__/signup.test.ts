@@ -27,20 +27,28 @@ describe('ApiSignupService', () => {
     expect(r).toEqual({ status: 'created_pending_verification', email: 'a@b.co' });
   });
 
-  it('startPaymentCheckout POSTs email + password and maps snake_case to camelCase', async () => {
-    mockPost.mockResolvedValue({ pending_signup_id: 'tok_1', checkout_url: 'https://stripe/x' });
+  it('startPaymentCheckout POSTs email + password and maps the checkout status', async () => {
+    mockPost.mockResolvedValue({ pending_signup_id: 'tok_1', checkout_url: 'https://stripe/x', status: 'checkout' });
     const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB' });
     expect(mockPost).toHaveBeenCalledWith('/auth/signup/payment/checkout', {
       email: 'a@b.co',
       password: 'sup3rsecret!AB',
     });
-    expect(r).toEqual({ pendingSignupId: 'tok_1', checkoutUrl: 'https://stripe/x' });
+    expect(r).toEqual({ pendingSignupId: 'tok_1', checkoutUrl: 'https://stripe/x', status: 'checkout' });
   });
 
-  it('passes through a null checkout_url (already-registered, enumeration-safe)', async () => {
-    mockPost.mockResolvedValue({ pending_signup_id: 'tok_2', checkout_url: null });
+  it('surfaces already_registered status (null checkout_url, no redirect)', async () => {
+    mockPost.mockResolvedValue({ pending_signup_id: 'tok_2', checkout_url: null, status: 'already_registered' });
     const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB' });
     expect(r.checkoutUrl).toBeNull();
+    expect(r.status).toBe('already_registered');
+  });
+
+  it('infers status from the url when the backend omits it (pre-#118 deploy)', async () => {
+    mockPost.mockResolvedValueOnce({ pending_signup_id: 'tok_3', checkout_url: null });
+    expect((await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB' })).status).toBe('already_registered');
+    mockPost.mockResolvedValueOnce({ pending_signup_id: 'tok_4', checkout_url: 'https://stripe/y' });
+    expect((await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB' })).status).toBe('checkout');
   });
 
   it('getStatus GETs the url-encoded token; missing email → null (pre-#80 dev)', async () => {

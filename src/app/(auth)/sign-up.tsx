@@ -87,12 +87,13 @@ export default function SignUpScreen() {
     if (!passwordsMatch) return setError(c.passwordMismatch);
     setBusy(true);
     try {
-      const { checkoutUrl } = await services.signup.startPaymentCheckout({
+      const { checkoutUrl, status } = await services.signup.startPaymentCheckout({
         email: email.trim(),
         password,
       });
-      if (checkoutUrl === null) {
-        // Already-registered (enumeration-safe): generic check-email, no redirect.
+      if (status === 'already_registered' || !checkoutUrl) {
+        // Email already has an account (PR #118): don't open a URL — point the
+        // user to sign-in (the backend emailed them a login nudge).
         setStep('payCheckEmail');
         setBusy(false);
         return;

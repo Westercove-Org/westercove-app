@@ -140,9 +140,9 @@ export const copy = {
     // Org-code confirm: a verify email was sent.
     confirmTitle: 'Check your email',
     confirmBody: 'Your account is set up. We sent a confirmation link to finish verifying your email — open it, then sign in.',
-    // Paid path, already-registered (checkout_url null): generic, no existence leak.
-    payCheckEmailTitle: 'Check your email',
-    payCheckEmailBody: 'We’ve sent you an email with the next step. Open it to continue.',
+    // Paid path, already-registered (PR #118 status): point the user to sign-in.
+    payCheckEmailTitle: 'You already have an account',
+    payCheckEmailBody: 'Sign in to continue — we’ve also emailed you a link in case you need it.',
     goToSignIn: 'Go to sign in',
     back: 'Back',
     invalidEmail: 'Enter a valid email address.',
