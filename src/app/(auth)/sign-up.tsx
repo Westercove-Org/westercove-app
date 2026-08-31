@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { EyeIcon, EyeOffIcon } from '@/components/icons';
@@ -67,6 +67,10 @@ export default function SignUpScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Return-key focus chaining across the merged form (email -> password -> confirm).
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+
   const emailValid = isEmail(email);
   const passwordValid = password.length >= MIN_PASSWORD;
   const passwordsMatch = password === confirmPassword;
@@ -124,7 +128,7 @@ export default function SignUpScreen() {
   const onJoin = async () => {
     setError(null);
     if (!validateForm()) return;
-    if (!code.trim()) return setError(c.codePlaceholder);
+    if (!code.trim()) return setError(c.codeRequired);
     setBusy(true);
     try {
       await services.signup.orgCode({ email: email.trim(), password, code: code.trim() });
@@ -199,7 +203,7 @@ export default function SignUpScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <HeroHeader variant="compact" title={c.title} subtitle={subtitle} image={heroImage} />
-      <ScrollView contentContainerStyle={styles.form}>
+      <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
         {error ? (
           <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
             {error}
@@ -208,29 +212,74 @@ export default function SignUpScreen() {
 
         {step === 'entry' ? (
           <>
-            {field(c.email, email, setEmail, c.emailPlaceholder, {
-              autoComplete: 'email',
-              keyboardType: 'email-address',
-            })}
-            {field(
-              c.password,
-              password,
-              setPassword,
-              c.passwordPlaceholder,
-              { secureTextEntry: !showPw, autoComplete: 'new-password' },
-              eyeToggle(showPw, () => setShowPw((v) => !v)),
-            )}
+            {/* Entry fields inlined (not via field()) so the return-key focus
+                handlers read refs as trusted JSX event handlers. */}
+            <View style={styles.fieldBlock}>
+              <Text variant="cardTitle">{c.email}</Text>
+              <View style={[styles.inputBox, { borderColor: colors.line }]}>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder={c.emailPlaceholder}
+                  placeholderTextColor={colors.textMuted}
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                  autoFocus
+                  returnKeyType="next"
+                  submitBehavior="submit"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  accessibilityLabel={c.email}
+                  style={[styles.input, { color: colors.textPrimary }]}
+                />
+              </View>
+            </View>
+            <View style={styles.fieldBlock}>
+              <Text variant="cardTitle">{c.password}</Text>
+              <View style={[styles.inputBox, { borderColor: colors.line }]}>
+                <TextInput
+                  ref={passwordRef}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder={c.passwordPlaceholder}
+                  placeholderTextColor={colors.textMuted}
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  secureTextEntry={!showPw}
+                  returnKeyType="next"
+                  submitBehavior="submit"
+                  onSubmitEditing={() => confirmRef.current?.focus()}
+                  accessibilityLabel={c.password}
+                  style={[styles.input, { color: colors.textPrimary }]}
+                />
+                {eyeToggle(showPw, () => setShowPw((v) => !v))}
+              </View>
+            </View>
             <Text variant="bodySmall" color="textMuted">
               {c.passwordHint}
             </Text>
-            {field(
-              c.confirmPassword,
-              confirmPassword,
-              setConfirmPassword,
-              c.confirmPasswordPlaceholder,
-              { secureTextEntry: !showConfirm, autoComplete: 'new-password' },
-              eyeToggle(showConfirm, () => setShowConfirm((v) => !v)),
-            )}
+            <View style={styles.fieldBlock}>
+              <Text variant="cardTitle">{c.confirmPassword}</Text>
+              <View style={[styles.inputBox, { borderColor: colors.line }]}>
+                <TextInput
+                  ref={confirmRef}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder={c.confirmPasswordPlaceholder}
+                  placeholderTextColor={colors.textMuted}
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  secureTextEntry={!showConfirm}
+                  returnKeyType="done"
+                  accessibilityLabel={c.confirmPassword}
+                  style={[styles.input, { color: colors.textPrimary }]}
+                />
+                {eyeToggle(showConfirm, () => setShowConfirm((v) => !v))}
+              </View>
+            </View>
             {confirmPassword.length > 0 && !passwordsMatch ? (
               <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
                 {c.passwordMismatch}
@@ -246,7 +295,14 @@ export default function SignUpScreen() {
 
         {step === 'orgCode' ? (
           <>
-            {field(c.code, code, setCode, c.codePlaceholder, { autoCapitalize: 'characters' })}
+            {field(c.code, code, setCode, c.codePlaceholder, {
+              autoCapitalize: 'characters',
+              autoFocus: true,
+              returnKeyType: 'go',
+              onSubmitEditing: () => {
+                if (canJoin) onJoin();
+              },
+            })}
             <Button
               label={busy ? c.joining : c.join}
               variant="amethyst"

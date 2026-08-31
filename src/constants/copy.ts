@@ -133,6 +133,7 @@ export const copy = {
     passwordMismatch: 'Passwords don’t match.',
     code: 'Organization code',
     codePlaceholder: 'Your code',
+    codeRequired: 'Enter your organization code to continue.',
     join: 'Join',
     joining: 'Checking…',
     // Org-code confirm: a verify email was sent.
