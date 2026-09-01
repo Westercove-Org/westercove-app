@@ -11,6 +11,14 @@ export interface SubscriptionStatus {
   trialDaysRemaining?: number;
   /** The Stripe trial's end date (plain), for the same trialing state. */
   stripeTrialEndsOn?: string;
+  /** Raw Stripe subscription status (trialing|active|past_due|canceled|…), when
+   * the user has a Stripe subscription. Absent for org-code/license users. */
+  stripeStatus?: string;
+  /** The current period end (plain date), i.e. the next renewal — or, on a
+   * subscription set to cancel, the date access ends. */
+  renewsOn?: string;
+  /** True when the subscription is set to end at the period end (cancel pending). */
+  cancelAtPeriodEnd?: boolean;
 }
 
 export interface LicenseRedeemResult {
@@ -27,6 +35,11 @@ export interface SubscriptionService {
   /** Schedule deletion with a 30-day reversible grace period. */
   scheduleDeletion(confirmEmail: string): Promise<{ deletesOn: string }>;
   cancelDeletion(): Promise<void>;
+  /** Mint a Stripe Customer Portal session and return its URL. The app opens it
+   * so update-card / cancel / invoices happen on Stripe's hosted page — card
+   * data never touches the app. Throws when the portal is unavailable (no Stripe
+   * customer, or the portal is not configured — it's TEST-mode only for now). */
+  createPortalSession(): Promise<{ url: string }>;
 }
 
 /** Format an ISO datetime (or day offset) as a plain, urgency-free date. */
@@ -95,6 +108,10 @@ export class MockSubscriptionService implements SubscriptionService {
   }
 
   async cancelDeletion(): Promise<void> {}
+
+  async createPortalSession(): Promise<{ url: string }> {
+    return { url: 'https://billing.stripe.com/p/session/test_mock' };
+  }
 }
 
 /**
@@ -116,17 +133,37 @@ export class ApiSubscriptionService implements SubscriptionService {
       // Nested Stripe billing state (#126). Null when the user has no Stripe
       // customer (org-code/legacy) or Stripe is unreachable. `trial_end` is a
       // naive-UTC ISO string.
-      stripe?: { status?: string; trial_end?: string | null } | null;
+      stripe?: {
+        status?: string;
+        trial_end?: string | null;
+        current_period_end?: string | null;
+        cancel_at_period_end?: boolean;
+      } | null;
     }>('/api/account/subscription');
-    const trialEnd =
-      r.stripe?.status === 'trialing' && r.stripe.trial_end ? r.stripe.trial_end : undefined;
+    const s = r.stripe;
+    const trialEnd = s?.status === 'trialing' && s.trial_end ? s.trial_end : undefined;
     return {
       entitlement: r.entitlement,
       trialEndsOn: r.trial_ends_on ? formatDate(r.trial_ends_on) : undefined,
       price: r.price ?? undefined,
       trialDaysRemaining: trialEnd ? daysRemainingUtc(trialEnd) : undefined,
       stripeTrialEndsOn: trialEnd ? formatUtcDate(trialEnd) : undefined,
+      stripeStatus: s?.status,
+      renewsOn: s?.current_period_end ? formatUtcDate(s.current_period_end) : undefined,
+      cancelAtPeriodEnd: s?.cancel_at_period_end,
     };
+  }
+
+  async createPortalSession(): Promise<{ url: string }> {
+    // ⚠️ Route pending Dwight confirmation (nt-billing-portal-be / #126). Built to
+    // the /api/account convention; the portal-unavailable UX degrades safely if
+    // it's wrong. Response tolerates `url` or `portal_url`.
+    const r = await apiClient.post<{ url?: string; portal_url?: string }>(
+      '/api/account/subscription/portal',
+    );
+    const url = r.url ?? r.portal_url;
+    if (!url) throw new Error('No portal URL returned');
+    return { url };
   }
 
   async restore(): Promise<Entitlement> {

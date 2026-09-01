@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, TextInput } from 'react-native';
+import { Linking, Platform, StyleSheet, TextInput } from 'react-native';
 
 import { StackScreen } from '@/components/StackScreen';
 import { Button } from '@/components/ui/Button';
@@ -50,6 +50,32 @@ export default function SubscriptionScreen() {
   const [redeemError, setRedeemError] = useState<string | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [portalBusy, setPortalBusy] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
+
+  // Open the Stripe hosted customer portal. No card UI in-app — the portal owns
+  // update-card / cancel / invoices. On failure (no portal configured — it's
+  // TEST-mode only for now — or unreachable) say so plainly; never leave a
+  // half-working screen.
+  const onManageBilling = async () => {
+    if (portalBusy) return;
+    setPortalBusy(true);
+    setPortalError(null);
+    try {
+      const { url } = await services.subscription.createPortalSession();
+      if (Platform.OS === 'web') {
+        window.location.assign(url);
+      } else {
+        await Linking.openURL(url);
+        setPortalBusy(false);
+      }
+    } catch {
+      setPortalError(
+        'Managing billing isn’t available right now. Please try again in a moment.',
+      );
+      setPortalBusy(false);
+    }
+  };
 
   const onRestore = async () => {
     setRestoreError(null);
@@ -108,6 +134,26 @@ export default function SubscriptionScreen() {
             {status.price}. You can change or step away anytime.
           </Text>
         ) : null}
+        {/* Stripe subscription status + what happens next: cancel-pending keeps
+            access to the period end; past-due prompts a card fix; active shows the
+            next renewal. Trialing is covered by the trial lines above. */}
+        {status?.stripeStatus && status.stripeStatus !== 'trialing' ? (
+          <Text variant="body" color="textMuted" style={{ marginTop: 8 }}>
+            {status.cancelAtPeriodEnd
+              ? `Your subscription is set to cancel${
+                  status.renewsOn ? `, and you keep access until ${status.renewsOn}` : ''
+                }.`
+              : status.stripeStatus === 'past_due' || status.stripeStatus === 'unpaid'
+                ? 'Your last payment didn’t go through. Update your payment method below to keep your access.'
+                : status.stripeStatus === 'canceled'
+                  ? `Your subscription is canceled${
+                      status.renewsOn ? `, and access ends ${status.renewsOn}` : ''
+                    }.`
+                  : status.renewsOn
+                    ? `Renews on ${status.renewsOn}.`
+                    : ''}
+          </Text>
+        ) : null}
         {entitlement === 'lapsed' ? (
           <Text variant="body" color="textMuted" style={{ marginTop: 8 }}>
             Your access has paused. Restore your subscription below to bring back
@@ -115,6 +161,34 @@ export default function SubscriptionScreen() {
           </Text>
         ) : null}
       </Card>
+
+      {/* Stripe-subscribed users can manage their own billing. Update-card,
+          cancel, and invoices all happen on Stripe's HOSTED portal — card data
+          never touches the app. Shown only when the user has a Stripe subscription
+          (org-code / license users have nothing to manage here). */}
+      {status?.stripeStatus ? (
+        <Card>
+          <Text variant="meta" color="textMuted">
+            Billing
+          </Text>
+          <Text variant="body" color="textMuted" style={{ marginTop: 4 }}>
+            Update your payment method, see your invoices, or cancel your
+            subscription. Cancelling keeps your access until the end of the period
+            you have paid for.
+          </Text>
+          {portalError ? (
+            <Text variant="bodySmall" color="crisis" style={{ marginTop: spacing.xs }}>
+              {portalError}
+            </Text>
+          ) : null}
+          <Button
+            label={portalBusy ? 'Opening…' : 'Manage billing'}
+            variant="secondary"
+            disabled={portalBusy}
+            onPress={onManageBilling}
+          />
+        </Card>
+      ) : null}
 
       <Button label="Restore purchases" variant="secondary" onPress={onRestore} />
       {restoreError ? (
