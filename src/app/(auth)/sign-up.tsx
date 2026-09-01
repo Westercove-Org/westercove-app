@@ -10,7 +10,7 @@ import { copy } from '@/constants/copy';
 import { formatFirstChargeDate } from '@/constants/billing';
 import { isEmail } from '@/features/auth/email';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
-import { services, type PricingResult } from '@/services';
+import { services, type PlanId, type PricingResult } from '@/services';
 import { HttpError } from '@/lib/http';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
@@ -73,6 +73,9 @@ export default function SignUpScreen() {
   // endpoint failed (503, no fallback by design) → show no price and block the
   // paid path. The org-code path is unaffected.
   const [pricing, setPricing] = useState<PricingResult | null | undefined>(undefined);
+  // Which plan the user is paying for. Defaults to monthly, matching the server's
+  // default, so an untouched selector and the checkout agree.
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>('monthly');
 
   // Return-key focus chaining across the merged form (email -> password -> confirm).
   const passwordRef = useRef<TextInput>(null);
@@ -124,6 +127,7 @@ export default function SignUpScreen() {
       const { checkoutUrl } = await services.signup.startPaymentCheckout({
         email: email.trim(),
         password,
+        plan: selectedPlan,
       });
       if (checkoutUrl === null) {
         // Already-registered (enumeration-safe): generic check-email, no redirect.
@@ -224,10 +228,50 @@ export default function SignUpScreen() {
     );
   };
 
+  /** Monthly/Yearly selector, shown only once pricing has loaded (both plans
+   * always present on a 200). Renders each plan's server-formatted `display`
+   * verbatim — no computed price, no invented savings badge. */
+  const planSelector = () => {
+    if (!pricing) return null;
+    return (
+      <View style={styles.fieldBlock}>
+        <Text variant="cardTitle">{c.choosePlan}</Text>
+        <View style={styles.planRow}>
+          {pricing.plans.map((p) => {
+            const active = p.plan === selectedPlan;
+            const label = p.plan === 'monthly' ? c.planMonthly : c.planYearly;
+            return (
+              <Pressable
+                key={p.plan}
+                onPress={() => setSelectedPlan(p.plan)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`${label}, ${p.display}`}
+                style={[
+                  styles.planCard,
+                  { borderColor: active ? colors.forest : colors.line, backgroundColor: colors.card },
+                  active && styles.planCardActive,
+                ]}
+              >
+                <Text variant="cardTitle" color={active ? 'forest' : 'textPrimary'}>
+                  {label}
+                </Text>
+                <Text variant="bodySmall" color="textMuted">
+                  {p.display}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
   /** Trial disclosure shown above the pay card, before card entry (the card is
-   * entered on Stripe's hosted page). Price + first-charge date come live from
-   * the server; on a pricing failure we show no number and the pay card is
-   * disabled (never a guessed price on a pre-charge screen). */
+   * entered on Stripe's hosted page). The amount tracks the SELECTED plan; the
+   * trial length and first-charge date are plan-independent and shown once. On a
+   * pricing failure we show no number and the pay card is disabled (never a
+   * guessed price on a pre-charge screen). */
   const trialDisclosure = () => {
     if (pricing === undefined) return null; // still loading
     if (pricing === null) {
@@ -239,11 +283,14 @@ export default function SignUpScreen() {
         </View>
       );
     }
+    // Key off the plan field, not index, so a server reorder can't swap what the
+    // user is agreeing to. Fallback to the first plan is defensive only.
+    const sel = pricing.plans.find((p) => p.plan === selectedPlan) ?? pricing.plans[0];
     return (
       <View style={[styles.trialBox, { borderColor: colors.line, backgroundColor: colors.card }]}>
         <Text variant="cardTitle">{`Free for ${pricing.trialDays} days`}</Text>
         <Text variant="bodySmall" color="textMuted">
-          {`You will not be charged today. After your ${pricing.trialDays}-day free trial, Westercove is ${pricing.display}. Your card will first be charged on ${formatFirstChargeDate(pricing.firstChargeDate)}. Cancel any time before then and you will not be charged.`}
+          {`You will not be charged today. After your ${pricing.trialDays}-day free trial, Westercove is ${sel.display}. Your card will first be charged on ${formatFirstChargeDate(pricing.firstChargeDate)}. Cancel any time before then and you will not be charged.`}
         </Text>
       </View>
     );
@@ -338,6 +385,7 @@ export default function SignUpScreen() {
               {c.howToJoin}
             </Text>
             {pathCard(c.orgCodeOption, c.orgCodeOptionHint, goOrgCode)}
+            {planSelector()}
             {trialDisclosure()}
             {/* Pay is blocked until pricing loads (or if it failed) so the user
                 never reaches card entry without the trial terms in front of them. */}
@@ -431,4 +479,16 @@ const styles = StyleSheet.create({
   },
   disabled: { opacity: 0.45 },
   center: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  planRow: { flexDirection: 'row', gap: spacing.sm },
+  planCard: {
+    flex: 1,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderRadius: radii.card,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    minHeight: 56,
+  },
+  // Active plan reads as selected without shifting layout (border already 1px).
+  planCardActive: { borderWidth: 2, paddingHorizontal: spacing.lg - 1, paddingVertical: spacing.md - 1 },
 });

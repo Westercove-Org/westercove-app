@@ -18,8 +18,13 @@ describe('ApiSignupService', () => {
 
   it('getPricing GETs the pre-auth pricing endpoint and maps snake_case to camelCase', async () => {
     mockGet.mockResolvedValue({
-      display: '$0.99/month',
-      amount: 99,
+      plans: [
+        { plan: 'monthly', display: '$8.99/month', amount: 899, currency: 'usd', interval: 'month' },
+        { plan: 'yearly', display: '$79.99/year', amount: 7999, currency: 'usd', interval: 'year' },
+      ],
+      // Temporary compat mirror of the monthly plan — must be ignored.
+      display: '$8.99/month',
+      amount: 899,
       currency: 'usd',
       interval: 'month',
       trial_days: 14,
@@ -28,13 +33,34 @@ describe('ApiSignupService', () => {
     const r = await svc.getPricing();
     expect(mockGet).toHaveBeenCalledWith('/auth/signup/pricing');
     expect(r).toEqual({
-      display: '$0.99/month',
-      amount: 99,
-      currency: 'usd',
-      interval: 'month',
+      plans: [
+        { plan: 'monthly', display: '$8.99/month', amount: 899, currency: 'usd', interval: 'month' },
+        { plan: 'yearly', display: '$79.99/year', amount: 7999, currency: 'usd', interval: 'year' },
+      ],
       trialDays: 14,
       firstChargeDate: '2026-09-15T00:00:00',
     });
+  });
+
+  it('getPricing throws when a known plan is missing (blocks the paid path, no partial screen)', async () => {
+    mockGet.mockResolvedValue({
+      plans: [{ plan: 'monthly', display: '$8.99/month', amount: 899, currency: 'usd', interval: 'month' }],
+      trial_days: 14,
+      first_charge_date: '2026-09-15T00:00:00',
+    });
+    await expect(svc.getPricing()).rejects.toThrow(/monthly and yearly/);
+  });
+
+  it('getPricing drops an unknown plan value and then blocks (unknown plan is not rendered)', async () => {
+    mockGet.mockResolvedValue({
+      plans: [
+        { plan: 'monthly', display: '$8.99/month', amount: 899, currency: 'usd', interval: 'month' },
+        { plan: 'weekly', display: '$2.99/week', amount: 299, currency: 'usd', interval: 'week' },
+      ],
+      trial_days: 14,
+      first_charge_date: '2026-09-15T00:00:00',
+    });
+    await expect(svc.getPricing()).rejects.toThrow();
   });
 
   it('orgCode POSTs email/password/code and returns status + email', async () => {
@@ -48,19 +74,20 @@ describe('ApiSignupService', () => {
     expect(r).toEqual({ status: 'created_pending_verification', email: 'a@b.co' });
   });
 
-  it('startPaymentCheckout POSTs email + password and maps snake_case to camelCase', async () => {
+  it('startPaymentCheckout POSTs email + password + plan and maps snake_case to camelCase', async () => {
     mockPost.mockResolvedValue({ pending_signup_id: 'tok_1', checkout_url: 'https://stripe/x' });
-    const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB' });
+    const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB', plan: 'yearly' });
     expect(mockPost).toHaveBeenCalledWith('/auth/signup/payment/checkout', {
       email: 'a@b.co',
       password: 'sup3rsecret!AB',
+      plan: 'yearly',
     });
     expect(r).toEqual({ pendingSignupId: 'tok_1', checkoutUrl: 'https://stripe/x' });
   });
 
   it('passes through a null checkout_url (already-registered, enumeration-safe)', async () => {
     mockPost.mockResolvedValue({ pending_signup_id: 'tok_2', checkout_url: null });
-    const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB' });
+    const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB', plan: 'monthly' });
     expect(r.checkoutUrl).toBeNull();
   });
 
