@@ -44,8 +44,25 @@ export interface OnboardingVerifyResult {
   expiresAt: string;
 }
 
+/** Trial pricing for the pre-card disclosure, from the Stripe-backed pre-auth
+ * endpoint (no account exists yet). `display` is a preformatted price string
+ * (render as-is). `firstChargeDate` is a server-computed day-0 value (server
+ * utcnow + trial), never the device clock. On failure the endpoint 503s with no
+ * fallback by design — the caller must then show no price and block card entry. */
+export interface PricingResult {
+  display: string;
+  amount: number;
+  currency: string;
+  interval: string;
+  trialDays: number;
+  firstChargeDate: string;
+}
+
 export interface SignupService {
   orgCode(input: { email: string; password: string; code: string }): Promise<OrgCodeSignupResult>;
+  /** Trial pricing for the pre-card disclosure. Unauthenticated. Throws on 503
+   * (no fallback price by design). */
+  getPricing(): Promise<PricingResult>;
   /** Paid path: set the account password up front (Cognito) and start Stripe
    * checkout. Mirrors org-code — the password is stored now; the emailed link is
    * verify-only. `checkout_url` null ⇒ email already registered (enum-safe). */
@@ -102,6 +119,25 @@ export class ApiSignupService implements SignupService {
     );
     // Tolerate the field being absent until PR #80 deploys to dev (missing == null).
     return { status: r.status, email: r.email ?? null };
+  }
+
+  async getPricing(): Promise<PricingResult> {
+    const r = await apiClient.get<{
+      display: string;
+      amount: number;
+      currency: string;
+      interval: string;
+      trial_days: number;
+      first_charge_date: string;
+    }>('/auth/signup/pricing');
+    return {
+      display: r.display,
+      amount: r.amount,
+      currency: r.currency,
+      interval: r.interval,
+      trialDays: r.trial_days,
+      firstChargeDate: r.first_charge_date,
+    };
   }
 
   async verifyOnboardingToken(token: string): Promise<OnboardingVerifyResult> {

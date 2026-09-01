@@ -6,9 +6,9 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
-import { TRIAL_DAYS, firstChargeDate } from '@/constants/billing';
+import { TRIAL_DAYS, formatFirstChargeDate } from '@/constants/billing';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
-import { isSignupSuccessStatus, services } from '@/services';
+import { isSignupSuccessStatus, services, type PricingResult } from '@/services';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
 
@@ -42,7 +42,24 @@ export default function SignUpReturnScreen() {
   // Account email from the status poll (never from the URL — PII). Prefills and
   // locks the field on success so the user can just Resend or sign in.
   const [email, setEmail] = useState<string | null>(null);
+  // Day-0 trial-end date, from the SAME server pricing endpoint the signup screen
+  // uses (server-computed, never the device clock). Undefined until it loads / if
+  // it fails — the confirmation then states the trial length without a date rather
+  // than a client-clock estimate. (This screen is pre-auth, so it cannot read the
+  // authoritative Stripe trial_end; that is the authed Settings screen's job.)
+  const [pricing, setPricing] = useState<PricingResult | null>(null);
   const pollsRef = useRef(0);
+
+  useEffect(() => {
+    let alive = true;
+    services.signup
+      .getPricing()
+      .then((p) => alive && setPricing(p))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (view !== 'polling' || !pendingSignupId) return;
@@ -88,11 +105,14 @@ export default function SignUpReturnScreen() {
   const s = screen[view];
 
   // On success the trial has started and NOTHING was charged — say so plainly,
-  // with the trial-end date, instead of "your payment went through". The price is
-  // shown at signup (pre-card) from the live pricing endpoint, not restated here.
+  // instead of "your payment went through". Show the server day-0 trial-end date
+  // when it loaded; otherwise state the length without a date (never a client
+  // estimate). The price is shown at signup, not restated here.
+  const trialDays = pricing?.trialDays ?? TRIAL_DAYS;
+  const untilDate = pricing ? ` Your trial runs until ${formatFirstChargeDate(pricing.firstChargeDate)}.` : '';
   const body =
     view === 'success'
-      ? `Your ${TRIAL_DAYS}-day free trial has started, and you have not been charged. Your trial runs until ${firstChargeDate()}. We have sent a verification email to confirm your address — open it, then sign in.`
+      ? `Your ${trialDays}-day free trial has started, and you have not been charged.${untilDate} We have sent a verification email to confirm your address — open it, then sign in.`
       : s.body;
 
   return (

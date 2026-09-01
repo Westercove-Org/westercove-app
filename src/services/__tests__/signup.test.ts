@@ -16,6 +16,27 @@ describe('ApiSignupService', () => {
     mockPost.mockReset();
   });
 
+  it('getPricing GETs the pre-auth pricing endpoint and maps snake_case to camelCase', async () => {
+    mockGet.mockResolvedValue({
+      display: '$0.99/month',
+      amount: 99,
+      currency: 'usd',
+      interval: 'month',
+      trial_days: 14,
+      first_charge_date: '2026-09-15T00:00:00',
+    });
+    const r = await svc.getPricing();
+    expect(mockGet).toHaveBeenCalledWith('/auth/signup/pricing');
+    expect(r).toEqual({
+      display: '$0.99/month',
+      amount: 99,
+      currency: 'usd',
+      interval: 'month',
+      trialDays: 14,
+      firstChargeDate: '2026-09-15T00:00:00',
+    });
+  });
+
   it('orgCode POSTs email/password/code and returns status + email', async () => {
     mockPost.mockResolvedValue({ status: 'created_pending_verification', email: 'a@b.co' });
     const r = await svc.orgCode({ email: 'a@b.co', password: 'hunter2hunter2', code: 'ACME-1' });

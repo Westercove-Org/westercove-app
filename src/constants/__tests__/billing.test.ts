@@ -1,19 +1,21 @@
-import { TRIAL_DAYS, firstChargeDate } from '@/constants/billing';
+import { TRIAL_DAYS, formatFirstChargeDate } from '@/constants/billing';
 
 describe('billing trial terms', () => {
-  it('trial is 14 days', () => {
+  it('trial length fallback is 14 days', () => {
     expect(TRIAL_DAYS).toBe(14);
   });
 
-  it('first charge lands TRIAL_DAYS after the given start', () => {
-    // 2026-01-01 → +14 days → 2026-01-15.
-    const start = new Date('2026-01-01T12:00:00Z');
-    expect(firstChargeDate(start)).toBe(
-      new Date('2026-01-15T12:00:00Z').toLocaleDateString(undefined, {
+  it('formats an ISO first-charge date as a plain date', () => {
+    expect(formatFirstChargeDate('2026-01-15T00:00:00')).toBe(
+      new Date('2026-01-15T00:00:00').toLocaleDateString(undefined, {
         month: 'long',
         day: 'numeric',
         year: 'numeric',
       }),
     );
+  });
+
+  it('renders a non-date server value as-is (never invents a date)', () => {
+    expect(formatFirstChargeDate('January 15, 2026')).toBe('January 15, 2026');
   });
 });
