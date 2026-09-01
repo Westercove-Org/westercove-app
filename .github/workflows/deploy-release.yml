@@ -24,8 +24,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing image tag to (re)deploy — use for rollback to a prior release tag"
-        required: true
+        description: "Rollback only: an EXISTING image tag to redeploy. Leave EMPTY to build+deploy the current checkout (tagged with its git SHA)."
+        required: false
 
 concurrency:
   group: deploy-release-frontend
@@ -47,17 +47,29 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: release          # required-reviewers approval gate
+    environment: release          # env-scoped OIDC; no required reviewers (publishing a Release / dispatch is the deliberate act)
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve release tag
+      # Resolve tag + build mode:
+      #  - release published      -> tag = release tag_name, BUILD
+      #  - dispatch WITHOUT a tag  -> tag = git short SHA,    BUILD (deploy current main)
+      #  - dispatch WITH a tag     -> tag = that tag,         NO build (rollback to existing)
+      - name: Resolve tag + build mode
         id: tag
         run: |
           set -euo pipefail
-          TAG="${{ github.event.release.tag_name || github.event.inputs.tag }}"
-          if [ -z "${TAG}" ]; then echo "No release tag resolved" >&2; exit 1; fi
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"; BUILD=true
+          elif [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"; BUILD=false
+          else
+            TAG="$(git rev-parse --short=12 HEAD)"; BUILD=true
+          fi
+          if [ -z "${TAG}" ]; then echo "No tag resolved" >&2; exit 1; fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "build=${BUILD}" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag=${TAG} build=${BUILD}"
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -66,9 +78,9 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@v2
 
-      # On workflow_dispatch (rollback) the tagged image already exists — skip build.
-      - name: Build and push image (release-tagged, immutable)
-        if: ${{ github.event_name == 'release' }}
+      # Build unless this is a rollback (dispatch with an explicit existing tag).
+      - name: Build and push image (immutable-tagged)
+        if: ${{ steps.tag.outputs.build == 'true' }}
         run: |
           set -euo pipefail
           docker build --platform linux/amd64 \
