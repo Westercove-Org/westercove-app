@@ -90,15 +90,12 @@ describe('ApiSubscriptionService', () => {
     expect(s.cancelAtPeriodEnd).toBe(true);
   });
 
-  it('createPortalSession posts and returns the portal url (tolerates portal_url)', async () => {
+  it('createPortalSession posts the billing-portal route and returns the url', async () => {
     mockPost.mockResolvedValue({ url: 'https://billing.stripe.com/p/session/abc' });
     expect(await svc.createPortalSession()).toEqual({
       url: 'https://billing.stripe.com/p/session/abc',
     });
-    expect(mockPost).toHaveBeenCalledWith('/api/account/subscription/portal');
-
-    mockPost.mockResolvedValue({ portal_url: 'https://billing.stripe.com/p/session/xyz' });
-    expect((await svc.createPortalSession()).url).toBe('https://billing.stripe.com/p/session/xyz');
+    expect(mockPost).toHaveBeenCalledWith('/api/account/billing-portal');
   });
 
   it('createPortalSession throws when no url comes back (portal unavailable)', async () => {

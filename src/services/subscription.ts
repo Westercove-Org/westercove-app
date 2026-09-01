@@ -155,15 +155,13 @@ export class ApiSubscriptionService implements SubscriptionService {
   }
 
   async createPortalSession(): Promise<{ url: string }> {
-    // ⚠️ Route pending Dwight confirmation (nt-billing-portal-be / #126). Built to
-    // the /api/account convention; the portal-unavailable UX degrades safely if
-    // it's wrong. Response tolerates `url` or `portal_url`.
-    const r = await apiClient.post<{ url?: string; portal_url?: string }>(
-      '/api/account/subscription/portal',
-    );
-    const url = r.url ?? r.portal_url;
-    if (!url) throw new Error('No portal URL returned');
-    return { url };
+    // Route confirmed against the merged endpoint (Stanley #126, account.py:249):
+    // POST /api/account/billing-portal, no body (return_url is server-side),
+    // response { url }. 404 (no billing profile) / 503 (payments off) / 502
+    // (Stripe error / portal not configured) all surface as "portal unavailable".
+    const r = await apiClient.post<{ url?: string }>('/api/account/billing-portal');
+    if (!r.url) throw new Error('No portal URL returned');
+    return { url: r.url };
   }
 
   async restore(): Promise<Entitlement> {

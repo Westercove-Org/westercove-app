@@ -46,6 +46,17 @@ export default function SubscriptionScreen() {
 
   const entitlement = status?.entitlement ?? sessionEntitlement;
 
+  // Who sees "Manage billing": any Stripe subscriber, PLUS anyone paying by
+  // entitlement even without a stored stripe status — users provisioned before
+  // #124 pay but have no customer id, and must still be able to fix a card
+  // (they hit the graceful portal-unavailable path). Hidden only for org-code /
+  // license users, who have no personal billing to manage.
+  const canManageBilling =
+    !!status?.stripeStatus ||
+    entitlement === 'active_monthly' ||
+    entitlement === 'active_annual' ||
+    entitlement === 'lapsed';
+
   const [code, setCode] = useState('');
   const [redeemError, setRedeemError] = useState<string | null>(null);
   const [redeeming, setRedeeming] = useState(false);
@@ -162,11 +173,12 @@ export default function SubscriptionScreen() {
         ) : null}
       </Card>
 
-      {/* Stripe-subscribed users can manage their own billing. Update-card,
-          cancel, and invoices all happen on Stripe's HOSTED portal — card data
-          never touches the app. Shown only when the user has a Stripe subscription
-          (org-code / license users have nothing to manage here). */}
-      {status?.stripeStatus ? (
+      {/* Paying users manage their own billing: update-card, cancel, and invoices
+          all happen on Stripe's HOSTED portal — card data never touches the app.
+          Shown to any paying user (incl. pre-#124 with no stored customer id, who
+          get the graceful portal-unavailable path); hidden for org-code / license
+          users, who have nothing to manage here. */}
+      {canManageBilling ? (
         <Card>
           <Text variant="meta" color="textMuted">
             Billing
