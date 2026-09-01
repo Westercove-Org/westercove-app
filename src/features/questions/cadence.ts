@@ -27,7 +27,10 @@ export const STAGE = {
 export type CadenceInput = 'text' | 'choice' | 'multi' | 'library';
 export type CadenceTier = 'safety' | 'warm' | 'depth' | 'logistics';
 
-const TIER_RANK: Record<CadenceTier, number> = { safety: 0, warm: 1, depth: 2, logistics: 3 };
+// v4 ordering among unlocked/unanswered questions: safety first, then depth,
+// then warm openers & logistics. (Depth outranks the leftover warm openers so a
+// returning user is asked something substantive before more introductions.)
+const TIER_RANK: Record<CadenceTier, number> = { safety: 0, depth: 1, warm: 2, logistics: 3 };
 
 /** The cadence-relevant slice of a profile's state. */
 export interface CadenceState {
