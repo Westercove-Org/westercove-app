@@ -13,6 +13,11 @@ name: deploy-release
 # immutable tag pinned into the task definition. ECR tag-immutability MUST be ON
 # for westercove-dev-frontend (set once, out of band).
 #
+# RECOVERY IF A RUN FAILS AFTER BUILD+PUSH: do NOT just re-run it — ECR tag-immutability
+# rejects re-pushing the same tag, so the build step fails. Instead re-dispatch WITH that
+# tag (workflow_dispatch, tag=<the tag>): it skips the build and deploys the already-pushed
+# image.
+#
 # OIDC: the deploy runs inside the `release` GitHub Environment; the
 # westercove-app-frontend-deploy role trust is scoped to
 # repo:Westercove-Org/westercove-app:environment:release (a release runs on a TAG
