@@ -37,6 +37,14 @@ describe('cadence', () => {
     expect(nextQuestion(base({ journalStage: 2 }))?.tier).toBe('safety');
   });
 
+  it('orders depth before leftover warm openers (v4: safety, then depth, then warm)', () => {
+    // Only a warm opener (about) and a depth question (role) left, both unlocked
+    // at stage 3. v4 surfaces the depth question first.
+    const q = nextQuestion(base({ journalStage: 3, answeredIds: answeredExcept(['about', 'role']) }));
+    expect(q?.id).toBe('role');
+    expect(q?.tier).toBe('depth');
+  });
+
   it('gates questions by stage (nothing above the current stage)', () => {
     const q = nextQuestion(base());
     expect(q?.thresholdStage).toBeLessThanOrEqual(0);
