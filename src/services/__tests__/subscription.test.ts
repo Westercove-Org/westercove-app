@@ -75,6 +75,34 @@ describe('ApiSubscriptionService', () => {
     expect((await svc.getStatus()).trialDaysRemaining).toBeUndefined();
   });
 
+  it('maps Stripe status, renewal date (UTC) and cancel-at-period-end', async () => {
+    mockGet.mockResolvedValue({
+      entitlement: 'active_monthly',
+      stripe: {
+        status: 'active',
+        current_period_end: '2026-10-01T00:00:00',
+        cancel_at_period_end: true,
+      },
+    });
+    const s = await svc.getStatus();
+    expect(s.stripeStatus).toBe('active');
+    expect(s.renewsOn).toMatch(/2026/);
+    expect(s.cancelAtPeriodEnd).toBe(true);
+  });
+
+  it('createPortalSession posts the billing-portal route and returns the url', async () => {
+    mockPost.mockResolvedValue({ url: 'https://billing.stripe.com/p/session/abc' });
+    expect(await svc.createPortalSession()).toEqual({
+      url: 'https://billing.stripe.com/p/session/abc',
+    });
+    expect(mockPost).toHaveBeenCalledWith('/api/account/billing-portal');
+  });
+
+  it('createPortalSession throws when no url comes back (portal unavailable)', async () => {
+    mockPost.mockResolvedValue({});
+    await expect(svc.createPortalSession()).rejects.toThrow();
+  });
+
   it('restore posts and returns the granted entitlement', async () => {
     mockPost.mockResolvedValue({ entitlement: 'active_monthly' });
     expect(await svc.restore()).toBe('active_monthly');
