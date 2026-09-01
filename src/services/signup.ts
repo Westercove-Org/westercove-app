@@ -44,16 +44,31 @@ export interface OnboardingVerifyResult {
   expiresAt: string;
 }
 
-/** Trial pricing for the pre-card disclosure, from the Stripe-backed pre-auth
- * endpoint (no account exists yet). `display` is a preformatted price string
- * (render as-is). `firstChargeDate` is a server-computed day-0 value (server
- * utcnow + trial), never the device clock. On failure the endpoint 503s with no
- * fallback by design — the caller must then show no price and block card entry. */
-export interface PricingResult {
+/** The two subscription plans, in fixed order (monthly first). */
+export type PlanId = 'monthly' | 'yearly';
+
+/** One selectable plan. `display` is a preformatted price string — render it
+ * verbatim, never compute or format a price from `amount`. `amount`/`currency`/
+ * `interval` are on the wire and typed honestly, but are metadata: nothing in
+ * the UI renders them (that would be a computed price in disguise). */
+export interface PlanOption {
+  plan: PlanId;
   display: string;
   amount: number;
   currency: string;
   interval: string;
+}
+
+/** Trial pricing for the pre-card disclosure, from the Stripe-backed pre-auth
+ * endpoint (no account exists yet). `plans` is monthly-first and always carries
+ * BOTH plans on a 200 (a one-plan screen would misrepresent the choice, so the
+ * server 503s if either is unavailable). `trialDays`/`firstChargeDate` are
+ * plan-INDEPENDENT (the trial is set at checkout-session level) — render once,
+ * never per-plan. `firstChargeDate` is server-computed (utcnow + trial), never
+ * the device clock. On failure the endpoint 503s with no fallback by design —
+ * the caller must then show no price and block card entry. */
+export interface PricingResult {
+  plans: PlanOption[];
   trialDays: number;
   firstChargeDate: string;
 }
@@ -64,9 +79,11 @@ export interface SignupService {
    * (no fallback price by design). */
   getPricing(): Promise<PricingResult>;
   /** Paid path: set the account password up front (Cognito) and start Stripe
-   * checkout. Mirrors org-code — the password is stored now; the emailed link is
-   * verify-only. `checkout_url` null ⇒ email already registered (enum-safe). */
-  startPaymentCheckout(input: { email: string; password: string }): Promise<PaymentCheckoutResult>;
+   * checkout for the chosen plan. Mirrors org-code — the password is stored now;
+   * the emailed link is verify-only. `checkout_url` null ⇒ email already
+   * registered (enum-safe). The server maps `plan` to its own Stripe price id
+   * (there is no price-id field) and defaults to monthly if omitted. */
+  startPaymentCheckout(input: { email: string; password: string; plan: PlanId }): Promise<PaymentCheckoutResult>;
   getStatus(pendingSignupId: string): Promise<SignupStatusResult>;
 
   // Onboarding completion via single-use token from the emailed deep link
@@ -105,10 +122,10 @@ export class ApiSignupService implements SignupService {
     return { status: r.status, email: r.email };
   }
 
-  async startPaymentCheckout(input: { email: string; password: string }): Promise<PaymentCheckoutResult> {
+  async startPaymentCheckout(input: { email: string; password: string; plan: PlanId }): Promise<PaymentCheckoutResult> {
     const r = await apiClient.post<{ pending_signup_id: string; checkout_url: string | null }>(
       '/auth/signup/payment/checkout',
-      { email: input.email, password: input.password },
+      { email: input.email, password: input.password, plan: input.plan },
     );
     return { pendingSignupId: r.pending_signup_id, checkoutUrl: r.checkout_url };
   }
@@ -123,21 +140,23 @@ export class ApiSignupService implements SignupService {
 
   async getPricing(): Promise<PricingResult> {
     const r = await apiClient.get<{
-      display: string;
-      amount: number;
-      currency: string;
-      interval: string;
+      plans?: { plan: string; display: string; amount: number; currency: string; interval: string }[];
       trial_days: number;
       first_charge_date: string;
     }>('/auth/signup/pricing');
-    return {
-      display: r.display,
-      amount: r.amount,
-      currency: r.currency,
-      interval: r.interval,
-      trialDays: r.trial_days,
-      firstChargeDate: r.first_charge_date,
-    };
+    // Build against `plans` only. The response may temporarily also carry the old
+    // flat top-level display/amount/... mirroring monthly (a compat shim for the
+    // pre-selector app); it is being deleted, so it is ignored entirely here.
+    const plans = (r.plans ?? []).filter(
+      (p): p is PlanOption => p.plan === 'monthly' || p.plan === 'yearly',
+    );
+    // A 200 always carries both known plans. Anything less is malformed — block
+    // the paid path (throw → caller shows no price), never render a partial
+    // choice. Same posture as never guessing a fallback price.
+    if (!plans.some((p) => p.plan === 'monthly') || !plans.some((p) => p.plan === 'yearly')) {
+      throw new Error('pricing: expected both monthly and yearly plans');
+    }
+    return { plans, trialDays: r.trial_days, firstChargeDate: r.first_charge_date };
   }
 
   async verifyOnboardingToken(token: string): Promise<OnboardingVerifyResult> {
