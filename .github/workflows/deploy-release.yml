@@ -1,0 +1,98 @@
+name: deploy-release
+
+# Build the Expo web SPA into a static nginx image and deploy it to the RELEASE
+# stack on a published GitHub Release. Merge-to-main NO LONGER deploys
+# (deploy-frontend.yml was removed).
+#
+# Single-environment release model: main.westercove.com serves this app; it calls
+# the backend cross-origin at https://api.westercove.com (EXPO_PUBLIC_API_URL is
+# baked at build time — no longer empty/same-origin).
+#
+# IMMUTABLE TAGS — do NOT revert to :latest. No staging => rollback = redeploy a
+# previous release tag, which only works if each release image is a distinct,
+# immutable tag pinned into the task definition. ECR tag-immutability MUST be ON
+# for westercove-dev-frontend (set once, out of band).
+#
+# OIDC: the deploy runs inside the `release` GitHub Environment; the
+# westercove-app-frontend-deploy role trust is scoped to
+# repo:Westercove-Org/westercove-app:environment:release (a release runs on a TAG
+# ref, so a branch-scoped trust would fail AssumeRoleWithWebIdentity).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing image tag to (re)deploy — use for rollback to a prior release tag"
+        required: true
+
+concurrency:
+  group: deploy-release-frontend
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPO: 920887851546.dkr.ecr.us-east-1.amazonaws.com/westercove-dev-frontend
+  ECS_CLUSTER: westercove-dev-cluster
+  ECS_SERVICE: westercove-dev-frontend
+  API_URL: https://api.westercove.com
+  COGNITO_USER_POOL_ID: us-east-1_LCAAKP7s6
+  COGNITO_CLIENT_ID: 6k23q0pm8n1m0u74e8ai79pcud
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: release          # required-reviewers approval gate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.release.tag_name || github.event.inputs.tag }}"
+          if [ -z "${TAG}" ]; then echo "No release tag resolved" >&2; exit 1; fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::920887851546:role/westercove-app-frontend-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      # On workflow_dispatch (rollback) the tagged image already exists — skip build.
+      - name: Build and push image (release-tagged, immutable)
+        if: ${{ github.event_name == 'release' }}
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 \
+            --build-arg EXPO_PUBLIC_API_URL="${API_URL}" \
+            --build-arg EXPO_PUBLIC_COGNITO_USER_POOL_ID="${COGNITO_USER_POOL_ID}" \
+            --build-arg EXPO_PUBLIC_COGNITO_CLIENT_ID="${COGNITO_CLIENT_ID}" \
+            -t "${ECR_REPO}:${{ steps.tag.outputs.tag }}" .
+          docker push "${ECR_REPO}:${{ steps.tag.outputs.tag }}"
+
+      - name: Deploy frontend at the release tag
+        run: |
+          set -euo pipefail
+          IMAGE="${ECR_REPO}:${{ steps.tag.outputs.tag }}"
+          TD_ARN=$(aws ecs describe-services --cluster "${ECS_CLUSTER}" --services "${ECS_SERVICE}" \
+            --query 'services[0].taskDefinition' --output text)
+          aws ecs describe-task-definition --task-definition "${TD_ARN}" \
+            --query 'taskDefinition' --output json > td.json
+          jq --arg IMG "${IMAGE}" '
+            .containerDefinitions[0].image = $IMG
+            | {family,taskRoleArn,executionRoleArn,networkMode,containerDefinitions,volumes,placementConstraints,requiresCompatibilities,cpu,memory,runtimePlatform}
+            | with_entries(select(.value != null))' td.json > td-new.json
+          NEW_TD=$(aws ecs register-task-definition --cli-input-json file://td-new.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "${ECS_CLUSTER}" --service "${ECS_SERVICE}" \
+            --task-definition "${NEW_TD}" --no-cli-pager >/dev/null
+          aws ecs wait services-stable --cluster "${ECS_CLUSTER}" --services "${ECS_SERVICE}"
+          echo "Frontend release ${{ steps.tag.outputs.tag }} stable at ${NEW_TD}"
