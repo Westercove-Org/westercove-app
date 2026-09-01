@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { EyeIcon, EyeOffIcon } from '@/components/icons';
@@ -7,9 +7,10 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
+import { formatFirstChargeDate } from '@/constants/billing';
 import { isEmail } from '@/features/auth/email';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
-import { services } from '@/services';
+import { services, type PricingResult } from '@/services';
 import { HttpError } from '@/lib/http';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
@@ -67,9 +68,26 @@ export default function SignUpScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Trial pricing for the pre-card disclosure — fetched live (Stripe test/live
+  // differ, so it is never hardcoded). `undefined` = still loading; `null` = the
+  // endpoint failed (503, no fallback by design) → show no price and block the
+  // paid path. The org-code path is unaffected.
+  const [pricing, setPricing] = useState<PricingResult | null | undefined>(undefined);
+
   // Return-key focus chaining across the merged form (email -> password -> confirm).
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    let alive = true;
+    services.signup
+      .getPricing()
+      .then((p) => alive && setPricing(p))
+      .catch(() => alive && setPricing(null));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const emailValid = isEmail(email);
   const passwordValid = password.length >= MIN_PASSWORD;
@@ -97,6 +115,9 @@ export default function SignUpScreen() {
   // straight from the merged form — no intermediate password screen.
   const goPay = async () => {
     setError(null);
+    // Never start checkout without live pricing on screen (the card is already
+    // disabled in this state; this is a belt-and-braces guard).
+    if (!pricing) return;
     if (!validateForm()) return;
     setBusy(true);
     try {
@@ -185,20 +206,48 @@ export default function SignUpScreen() {
     </Pressable>
   );
 
-  const pathCard = (label: string, hint: string, onPress: () => void) => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      disabled={!canProceed}
-      onPress={onPress}
-      style={[styles.pathCard, { borderColor: colors.line }, !canProceed && styles.disabled]}
-    >
-      <Text variant="cardTitle">{label}</Text>
-      <Text variant="bodySmall" color="textMuted">
-        {hint}
-      </Text>
-    </Pressable>
-  );
+  const pathCard = (label: string, hint: string, onPress: () => void, extraDisabled = false) => {
+    const disabled = !canProceed || extraDisabled;
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        disabled={disabled}
+        onPress={onPress}
+        style={[styles.pathCard, { borderColor: colors.line }, disabled && styles.disabled]}
+      >
+        <Text variant="cardTitle">{label}</Text>
+        <Text variant="bodySmall" color="textMuted">
+          {hint}
+        </Text>
+      </Pressable>
+    );
+  };
+
+  /** Trial disclosure shown above the pay card, before card entry (the card is
+   * entered on Stripe's hosted page). Price + first-charge date come live from
+   * the server; on a pricing failure we show no number and the pay card is
+   * disabled (never a guessed price on a pre-charge screen). */
+  const trialDisclosure = () => {
+    if (pricing === undefined) return null; // still loading
+    if (pricing === null) {
+      return (
+        <View style={[styles.trialBox, { borderColor: colors.line, backgroundColor: colors.card }]}>
+          <Text variant="bodySmall" color="textPrimary">
+            {c.trialUnavailable}
+          </Text>
+        </View>
+      );
+    }
+    return (
+      <View style={[styles.trialBox, { borderColor: colors.line, backgroundColor: colors.card }]}>
+        <Text variant="cardTitle">{`Free for ${pricing.trialDays} days`}</Text>
+        <Text variant="bodySmall" color="textMuted">
+          {`You will not be charged today. After your ${pricing.trialDays}-day free trial, Westercove is ${pricing.display}. Your card will first be charged on ${formatFirstChargeDate(pricing.firstChargeDate)}. Cancel any time before then and you will not be charged.`}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -289,7 +338,10 @@ export default function SignUpScreen() {
               {c.howToJoin}
             </Text>
             {pathCard(c.orgCodeOption, c.orgCodeOptionHint, goOrgCode)}
-            {pathCard(busy ? c.payStarting : c.payOption, c.payOptionHint, goPay)}
+            {trialDisclosure()}
+            {/* Pay is blocked until pricing loads (or if it failed) so the user
+                never reaches card entry without the trial terms in front of them. */}
+            {pathCard(busy ? c.payStarting : c.payOption, c.payOptionHint, goPay, pricing == null)}
           </>
         ) : null}
 
@@ -352,6 +404,13 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   fieldBlock: { gap: spacing.sm },
+  trialBox: {
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderRadius: radii.card,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',

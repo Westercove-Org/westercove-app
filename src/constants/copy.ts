@@ -124,6 +124,8 @@ export const copy = {
     payOption: 'Pay to join',
     payOptionHint: 'Subscribe and get started right away.',
     payStarting: 'Starting checkout…',
+    trialUnavailable:
+      'We can’t show the trial price right now, so paying to join is paused for a moment. Please try again shortly, or join with an organization code.',
     password: 'Password',
     passwordPlaceholder: 'Create a password',
     passwordHint: 'At least 12 characters, with a mix of cases, a number, and a symbol.',
