@@ -6,6 +6,11 @@ export interface SubscriptionStatus {
   /** Trial end date (plain), when on a trial. No countdown, no urgency. */
   trialEndsOn?: string;
   price?: string;
+  /** Whole days left on the Stripe trial, when `stripe.status === 'trialing'`.
+   * Stated plainly ("N days left"), never as an urgent countdown. */
+  trialDaysRemaining?: number;
+  /** The Stripe trial's end date (plain), for the same trialing state. */
+  stripeTrialEndsOn?: string;
 }
 
 export interface LicenseRedeemResult {
@@ -38,11 +43,43 @@ function plusDays(n: number): string {
   return formatDate(d.toISOString());
 }
 
+/** Parse a datetime AS UTC. The server sends `stripe.trial_end` as a naive-UTC
+ * ISO string with no 'Z'/offset (e.g. "2026-09-15T00:00:00"); reading it in the
+ * device's local time would shift the day and the remaining-days count by the
+ * user's timezone offset (same class of bug as #74). Append 'Z' when absent. */
+function parseUtc(iso: string): Date {
+  return new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`);
+}
+
+/** Whole days from now until `iso` (parsed as UTC), floored at 0. Rounds up so a
+ * partial day still reads as a day left, until the trial actually ends. */
+function daysRemainingUtc(iso: string): number {
+  const ms = parseUtc(iso).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / 86_400_000));
+}
+
+/** Format a naive-UTC datetime as a plain date, in UTC (not the device zone), so
+ * the day cannot shift by the user's timezone (#74 rule). */
+function formatUtcDate(iso: string): string {
+  return parseUtc(iso).toLocaleDateString(undefined, {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 /** Mock subscription — used offline / in tests. The real entitlement lives on
  * the backend (RevenueCat / Stripe receipts validated server-side). */
 export class MockSubscriptionService implements SubscriptionService {
   async getStatus(): Promise<SubscriptionStatus> {
-    return { entitlement: 'trial_active', trialEndsOn: plusDays(9), price: '$8.99 / month' };
+    return {
+      entitlement: 'trial_active',
+      trialEndsOn: plusDays(9),
+      price: '$8.99 / month',
+      trialDaysRemaining: 9,
+      stripeTrialEndsOn: plusDays(9),
+    };
   }
 
   async restore(): Promise<Entitlement> {
@@ -76,11 +113,19 @@ export class ApiSubscriptionService implements SubscriptionService {
       entitlement: Entitlement;
       trial_ends_on?: string | null;
       price?: string | null;
+      // Nested Stripe billing state (#126). Null when the user has no Stripe
+      // customer (org-code/legacy) or Stripe is unreachable. `trial_end` is a
+      // naive-UTC ISO string.
+      stripe?: { status?: string; trial_end?: string | null } | null;
     }>('/api/account/subscription');
+    const trialEnd =
+      r.stripe?.status === 'trialing' && r.stripe.trial_end ? r.stripe.trial_end : undefined;
     return {
       entitlement: r.entitlement,
       trialEndsOn: r.trial_ends_on ? formatDate(r.trial_ends_on) : undefined,
       price: r.price ?? undefined,
+      trialDaysRemaining: trialEnd ? daysRemainingUtc(trialEnd) : undefined,
+      stripeTrialEndsOn: trialEnd ? formatUtcDate(trialEnd) : undefined,
     };
   }
 

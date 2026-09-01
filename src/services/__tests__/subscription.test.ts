@@ -48,6 +48,33 @@ describe('ApiSubscriptionService', () => {
     expect(s.trialEndsOn).toMatch(/2026/);
   });
 
+  it('reads the nested Stripe trial → remaining days (parsed as UTC) + end date', async () => {
+    // trial_end is a naive-UTC string (no 'Z'); parsing it as local time would
+    // shift the day-count by the device offset. Pin "now" so the count is exact.
+    jest.useFakeTimers().setSystemTime(new Date('2026-09-10T00:00:00Z'));
+    mockGet.mockResolvedValue({
+      entitlement: 'trial_active',
+      trial_ends_on: null,
+      price: '$0.99 / month',
+      stripe: { status: 'trialing', trial_end: '2026-09-15T00:00:00' },
+    });
+    const s = await svc.getStatus();
+    expect(s.trialDaysRemaining).toBe(5);
+    expect(s.stripeTrialEndsOn).toMatch(/2026/);
+    jest.useRealTimers();
+  });
+
+  it('has no trial fields when Stripe is null or not trialing', async () => {
+    mockGet.mockResolvedValue({ entitlement: 'active_monthly', stripe: null });
+    expect((await svc.getStatus()).trialDaysRemaining).toBeUndefined();
+
+    mockGet.mockResolvedValue({
+      entitlement: 'active_monthly',
+      stripe: { status: 'active', trial_end: '2026-09-15T00:00:00' },
+    });
+    expect((await svc.getStatus()).trialDaysRemaining).toBeUndefined();
+  });
+
   it('restore posts and returns the granted entitlement', async () => {
     mockPost.mockResolvedValue({ entitlement: 'active_monthly' });
     expect(await svc.restore()).toBe('active_monthly');

@@ -91,7 +91,14 @@ export default function SubscriptionScreen() {
         <Text variant="cardTitle" style={{ marginTop: 4 }}>
           {LABELS[entitlement] ?? entitlement}
         </Text>
-        {status?.trialEndsOn ? (
+        {status?.trialDaysRemaining != null ? (
+          <Text variant="body" color="textMuted" style={{ marginTop: 8 }}>
+            You have {status.trialDaysRemaining}{' '}
+            {status.trialDaysRemaining === 1 ? 'day' : 'days'} left in your free trial
+            {status.stripeTrialEndsOn ? `, until ${status.stripeTrialEndsOn}` : ''}. When it
+            ends{status.price ? ` it becomes ${status.price}` : ''}. Nothing is charged before then.
+          </Text>
+        ) : status?.trialEndsOn ? (
           <Text variant="body" color="textMuted" style={{ marginTop: 8 }}>
             Your trial ends on {status.trialEndsOn}. When it does, it is{' '}
             {status.price}. Nothing is charged without your say.
