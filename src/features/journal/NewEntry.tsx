@@ -42,6 +42,7 @@ export function NewEntry() {
   const [text, setText] = useState('');
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   // Autosave draft (R-30). Seed once from the persisted draft after it hydrates
   // (async storage), then write every change through so closing the app never
@@ -96,10 +97,19 @@ export function NewEntry() {
   const onSend = async () => {
     if (!text.trim() || busy) return;
     setBusy(true);
-    const { id, level } = await addEntry({ type, text: text.trim(), justHeard: false });
-    useDraftStore.getState().clear(); // entry saved → the draft is spent
-    router.replace({ pathname: '/entry/[id]', params: { id } });
-    if (level >= SafetyLevel.High) routeSafety({ level });
+    setSendError(null);
+    try {
+      const { id, level } = await addEntry({ type, text: text.trim(), justHeard: false });
+      useDraftStore.getState().clear(); // entry saved → the draft is spent
+      router.replace({ pathname: '/entry/[id]', params: { id } });
+      if (level >= SafetyLevel.High) routeSafety({ level });
+    } catch {
+      // Keep the draft (not cleared, not navigated) so no words are lost, and let
+      // them retry. A plan-limit 402 mid-turn is surfaced separately as the
+      // upgrade card; this is the graceful path for any other failure.
+      setSendError("We couldn't save that just now. Your words are kept — please try again.");
+      setBusy(false);
+    }
   };
 
   const canSend = !!text.trim() && !busy;
@@ -169,6 +179,12 @@ export function NewEntry() {
           accessibilityLabel="Write your entry"
           style={[styles.input, { color: colors.textPrimary, borderColor: colors.line }]}
         />
+
+        {sendError ? (
+          <Text variant="bodySmall" color="crisis" accessibilityRole="alert">
+            {sendError}
+          </Text>
+        ) : null}
 
         <View style={styles.actions}>
           <Pressable

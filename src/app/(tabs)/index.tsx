@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { ComposeCard } from '@/components/ComposeCard';
 import { EntryCard } from '@/components/EntryCard';
 import { GentleQuestionCard } from '@/components/GentleQuestionCard';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
 import { Screen } from '@/components/Screen';
 import { Chip } from '@/components/ui/Chip';
 import { SearchPill } from '@/components/ui/SearchPill';
@@ -32,6 +33,8 @@ export default function HomeScreen() {
   const now = new Date();
   const callName = useSessionStore((s) => s.session?.gateAnswers.callName);
   const entries = useEntriesStore((s) => s.entries);
+  const planLimit = useEntriesStore((s) => s.planLimit);
+  const clearPlanLimit = useEntriesStore((s) => s.clearPlanLimit);
 
   const compose = (type?: string) =>
     router.push(type ? { pathname: '/entry/new', params: { type } } : '/entry/new');
@@ -48,6 +51,16 @@ export default function HomeScreen() {
       <ComposeCard onPressPrompt={() => compose()} onPressMic={() => compose()} />
 
       <GentleQuestionCard />
+
+      {planLimit ? (
+        <View style={styles.promptWrap}>
+          <UpgradePrompt
+            limit={planLimit}
+            onSeePlans={() => router.push('/subscription')}
+            onDismiss={clearPlanLimit}
+          />
+        </View>
+      ) : null}
 
       <View style={styles.chips}>
         {HOME_CHIPS.map((label) => (
@@ -84,5 +97,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.lg,
   },
+  promptWrap: { paddingHorizontal: spacing.screen, paddingTop: spacing.lg },
   searchWrap: { paddingHorizontal: spacing.screen, paddingTop: spacing.xl },
 });
