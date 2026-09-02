@@ -10,7 +10,12 @@ import { apiClient } from '@/lib/http';
  * Both routes require an authenticated member.
  */
 
-/** Server-rendered disclaimer content — the app displays this verbatim. */
+/** Which legal document: the wellness disclaimer, or Terms & Privacy. The
+ * same endpoints serve both, discriminated by this param (R-25). Omitted =
+ * the disclaimer (the server default). */
+export type LegalDocument = 'disclaimer' | 'terms';
+
+/** Server-rendered legal content — the app displays this verbatim. */
 export interface DisclaimerContent {
   version: string;
   title: string;
@@ -26,6 +31,8 @@ export interface DisclaimerContent {
   /** Label for the non-blocking "save and read later" action. */
   saveAndReadLaterLabel: string;
   communityGuidelinesUrl: string | null;
+  /** Plain last-updated date, when the server sends one (Terms & Privacy). */
+  lastUpdated: string | null;
 }
 
 export interface DisclaimerStatus {
@@ -38,10 +45,10 @@ export interface DisclaimerStatus {
 }
 
 export interface LegalService {
-  /** The disclaimer content + whether this member/device must acknowledge it. */
-  getStatus(deviceId: string): Promise<DisclaimerStatus>;
+  /** The document content + whether this member/device must acknowledge it. */
+  getStatus(deviceId: string, document?: LegalDocument): Promise<DisclaimerStatus>;
   /** Record acceptance of the current version for this device (append-only). */
-  acknowledge(deviceId: string): Promise<DisclaimerStatus>;
+  acknowledge(deviceId: string, document?: LegalDocument): Promise<DisclaimerStatus>;
 }
 
 interface ContentWire {
@@ -54,6 +61,7 @@ interface ContentWire {
   acknowledgement_label: string;
   save_and_read_later_label: string;
   community_guidelines_url: string | null;
+  last_updated?: string | null;
 }
 
 interface StatusWire {
@@ -79,20 +87,26 @@ function toStatus(r: StatusWire): DisclaimerStatus {
       acknowledgementLabel: c.acknowledgement_label,
       saveAndReadLaterLabel: c.save_and_read_later_label,
       communityGuidelinesUrl: c.community_guidelines_url,
+      lastUpdated: c.last_updated ?? null,
     },
   };
 }
 
 export class ApiLegalService implements LegalService {
-  async getStatus(deviceId: string): Promise<DisclaimerStatus> {
+  async getStatus(deviceId: string, document?: LegalDocument): Promise<DisclaimerStatus> {
     return toStatus(
-      await apiClient.get('/legal-disclaimer/status', { query: { device_id: deviceId } }),
+      await apiClient.get('/legal-disclaimer/status', {
+        query: { device_id: deviceId, ...(document ? { document } : {}) },
+      }),
     );
   }
 
-  async acknowledge(deviceId: string): Promise<DisclaimerStatus> {
+  async acknowledge(deviceId: string, document?: LegalDocument): Promise<DisclaimerStatus> {
     return toStatus(
-      await apiClient.post('/legal-disclaimer/acknowledge', { device_id: deviceId }),
+      await apiClient.post('/legal-disclaimer/acknowledge', {
+        device_id: deviceId,
+        ...(document ? { document } : {}),
+      }),
     );
   }
 }

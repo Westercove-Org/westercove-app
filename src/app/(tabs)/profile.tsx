@@ -38,6 +38,7 @@ const SETTINGS: Row[] = [
   { label: 'Membership', section: 'subscription' },
   { label: 'Help', section: 'help' },
   { label: 'Legal', subtitle: 'Wellness-companion disclaimer', section: 'legal' },
+  { label: 'Terms & Privacy', subtitle: 'Terms of use and privacy notice', section: 'terms' },
 ];
 
 /** Initials for an avatar: two words give two letters, one gives one. */
@@ -99,6 +100,7 @@ export default function ProfileScreen() {
     else if (section === 'export') router.push('/export');
     else if (section === 'account') router.push('/account');
     else if (section === 'legal') router.push('/legal-disclaimer');
+    else if (section === 'terms') router.push('/legal-terms');
     else router.push({ pathname: '/profile/[section]', params: { section } });
   };
 
