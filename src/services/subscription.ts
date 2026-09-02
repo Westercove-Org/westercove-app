@@ -19,6 +19,20 @@ export interface SubscriptionStatus {
   renewsOn?: string;
   /** True when the subscription is set to end at the period end (cancel pending). */
   cancelAtPeriodEnd?: boolean;
+  /** Product tier for the membership screen — a separate axis from the
+   * entitlement's billing interval. Null before a plan resolves, or for
+   * org/sponsored accounts (R-1). */
+  tier?: 'standard' | 'premium' | null;
+  /** Last four of the card on file. This is the Stripe PaymentMethod's last4,
+   * not card data — safe to show as "ending in 4242". Absent until the backend
+   * follow-up adds it; the UI renders it only when present. */
+  cardLast4?: string;
+  /** Next charge date (plain), when the backend sends one distinct from the
+   * renewal date; the UI falls back to `renewsOn` when absent. */
+  nextChargeDate?: string;
+  /** Org-sponsored coverage, when applicable. Presence is one signal of the
+   * sponsored membership variant (which never shows a price/plan/card/cancel). */
+  sponsor?: { orgName: string; coverageEndsAt?: string };
 }
 
 export interface LicenseRedeemResult {
@@ -92,6 +106,7 @@ export class MockSubscriptionService implements SubscriptionService {
       price: '$8.99 / month',
       trialDaysRemaining: 9,
       stripeTrialEndsOn: plusDays(9),
+      tier: 'standard',
     };
   }
 
@@ -138,7 +153,12 @@ export class ApiSubscriptionService implements SubscriptionService {
         trial_end?: string | null;
         current_period_end?: string | null;
         cancel_at_period_end?: boolean;
+        price_id?: string | null;
       } | null;
+      tier?: 'standard' | 'premium' | null;
+      card_last4?: string | null;
+      next_charge_date?: string | null;
+      sponsor?: { org_name: string; coverage_ends_at?: string | null } | null;
     }>('/api/account/subscription');
     const s = r.stripe;
     const trialEnd = s?.status === 'trialing' && s.trial_end ? s.trial_end : undefined;
@@ -151,6 +171,17 @@ export class ApiSubscriptionService implements SubscriptionService {
       stripeStatus: s?.status,
       renewsOn: s?.current_period_end ? formatUtcDate(s.current_period_end) : undefined,
       cancelAtPeriodEnd: s?.cancel_at_period_end,
+      tier: r.tier ?? undefined,
+      cardLast4: r.card_last4 ?? undefined,
+      nextChargeDate: r.next_charge_date ? formatUtcDate(r.next_charge_date) : undefined,
+      sponsor: r.sponsor
+        ? {
+            orgName: r.sponsor.org_name,
+            coverageEndsAt: r.sponsor.coverage_ends_at
+              ? formatUtcDate(r.sponsor.coverage_ends_at)
+              : undefined,
+          }
+        : undefined,
     };
   }
 

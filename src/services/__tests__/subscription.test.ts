@@ -38,6 +38,32 @@ describe('ApiSubscriptionService', () => {
     mockDelete.mockReset();
   });
 
+  it('maps the membership fields: tier, card_last4, next_charge_date, sponsor', async () => {
+    mockGet.mockResolvedValue({
+      entitlement: 'active_monthly',
+      price: '$24.99/month',
+      tier: 'standard',
+      card_last4: '4242',
+      next_charge_date: '2026-10-01T00:00:00',
+      sponsor: { org_name: 'Harbor Care', coverage_ends_at: '2027-01-01T00:00:00' },
+      stripe: { status: 'active', current_period_end: '2026-10-01T00:00:00', price_id: 'price_123' },
+    });
+    const s = await svc.getStatus();
+    expect(s.tier).toBe('standard');
+    expect(s.cardLast4).toBe('4242');
+    expect(s.nextChargeDate).toMatch(/2026/);
+    expect(s.sponsor).toEqual({ orgName: 'Harbor Care', coverageEndsAt: expect.stringMatching(/2027/) });
+  });
+
+  it('leaves the membership fields undefined when the backend omits them', async () => {
+    mockGet.mockResolvedValue({ entitlement: 'active_monthly', stripe: null });
+    const s = await svc.getStatus();
+    expect(s.tier).toBeUndefined();
+    expect(s.cardLast4).toBeUndefined();
+    expect(s.nextChargeDate).toBeUndefined();
+    expect(s.sponsor).toBeUndefined();
+  });
+
   it('reads status, mapping trial_ends_on → a plain date', async () => {
     mockGet.mockResolvedValue({ entitlement: 'trial_active', trial_ends_on: '2026-09-01T00:00:00Z', price: '$8.99 / month' });
     const s = await svc.getStatus();
