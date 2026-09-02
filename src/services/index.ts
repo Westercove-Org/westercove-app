@@ -6,6 +6,7 @@ import { ApiLibraryService, type LibraryService } from './library';
 import { ApiContentService, type ContentService } from './content';
 import { ApiCrmService, type CrmService } from './crm';
 import { ApiJournalService, type JournalService } from './journal';
+import { ApiLegalService, type LegalService } from './legal';
 import { ApiSafetyService, type SafetyService } from './safety';
 import { ApiSignupService, type SignupService } from './signup';
 import { ApiSubscriptionService, type SubscriptionService } from './subscription';
@@ -31,6 +32,7 @@ export const services: {
   survey: SurveyService;
   library: LibraryService;
   journal: JournalService;
+  legal: LegalService;
 } = {
   safety: new ApiSafetyService(),
   auth: new CognitoAuthService(),
@@ -45,6 +47,7 @@ export const services: {
   survey: new ApiSurveyService(),
   library: new ApiLibraryService(),
   journal: new ApiJournalService(),
+  legal: new ApiLegalService(),
 };
 
 export * from './chat';
@@ -60,3 +63,4 @@ export * from './content';
 export * from './signup';
 export * from './subscription';
 export * from './survey';
+export * from './legal';

@@ -98,6 +98,7 @@ export default function ProfileScreen() {
     else if (section === 'subscription') router.push('/subscription');
     else if (section === 'export') router.push('/export');
     else if (section === 'account') router.push('/account');
+    else if (section === 'legal') router.push('/legal-disclaimer');
     else router.push({ pathname: '/profile/[section]', params: { section } });
   };
 
