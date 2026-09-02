@@ -38,9 +38,28 @@ export interface CadenceState {
   clientTimezone: string | null;
 }
 
+/** The engine's authoritative next question, with its FULLY-RESOLVED prompt
+ * (server substitutes the loved-one name and the cause-of-death wording). Its
+ * `id` is the catalog id, the same space as `pendingQuestionIds` (normally
+ * pendingQuestionIds[0]). Null when there is nothing to ask. */
+export interface NextQuestion {
+  id: string;
+  stage: number;
+  qtype: 'core' | 'optional';
+  /** Ready to render as-is; never a template. */
+  prompt: string;
+  options: string[];
+  safety: boolean;
+  freeText: boolean;
+}
+
 export interface CadenceService {
   /** Launch reconciliation: the authoritative state for this profile. */
   getState(profileId: number): Promise<CadenceState>;
+  /** The next question with its server-resolved prompt, or null when none.
+   * 404s (flag off / profile not the caller's) surface as a thrown error — the
+   * caller falls back to the local catalog prompt. */
+  getNextQuestion(profileId: number): Promise<NextQuestion | null>;
   /** Report a raw session signal; returns the server-recomputed state. */
   reportEvent(profileId: number, input: SessionEventInput): Promise<CadenceState>;
   /** "Not now": re-surface the question in a later session. */
@@ -90,6 +109,32 @@ function toState(r: CadenceStateWire): CadenceState {
 export class ApiCadenceService implements CadenceService {
   async getState(profileId: number): Promise<CadenceState> {
     return toState(await apiClient.get(`/profiles/${profileId}/cadence`));
+  }
+
+  async getNextQuestion(profileId: number): Promise<NextQuestion | null> {
+    const r = await apiClient.get<{
+      question: null | {
+        id: string;
+        stage: number;
+        qtype: string;
+        prompt: string;
+        options: string[];
+        safety: boolean;
+        free_text: boolean;
+      };
+    }>(`/profiles/${profileId}/next-question`);
+    const q = r.question;
+    return q
+      ? {
+          id: q.id,
+          stage: q.stage,
+          qtype: q.qtype === 'optional' ? 'optional' : 'core',
+          prompt: q.prompt,
+          options: q.options,
+          safety: q.safety,
+          freeText: q.free_text,
+        }
+      : null;
   }
 
   async reportEvent(profileId: number, input: SessionEventInput): Promise<CadenceState> {
