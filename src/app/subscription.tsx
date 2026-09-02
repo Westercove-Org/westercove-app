@@ -16,6 +16,7 @@ const LABELS: Record<string, string> = {
   trial_active: 'Free trial',
   active_monthly: 'Active — monthly',
   active_annual: 'Active — annual',
+  paid_active: 'Active',
   license_active: 'Sponsored license',
   lapsed: 'Lapsed',
 };
