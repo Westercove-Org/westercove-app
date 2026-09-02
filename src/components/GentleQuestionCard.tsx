@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/Text';
 import { USE_FOUR_DOORS } from '@/constants/flags';
 import { lovedOneName, useSessionStore } from '@/features/auth/sessionStore';
 import { useCadenceStore } from '@/features/cadence/cadenceStore';
+import { services } from '@/services';
 import { useWhatIKnowStore } from '@/features/profile/whatIKnowStore';
 import { hasCheckin, nextQuestion, questionsFor, type CadenceQuestion, type CadenceState } from '@/features/questions/cadence';
 import { cadenceState, useQuestionsStore } from '@/features/questions/questionsStore';
@@ -66,9 +67,11 @@ function LegacyQuestionCard() {
 
 /** System B (server): render the first server-ordered pending question. The
  *  list is pre-ordered by the backend; we take `pendingQuestionIds[0]` and never
- *  re-sort. The catalog (features/questions) still supplies the prompt/input for
- *  each id, and `cadenceState()` supplies prompt-interpolation context (name,
- *  loved-one details). Selection and recording are entirely server-owned. */
+ *  re-sort. The catalog (features/questions) supplies the input/options for each
+ *  id; the PROMPT STRING is the server's resolved copy (fetched below) so the
+ *  cause-of-death wording matches what the companion speaks — falling back to the
+ *  catalog's `q.prompt()` if the server has none. Selection and recording are
+ *  server-owned. */
 function ServerQuestionCard() {
   useSessionStore((s) => s.session);
   const pendingIds = useCadenceStore((s) => s.state?.pendingQuestionIds);
@@ -78,6 +81,31 @@ function ServerQuestionCard() {
 
   const state = cadenceState();
   const firstId = pendingIds?.[0];
+
+  // The server-resolved prompt, tagged with the question id it belongs to. We
+  // render it only when it matches the current question, so a stale fetch (the
+  // question advanced before the request returned) falls back instead of showing
+  // the wrong copy — no effect-time reset needed.
+  const [fetched, setFetched] = useState<{ id: string; prompt: string } | null>(null);
+  useEffect(() => {
+    if (!firstId) return;
+    const profileId = useSessionStore.getState().session?.backendProfileId;
+    if (profileId == null) return;
+    let alive = true;
+    void services.cadence
+      .getNextQuestion(profileId)
+      .then((nq) => {
+        if (alive && nq) setFetched({ id: nq.id, prompt: nq.prompt });
+      })
+      .catch(() => {}); // 404 (flag off / not caller's profile) / offline → fallback
+    return () => {
+      alive = false;
+    };
+  }, [firstId]);
+  // Ids share the pendingQuestionIds space; only trust the prompt for the id we
+  // are actually rendering.
+  const serverPrompt = fetched && fetched.id === firstId ? fetched.prompt : undefined;
+
   const q = firstId ? questionsFor(state.module).find((x) => x.id === firstId) ?? null : null;
   if (!q) return null;
 
@@ -91,6 +119,7 @@ function ServerQuestionCard() {
       key={q.id}
       q={q}
       state={state}
+      promptText={serverPrompt}
       onAnswer={onAnswer}
       onDefer={() => void deferQuestion(q.id)}
       onSkip={(question) => void skipQuestion(question.id)}
@@ -98,9 +127,21 @@ function ServerQuestionCard() {
   );
 }
 
-function QuestionForm({ q, state, onAnswer, onDefer, onSkip }: { q: CadenceQuestion; state: CadenceState } & QuestionActions) {
+function QuestionForm({
+  q,
+  state,
+  promptText,
+  onAnswer,
+  onDefer,
+  onSkip,
+}: { q: CadenceQuestion; state: CadenceState; promptText?: string } & QuestionActions) {
   const { colors } = useTheme();
   const router = useRouter();
+
+  // The server-resolved prompt wins when present (cause-of-death wording matches
+  // the companion's reply); otherwise the catalog's own prompt. Legacy passes
+  // none, so its wording is unchanged.
+  const prompt = promptText ?? q.prompt(state.name, state);
 
   const [text, setText] = useState('');
   const [choice, setChoice] = useState<string | null>(null);
@@ -161,7 +202,7 @@ function QuestionForm({ q, state, onAnswer, onDefer, onSkip }: { q: CadenceQuest
                 A quiet room of your own
               </Text>
               <Text variant="bodySmall" color="textMuted">
-                {q.prompt(state.name, state)}
+                {prompt}
               </Text>
               <View style={styles.actions}>
                 <Button
@@ -178,7 +219,7 @@ function QuestionForm({ q, state, onAnswer, onDefer, onSkip }: { q: CadenceQuest
         ) : (
           <>
             <Text variant="screenTitle" style={styles.prompt}>
-              {q.prompt(state.name, state)}
+              {prompt}
             </Text>
 
             {q.input === 'text' ? (
@@ -188,7 +229,7 @@ function QuestionForm({ q, state, onAnswer, onDefer, onSkip }: { q: CadenceQuest
                 placeholder="Only if you would like to. There is no hurry."
                 placeholderTextColor={colors.textMuted}
                 multiline
-                accessibilityLabel={q.prompt(state.name, state)}
+                accessibilityLabel={prompt}
                 style={[styles.input, { color: colors.textPrimary, borderColor: colors.line }]}
               />
             ) : null}

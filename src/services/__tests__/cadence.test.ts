@@ -75,4 +75,34 @@ describe('ApiCadenceService', () => {
     await svc.skipQuestion(7, 'h-avoid');
     expect(mockPost).toHaveBeenCalledWith('/profiles/7/questions/h-avoid:skip');
   });
+
+  it('getNextQuestion maps the nested question (snake_case free_text → freeText)', async () => {
+    mockGet.mockResolvedValue({
+      question: {
+        id: 'h-before',
+        stage: 3,
+        qtype: 'core',
+        prompt: 'The resolved, cause-sensitive wording.',
+        options: [],
+        safety: false,
+        free_text: true,
+      },
+    });
+    const q = await svc.getNextQuestion(7);
+    expect(mockGet).toHaveBeenCalledWith('/profiles/7/next-question');
+    expect(q).toEqual({
+      id: 'h-before',
+      stage: 3,
+      qtype: 'core',
+      prompt: 'The resolved, cause-sensitive wording.',
+      options: [],
+      safety: false,
+      freeText: true,
+    });
+  });
+
+  it('getNextQuestion returns null when there is no pending question', async () => {
+    mockGet.mockResolvedValue({ question: null });
+    expect(await svc.getNextQuestion(7)).toBeNull();
+  });
 });
