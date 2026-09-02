@@ -1,0 +1,25 @@
+name: ci
+
+# Pull-request + main CI for the app: type-check and unit tests, so every PR has
+# a real check (the floor rule is no merge on red or absent CI). Deploys are
+# owned solely by deploy-release.yml (release: published / workflow_dispatch);
+# this workflow never builds or deploys — its triggers deliberately do not
+# overlap that one.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  typecheck-and-test:
+    name: tsc + jest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx jest --ci
