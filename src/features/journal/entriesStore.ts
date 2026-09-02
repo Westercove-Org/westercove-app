@@ -5,6 +5,7 @@ import { useCadenceStore } from '@/features/cadence/cadenceStore';
 import { services } from '@/services';
 import { SafetyLevel, levelForTier } from '@/services/safety';
 import { useSafetyStore } from '@/features/safety/safetyStore';
+import { planLimitFrom, type PlanLimit } from '@/features/billing/planLimit';
 import type { ChatSessionSummary, CompanionSafety } from '@/services/chat';
 import type { JournalRecord } from '@/services/journal';
 import { entryTypeEnum, labelForEntryType } from './entryTypes';
@@ -109,6 +110,11 @@ interface EntriesState {
   entries: Entry[];
   /** Chat-session summaries fetched from the backend for the active profile. */
   serverSessions: ChatSessionSummary[];
+  /** The last plan-limit the backend returned (402), surfaced as an
+   * upgrade-to-Premium prompt (R-1b). Null when none is outstanding. */
+  planLimit: PlanLimit | null;
+  setPlanLimit: (limit: PlanLimit) => void;
+  clearPlanLimit: () => void;
   addEntry: (input: {
     type: string;
     text: string;
@@ -176,7 +182,11 @@ async function companionReply(
       entryType: entryTypeEnum(type),
     });
     return { response: reply || offline.response, question, safety };
-  } catch {
+  } catch (err) {
+    // A chat-turn cap (402) is an upgrade prompt, not an outage: surface it.
+    // Any other failure stays a silent offline fallback (the journal answers).
+    const limit = planLimitFrom(err);
+    if (limit) useEntriesStore.getState().setPlanLimit(limit);
     return { response: offline.response };
   }
 }
@@ -201,6 +211,15 @@ async function resolveSafety(text: string, safety: CompanionSafety | undefined):
 export const useEntriesStore = create<EntriesState>()((set, get) => ({
   entries: [],
   serverSessions: [],
+  planLimit: null,
+
+  setPlanLimit(limit) {
+    set({ planLimit: limit });
+  },
+
+  clearPlanLimit() {
+    set({ planLimit: null });
+  },
 
   async addEntry({ type, text, justHeard }) {
     // Fast local pre-flight, instant and offline: gates response generation.
@@ -381,6 +400,6 @@ export const useEntriesStore = create<EntriesState>()((set, get) => ({
 
   resetForProfile() {
     useSafetyStore.getState().clear();
-    set({ entries: [], serverSessions: [] });
+    set({ entries: [], serverSessions: [], planLimit: null });
   },
 }));
