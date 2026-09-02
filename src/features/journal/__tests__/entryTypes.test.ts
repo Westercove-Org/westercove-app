@@ -7,10 +7,11 @@ import {
 } from '@/features/journal/entryTypes';
 
 describe('entry types', () => {
-  it('has the 10 official command types', () => {
-    expect(ENTRY_TYPES).toHaveLength(10);
+  it('has the 11 official command types', () => {
+    expect(ENTRY_TYPES).toHaveLength(11);
     expect(ENTRY_TYPES).toContain('Grief Question');
     expect(ENTRY_TYPES).toContain('Forgiveness');
+    expect(ENTRY_TYPES).toContain('Gratitude');
   });
 
   it('every type has a placeholder', () => {
@@ -24,6 +25,7 @@ describe('entry types', () => {
     expect(entryTypeEnum('Grief Question')).toBe('grief_question');
     expect(entryTypeEnum('Forgiveness')).toBe('forgive');
     expect(entryTypeEnum('Emotions')).toBe('emotions');
+    expect(entryTypeEnum('Gratitude')).toBe('gratitude');
     expect(entryTypeEnum('Nonsense')).toBeUndefined();
     expect(entryTypeEnum(undefined)).toBeUndefined();
   });

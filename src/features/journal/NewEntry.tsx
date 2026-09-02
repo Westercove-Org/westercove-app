@@ -7,11 +7,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CrisisBanner } from '@/components/CrisisBanner';
 import { DriftingPhoto } from '@/components/DriftingPhoto';
 import { ChevronRightIcon, DownloadIcon, MicIcon, SendIcon } from '@/components/icons';
+import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
 import { lovedOneName } from '@/features/auth/sessionStore';
 import { useSafetyRouter } from '@/features/safety/useSafetyRouter';
 import {
+  ENTRY_INTROS,
   ENTRY_PLACEHOLDERS,
   ENTRY_TYPES,
   isEntryType,
@@ -113,6 +115,8 @@ export function NewEntry() {
   };
 
   const canSend = !!text.trim() && !busy;
+  // Lead-in for types that need framing before the blank field (Gratitude).
+  const intro = ENTRY_INTROS[type];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -169,6 +173,17 @@ export function NewEntry() {
             <Chip key={t} label={t} selected={t === type} onPress={() => onType(t)} />
           ))}
         </View>
+
+        {intro ? (
+          <Card reflective accessible accessibilityLabel={`${intro.title}. ${intro.body}`}>
+            <Text variant="cardTitle" color="heading" style={styles.introTitle}>
+              {intro.title}
+            </Text>
+            <Text variant="body" color="textPrimary">
+              {intro.body}
+            </Text>
+          </Card>
+        ) : null}
 
         <TextInput
           value={text}
@@ -255,6 +270,7 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  introTitle: { marginBottom: spacing.sm },
   input: {
     minHeight: 240,
     borderWidth: 1,

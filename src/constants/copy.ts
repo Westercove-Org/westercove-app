@@ -51,6 +51,21 @@ export const copy = {
     settings: 'SETTINGS',
   },
 
+  /**
+   * Shown above the compose field when the Gratitude entry type is selected.
+   * Deliberately not a bright side: it never asks anyone to be grateful FOR the
+   * death, never implies gratitude shortens grief, and explicitly permits an
+   * empty day. The framing follows the evidence that positive emotion coexists
+   * with acute grief rather than replacing it (Stroebe & Schut's oscillation),
+   * and that savouring small, concrete moments of connection lowers grief and
+   * raises gratitude and meaning in bereaved adults.
+   */
+  gratitude: {
+    title: 'Gratitude, alongside the grief',
+    body:
+      'These are some of the worst days of your life, and gratitude will not make them lighter. But grief moves in waves, and in the space between them people often find something small still worth holding — a kindness, a song, an hour of sleep, the fact that they existed at all. Add one if one comes. If nothing comes today, that is an honest answer too.',
+  },
+
   disclaimer:
     'Westercove is a wellness companion, not therapy, and it does not diagnose.',
 

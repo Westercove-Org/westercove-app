@@ -16,6 +16,7 @@ const APPROVED_HINTS: Record<(typeof ENTRY_TYPES)[number], string> = {
   Anniversary: 'Which dates do you want me to remember?',
   Emotions: 'What are you feeling?',
   Forgiveness: 'How can I help with forgiveness?',
+  Gratitude: 'Name one thing, however small, you are grateful for...',
   Letter: 'Write your letter here...',
   Memory: 'Record your memory here...',
   Practice: 'Enter practices that help you...',
@@ -24,7 +25,7 @@ const APPROVED_HINTS: Record<(typeof ENTRY_TYPES)[number], string> = {
 };
 
 describe('approved hints (R-31/R-45)', () => {
-  it('the category list is the ten canonical types', () => {
+  it('the category list is the eleven canonical types', () => {
     expect([...ENTRY_TYPES]).toEqual(Object.keys(APPROVED_HINTS));
   });
 
