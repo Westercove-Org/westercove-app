@@ -10,22 +10,15 @@ import { SearchPill } from '@/components/ui/SearchPill';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
-import type { EntryType } from '@/features/journal/entryTypes';
+import { ENTRY_TYPES } from '@/features/journal/entryTypes';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { formatEntryTimestamp, formatHeaderDateTime } from '@/lib/dateFormat';
 import { spacing } from '@/theme/tokens';
 
-/** Home quick-access command chips, below the gentle-question card. Every one
- *  is a real entry type: a chip that is not lands the writer in a Journal entry
- *  they did not ask for. */
-const HOME_CHIPS = [
-  'Memory',
-  'Struggle',
-  'Journal',
-  'Letter',
-  'Anniversary',
-  'Grief Question',
-] as const satisfies readonly EntryType[];
+/** Home quick-access command chips, below the gentle-question card. Every
+ *  category gets a button (spec v7 Item 9 / R-28): all ten entry types, in
+ *  canonical order, so none is reachable only from inside compose. */
+const HOME_CHIPS = ENTRY_TYPES;
 
 function greeting(now: Date, name?: string): string {
   const h = now.getHours();

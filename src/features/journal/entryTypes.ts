@@ -20,16 +20,16 @@ export type EntryType = (typeof ENTRY_TYPES)[number];
 
 /** Type-specific placeholder copy for the compose field. */
 export const ENTRY_PLACEHOLDERS: Record<EntryType, string> = {
-  Journal: "What's on your mind today?",
-  'Grief Question': 'What are you wondering about?',
-  Anniversary: 'What does this date hold?',
-  Emotions: "What are you feeling right now?",
-  Forgiveness: 'What needs saying?',
-  Letter: 'What would you like to say to them?',
-  Memory: 'What do you want to hold onto?',
-  Practice: 'What helps you steady yourself?',
-  Sign: 'What did you notice?',
-  Struggle: "What's been hard?",
+  Journal: 'Write your journal entry here...',
+  'Grief Question': 'Ask your grief question here...',
+  Anniversary: 'Which dates do you want me to remember?',
+  Emotions: 'What are you feeling?',
+  Forgiveness: 'How can I help with forgiveness?',
+  Letter: 'Write your letter here...',
+  Memory: 'Record your memory here...',
+  Practice: 'Enter practices that help you...',
+  Sign: 'Enter a sign you experienced here...',
+  Struggle: 'What is your struggle?',
 };
 
 export function isEntryType(value: string | undefined): value is EntryType {
