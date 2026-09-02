@@ -1,6 +1,7 @@
-import { useRouter, useSegments } from 'expo-router';
+import { usePathname, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 
+import { rememberTarget, takeTarget } from './deepLink';
 import { sessionStatus, useSessionStore } from './sessionStore';
 
 /** Routes that must remain reachable in every session state: crisis surfaces
@@ -17,6 +18,7 @@ const ALWAYS_ALLOWED = new Set(['crisis', 'support-mode', '+not-found']);
 export function useAuthGuard() {
   const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname();
   const hydrated = useSessionStore((s) => s.hydrated);
   const session = useSessionStore((s) => s.session);
 
@@ -30,11 +32,13 @@ export function useAuthGuard() {
     const inGate = group === 'gate';
 
     if (status === 'unauthenticated' && !inAuth) {
+      // Preserve a billing deep-link target (R-62) so sign-in returns here, not Home.
+      rememberTarget(pathname);
       router.replace('/launch');
     } else if (status === 'needs-gate' && !inGate) {
       router.replace('/gate');
     } else if (status === 'ready' && (inAuth || inGate)) {
-      router.replace('/');
+      router.replace(takeTarget() ?? '/');
     }
-  }, [hydrated, session, segments, router]);
+  }, [hydrated, session, segments, pathname, router]);
 }
