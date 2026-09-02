@@ -17,7 +17,7 @@ import { formatEntryTimestamp, formatHeaderDateTime } from '@/lib/dateFormat';
 import { spacing } from '@/theme/tokens';
 
 /** Home quick-access command chips, below the gentle-question card. Every
- *  category gets a button (spec v7 Item 9 / R-28): all ten entry types, in
+ *  category gets a button (spec v7 Item 9 / R-28): all eleven entry types, in
  *  canonical order, so none is reachable only from inside compose. */
 const HOME_CHIPS = ENTRY_TYPES;
 
