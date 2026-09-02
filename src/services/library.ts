@@ -21,6 +21,10 @@ export interface UserBook {
   source: 'survey' | 'manual' | 'curated' | 'photo';
   coverUrl?: string;
   enrichment?: BookEnrichment;
+  /** Local catalog id (constants/books.ts) for a curated add — the shared key
+   * that reconciles a persisted shelf to the server. Null on manual/survey/photo
+   * adds and on all legacy rows (no server-side backfill; devices hold the slug). */
+  slug: string | null;
 }
 
 export interface AddBookInput {
@@ -33,6 +37,11 @@ export interface AddBookInput {
 export interface LibraryService {
   /** Persist a book on the profile's shelf; returns it with its backend id. */
   addBook(input: AddBookInput): Promise<UserBook>;
+  /** Persist a curated catalog book by its local slug. The server resolves the
+   * catalog row and ignores any title/authors; re-adding the same slug for the
+   * same profile is idempotent (returns the existing row). Throws on an unknown
+   * slug (404). */
+  addCuratedBook(profileId: number, slug: string): Promise<UserBook>;
   /** The profile's shelf, with any inline enrichment. */
   listBooks(profileId: number): Promise<UserBook[]>;
   /** The enrichment for one book (drives the summary + "still researching"). */
@@ -66,6 +75,7 @@ function toBook(b: {
   source: UserBook['source'];
   cover_url?: string | null;
   enrichment?: RawEnrichment | null;
+  slug?: string | null;
 }): UserBook {
   return {
     id: b.id,
@@ -75,6 +85,7 @@ function toBook(b: {
     source: b.source,
     coverUrl: b.cover_url ?? undefined,
     enrichment: b.enrichment ? toEnrichment(b.enrichment) : undefined,
+    slug: b.slug ?? null,
   };
 }
 
@@ -89,6 +100,12 @@ export class ApiLibraryService implements LibraryService {
         source: input.source ?? 'manual',
       }),
     );
+  }
+
+  async addCuratedBook(profileId: number, slug: string): Promise<UserBook> {
+    // Server resolves the catalog row from the slug and stamps source='curated';
+    // any title/authors would be ignored, so we send none.
+    return toBook(await apiClient.post('/library/books', { profile_id: profileId, slug }));
   }
 
   async listBooks(profileId: number): Promise<UserBook[]> {
