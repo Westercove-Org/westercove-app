@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { scopedStorage } from '@/features/profile/activeProfile';
 import { services } from '@/services';
+import { resetLegalGate } from '@/features/legal/legalGate';
 import type { AuthResult } from '@/services/auth';
 import { moduleForDoor, type GateState } from './fourDoorsModel';
 import type { Entitlement, GateAnswers, Session } from './types';
@@ -151,6 +152,7 @@ export const useSessionStore = create<SessionState>()(
         // Clear the Cognito tokens (access + refresh) too; fire-and-forget so
         // sign-out is instant and never blocked on storage.
         void services.auth.signOut().catch(() => {});
+        resetLegalGate(); // next member re-checks the legal gate (R-36)
         set({ session: null });
       },
 
