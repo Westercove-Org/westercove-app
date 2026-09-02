@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/Text';
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { services } from '@/services';
 
-/** Account. Deletion is full, with a 30-day reversible grace period and no dark
+/** Account. Deletion is full, with a 25-day reversible grace period and no dark
  * patterns in the flow. */
 export default function AccountScreen() {
   const email = useSessionStore((s) => s.session?.user.email);
@@ -59,8 +59,8 @@ export default function AccountScreen() {
       ) : confirming ? (
         <Card>
           <Text variant="body" color="textMuted">
-            Deletion removes your account and everything in it after a 30-day
-            grace period. You can undo it anytime within those 30 days.
+            Deletion removes your account and everything in it after a 25-day
+            grace period. You can undo it anytime within those 25 days.
           </Text>
           <Button label="Delete my account" onPress={onDelete} />
           <Button label="Never mind" variant="secondary" onPress={() => setConfirming(false)} />

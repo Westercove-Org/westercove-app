@@ -62,12 +62,6 @@ export const copy = {
 
   disclaimerScreen: {
     title: 'Before you begin',
-    body1:
-      'Westercove is a wellness companion, not therapy. It does not diagnose, and it is not a substitute for professional care.',
-    body2:
-      'If you are in crisis, or if you are worried about yourself or someone else, please use the crisis line at the bottom of every screen.',
-    body3:
-      'By continuing, you confirm you are 18 or older and that you agree to our Terms and Privacy notice.',
     continue: 'I understand, continue',
     goBack: 'Go back',
     // Full versioned disclaimer surface (R-34): the summary + these labels are
