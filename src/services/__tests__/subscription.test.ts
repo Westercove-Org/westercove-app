@@ -95,7 +95,16 @@ describe('ApiSubscriptionService', () => {
     expect(await svc.createPortalSession()).toEqual({
       url: 'https://billing.stripe.com/p/session/abc',
     });
-    expect(mockPost).toHaveBeenCalledWith('/api/account/billing-portal');
+    // No flow → no body, so the existing manage-billing / membership callers are unchanged.
+    expect(mockPost).toHaveBeenCalledWith('/api/account/billing-portal', undefined);
+  });
+
+  it('createPortalSession forwards the flow so the portal opens on the card form (R-10/R-61)', async () => {
+    mockPost.mockResolvedValue({ url: 'https://billing.stripe.com/p/session/card' });
+    await svc.createPortalSession('payment_method_update');
+    expect(mockPost).toHaveBeenCalledWith('/api/account/billing-portal', {
+      flow: 'payment_method_update',
+    });
   });
 
   it('createPortalSession throws when no url comes back (portal unavailable)', async () => {

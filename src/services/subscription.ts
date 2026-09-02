@@ -39,8 +39,11 @@ export interface SubscriptionService {
    * so update-card / cancel / invoices happen on Stripe's hosted page — card
    * data never touches the app. Throws when the portal is unavailable (no Stripe
    * customer, or the portal is not configured — it's TEST-mode only for now). */
-  createPortalSession(): Promise<{ url: string }>;
+  createPortalSession(flow?: PortalFlow): Promise<{ url: string }>;
 }
+
+/** Stripe portal `flow_data` intent. Only the card-form landing is used today. */
+export type PortalFlow = 'payment_method_update';
 
 /** Format an ISO datetime (or day offset) as a plain, urgency-free date. */
 function formatDate(iso: string): string {
@@ -109,7 +112,7 @@ export class MockSubscriptionService implements SubscriptionService {
 
   async cancelDeletion(): Promise<void> {}
 
-  async createPortalSession(): Promise<{ url: string }> {
+  async createPortalSession(_flow?: PortalFlow): Promise<{ url: string }> {
     return { url: 'https://billing.stripe.com/p/session/test_mock' };
   }
 }
@@ -154,12 +157,19 @@ export class ApiSubscriptionService implements SubscriptionService {
     };
   }
 
-  async createPortalSession(): Promise<{ url: string }> {
+  async createPortalSession(flow?: PortalFlow): Promise<{ url: string }> {
     // Route confirmed against the merged endpoint (Stanley #126, account.py:249):
-    // POST /api/account/billing-portal, no body (return_url is server-side),
-    // response { url }. 404 (no billing profile) / 503 (payments off) / 502
-    // (Stripe error / portal not configured) all surface as "portal unavailable".
-    const r = await apiClient.post<{ url?: string }>('/api/account/billing-portal');
+    // POST /api/account/billing-portal, response { url }. 404 (no billing
+    // profile) / 503 (payments off) / 502 (Stripe error / portal not configured)
+    // all surface as "portal unavailable".
+    // `flow` (R-10/R-61) asks the server to pass Stripe flow_data so the portal
+    // opens on the card form. Sent only when set; the body is omitted otherwise
+    // so the existing no-body callers are unchanged. Backend support pending
+    // Dwight — until then the server ignores it and the portal opens on its home.
+    const r = await apiClient.post<{ url?: string }>(
+      '/api/account/billing-portal',
+      flow ? { flow } : undefined,
+    );
     if (!r.url) throw new Error('No portal URL returned');
     return { url: r.url };
   }
