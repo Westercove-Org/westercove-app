@@ -24,6 +24,6 @@ describe('deepLink target', () => {
   });
 
   it('only the billing deep-link targets are registered', () => {
-    expect([...DEEP_LINK_TARGETS]).toEqual(['/subscription']);
+    expect([...DEEP_LINK_TARGETS]).toEqual(['/subscription', '/update-card']);
   });
 });
