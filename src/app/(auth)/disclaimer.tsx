@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { CrisisBanner } from '@/components/CrisisBanner';
 import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
@@ -33,6 +34,7 @@ export default function DisclaimerScreen() {
   const [checks, setChecks] = useState<boolean[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -47,7 +49,7 @@ export default function DisclaimerScreen() {
     return () => {
       alive = false;
     };
-  }, [d.loadError]);
+  }, [d.loadError, attempt]);
 
   const allChecked = checks.every(Boolean);
   const toggle = (i: number) => setChecks((prev) => prev.map((v, j) => (j === i ? !v : v)));
@@ -58,9 +60,20 @@ export default function DisclaimerScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         {error ? (
-          <Text variant="body" color="crisis" accessibilityRole="alert" style={styles.para}>
-            {error}
-          </Text>
+          <>
+            <Text variant="body" color="crisis" accessibilityRole="alert" style={styles.para}>
+              {error}
+            </Text>
+            <Button
+              label="Try again"
+              variant="secondary"
+              onPress={() => {
+                setError(null);
+                setContent(null);
+                setAttempt((a) => a + 1);
+              }}
+            />
+          </>
         ) : !content ? (
           <ActivityIndicator color={colors.textMuted} />
         ) : (
@@ -145,6 +158,10 @@ export default function DisclaimerScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Pre-account: the one screen a person in crisis has no other route from,
+          so the crisis line is fixed at the bottom here too. */}
+      <CrisisBanner compact />
     </View>
   );
 }
