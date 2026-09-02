@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,6 +17,7 @@ import {
   isEntryType,
   type EntryType,
 } from '@/features/journal/entryTypes';
+import { useDraftStore } from '@/features/journal/draftStore';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionTimer } from '@/features/questions/useQuestionTimer';
 import { useCadenceJournalingTimer } from '@/features/cadence/useCadence';
@@ -42,6 +43,35 @@ export function NewEntry() {
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // Autosave draft (R-30). Seed once from the persisted draft after it hydrates
+  // (async storage), then write every change through so closing the app never
+  // loses words. ponytail: a keystroke typed in the sub-frame before hydration
+  // could be replaced by the restored draft — negligible, and the restore is the
+  // writer's own earlier words, not data loss.
+  const seeded = useRef(false);
+  useEffect(() => {
+    const apply = () => {
+      if (seeded.current) return;
+      seeded.current = true;
+      const d = useDraftStore.getState();
+      if (d.text) {
+        setText(d.text);
+        setType(d.type);
+      }
+    };
+    if (useDraftStore.persist.hasHydrated()) apply();
+    else return useDraftStore.persist.onFinishHydration(apply);
+  }, []);
+
+  const onText = (t: string) => {
+    setText(t);
+    useDraftStore.getState().setDraft({ text: t, type });
+  };
+  const onType = (t: EntryType) => {
+    setType(t);
+    useDraftStore.getState().setDraft({ type: t, text });
+  };
+
   // Accumulate talk-time while composing a new entry too.
   useQuestionTimer();
   useCadenceJournalingTimer();
@@ -50,7 +80,11 @@ export function NewEntry() {
     setListening(true);
     try {
       const transcript = await services.voice.capture();
-      setText((t) => (t ? `${t} ${transcript}` : transcript));
+      setText((t) => {
+        const next = t ? `${t} ${transcript}` : transcript;
+        useDraftStore.getState().setDraft({ text: next, type });
+        return next;
+      });
     } catch {
       // Mic denied / unavailable / no speech: leave the field for typing rather
       // than inserting anything or throwing an unhandled rejection.
@@ -63,6 +97,7 @@ export function NewEntry() {
     if (!text.trim() || busy) return;
     setBusy(true);
     const { id, level } = await addEntry({ type, text: text.trim(), justHeard: false });
+    useDraftStore.getState().clear(); // entry saved → the draft is spent
     router.replace({ pathname: '/entry/[id]', params: { id } });
     if (level >= SafetyLevel.High) routeSafety({ level });
   };
@@ -121,13 +156,13 @@ export function NewEntry() {
       <ScrollView contentContainerStyle={styles.body}>
         <View style={styles.chips}>
           {ENTRY_TYPES.map((t) => (
-            <Chip key={t} label={t} selected={t === type} onPress={() => setType(t)} />
+            <Chip key={t} label={t} selected={t === type} onPress={() => onType(t)} />
           ))}
         </View>
 
         <TextInput
           value={text}
-          onChangeText={setText}
+          onChangeText={onText}
           placeholder={ENTRY_PLACEHOLDERS[type]}
           placeholderTextColor={colors.textMuted}
           multiline

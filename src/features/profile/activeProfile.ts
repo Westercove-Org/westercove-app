@@ -35,7 +35,7 @@ export function scopedStorage(suffix: string): StateStorage {
 /** Clear one profile's namespaced data (used when deleting a profile). */
 export async function clearProfileData(id: string): Promise<void> {
   await Promise.all(
-    ['session', 'entries', 'questions', 'library', 'whatiknow'].map((suffix) =>
+    ['session', 'entries', 'questions', 'library', 'whatiknow', 'entry-draft'].map((suffix) =>
       secureStorage.removeItem(`westercove.${id}.${suffix}`),
     ),
   );
