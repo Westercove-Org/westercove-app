@@ -35,7 +35,7 @@ const YOUR_SPACE: Row[] = [
 
 const SETTINGS: Row[] = [
   { label: 'Account', section: 'account' },
-  { label: 'Subscription', section: 'subscription' },
+  { label: 'Membership', section: 'subscription' },
   { label: 'Help', section: 'help' },
   { label: 'Legal', subtitle: 'Wellness-companion disclaimer', section: 'legal' },
 ];

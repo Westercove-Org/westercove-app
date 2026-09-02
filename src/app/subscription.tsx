@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { isSponsoredAccount } from '@/features/auth/sponsored';
 import { HttpError } from '@/lib/http';
 import { services, type SubscriptionStatus } from '@/services';
 import { useTheme } from '@/theme';
@@ -15,6 +16,7 @@ const LABELS: Record<string, string> = {
   trial_active: 'Free trial',
   active_monthly: 'Active — monthly',
   active_annual: 'Active — annual',
+  paid_active: 'Active',
   license_active: 'Sponsored license',
   lapsed: 'Lapsed',
 };
@@ -24,6 +26,8 @@ const LABELS: Record<string, string> = {
 export default function SubscriptionScreen() {
   const { colors } = useTheme();
   const sessionEntitlement = useSessionStore((s) => s.session?.entitlement ?? 'trial_active');
+  const entryPath = useSessionStore((s) => s.session?.entryPath);
+  const sponsorOrganization = useSessionStore((s) => s.session?.sponsorOrganization);
   const setEntitlement = useSessionStore((s) => s.setEntitlement);
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
 
@@ -45,6 +49,11 @@ export default function SubscriptionScreen() {
   }, [setEntitlement]);
 
   const entitlement = status?.entitlement ?? sessionEntitlement;
+
+  // Sponsored/partner accounts must NEVER see a price, plan, card, or cancel
+  // (spec R-60, a must-never-happen test). Sponsorship is structural, so key
+  // off the entry path + license entitlement, not a transient billing state.
+  const sponsored = isSponsoredAccount(entitlement, entryPath);
 
   // Who sees "Manage billing": any Stripe subscriber, PLUS anyone paying by
   // entitlement even without a stored stripe status — users provisioned before
@@ -119,8 +128,31 @@ export default function SubscriptionScreen() {
     }
   };
 
+  if (sponsored) {
+    return (
+      <StackScreen title="Membership">
+        <Card>
+          <Text variant="meta" color="textMuted">
+            Your membership
+          </Text>
+          <Text variant="cardTitle" style={{ marginTop: 4 }}>
+            {status?.sponsor?.orgName ?? sponsorOrganization
+              ? `Sponsored by ${status?.sponsor?.orgName ?? sponsorOrganization}`
+              : 'Sponsored membership'}
+          </Text>
+          <Text variant="body" color="textMuted" style={{ marginTop: 8 }}>
+            {status?.sponsor?.coverageEndsAt
+              ? `Your access is covered through ${status.sponsor.coverageEndsAt}.`
+              : 'Your access is covered by your organization.'}{' '}
+            Everything you write stays yours.
+          </Text>
+        </Card>
+      </StackScreen>
+    );
+  }
+
   return (
-    <StackScreen title="Subscription">
+    <StackScreen title="Membership">
       <Card>
         <Text variant="meta" color="textMuted">
           Current plan
@@ -128,6 +160,11 @@ export default function SubscriptionScreen() {
         <Text variant="cardTitle" style={{ marginTop: 4 }}>
           {LABELS[entitlement] ?? entitlement}
         </Text>
+        {status?.tier ? (
+          <Text variant="body" color="textMuted" style={{ marginTop: 2 }}>
+            {status.tier === 'premium' ? 'Premium plan' : 'Standard plan'}
+          </Text>
+        ) : null}
         {status?.trialDaysRemaining != null ? (
           <Text variant="body" color="textMuted" style={{ marginTop: 8 }}>
             You have {status.trialDaysRemaining}{' '}
@@ -188,6 +225,11 @@ export default function SubscriptionScreen() {
             subscription. Cancelling keeps your access until the end of the period
             you have paid for.
           </Text>
+          {status?.cardLast4 ? (
+            <Text variant="body" color="textMuted" style={{ marginTop: spacing.xs }}>
+              The card on file ends in {status.cardLast4}.
+            </Text>
+          ) : null}
           {portalError ? (
             <Text variant="bodySmall" color="crisis" style={{ marginTop: spacing.xs }}>
               {portalError}
