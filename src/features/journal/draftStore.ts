@@ -32,3 +32,20 @@ export const useDraftStore = create<DraftState>()(
     },
   ),
 );
+
+/**
+ * Re-point the draft to the active profile after a profile switch. The store is
+ * a singleton, so its scoped storage key changing (setActiveId) does not by
+ * itself move the in-memory draft; and persist.rehydrate() alone can't clear the
+ * leak — on a profile with no stored draft it reads null and leaves the previous
+ * profile's {text,type} in place. So read the (already re-pointed) scoped key
+ * first: reset to empty when absent, else rehydrate the stored draft.
+ */
+export async function reloadDraftForActiveProfile(): Promise<void> {
+  const raw = await scopedStorage('entry-draft').getItem('entry-draft');
+  if (raw == null) {
+    useDraftStore.setState({ text: '', type: 'Journal' });
+  } else {
+    await useDraftStore.persist.rehydrate();
+  }
+}

@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { useLibraryStore } from '@/features/discover/libraryStore';
+import { reloadDraftForActiveProfile, useDraftStore } from '@/features/journal/draftStore';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionsStore } from '@/features/questions/questionsStore';
 import { secureStorage } from '@/lib/secureStorage';
@@ -60,12 +61,14 @@ export async function reloadProfileStores(id: string, fresh = false): Promise<vo
     useQuestionsStore.getState().resetForProfile();
     useLibraryStore.getState().resetForProfile();
     useWhatIKnowStore.setState({ learned: [] });
+    useDraftStore.getState().clear();
   } else {
     await Promise.all([
       useSessionStore.persist.rehydrate(),
       useQuestionsStore.persist.rehydrate(),
       useLibraryStore.persist.rehydrate(),
       useWhatIKnowStore.persist.rehydrate(),
+      reloadDraftForActiveProfile(),
     ]);
     // Journal entries are server-authoritative now (no on-device persistence),
     // so load them for the just-rehydrated active profile instead of reading a

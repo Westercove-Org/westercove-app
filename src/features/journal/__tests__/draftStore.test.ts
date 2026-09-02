@@ -1,4 +1,5 @@
-import { useDraftStore } from '@/features/journal/draftStore';
+import { reloadDraftForActiveProfile, useDraftStore } from '@/features/journal/draftStore';
+import { setActiveId } from '@/features/profile/activeProfile';
 
 const reset = () => useDraftStore.setState({ text: '', type: 'Journal' });
 
@@ -23,5 +24,17 @@ describe('entry draft (R-30)', () => {
     useDraftStore.getState().clear();
     expect(useDraftStore.getState().text).toBe('');
     expect(useDraftStore.getState().type).toBe('Journal');
+  });
+
+  it('does not leak the draft across a profile switch (R-30 / Pam send-back)', async () => {
+    setActiveId('A');
+    useDraftStore.setState({ text: "A's words", type: 'Letter' });
+    // Switch to a profile with no stored draft: the singleton must not carry
+    // A's words into B's compose field.
+    setActiveId('B');
+    await reloadDraftForActiveProfile();
+    expect(useDraftStore.getState().text).toBe('');
+    expect(useDraftStore.getState().type).toBe('Journal');
+    setActiveId('p-1');
   });
 });
