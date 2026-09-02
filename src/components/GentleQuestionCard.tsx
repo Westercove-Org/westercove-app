@@ -6,18 +6,40 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
-import { useSessionStore } from '@/features/auth/sessionStore';
-import { hasCheckin, nextQuestion, type CadenceQuestion } from '@/features/questions/cadence';
+import { USE_FOUR_DOORS } from '@/constants/flags';
+import { lovedOneName, useSessionStore } from '@/features/auth/sessionStore';
+import { useCadenceStore } from '@/features/cadence/cadenceStore';
+import { useWhatIKnowStore } from '@/features/profile/whatIKnowStore';
+import { hasCheckin, nextQuestion, questionsFor, type CadenceQuestion, type CadenceState } from '@/features/questions/cadence';
 import { cadenceState, useQuestionsStore } from '@/features/questions/questionsStore';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
 
+/** What a question card does when the user answers / defers / skips. Lets the
+ * same form render for either cadence source without knowing which one it is. */
+interface QuestionActions {
+  onAnswer: (q: CadenceQuestion, value: string) => void;
+  /** "Not now". */
+  onDefer: () => void;
+  /** "Skip this one" (and the library "Skip" branch). */
+  onSkip: (q: CadenceQuestion) => void;
+}
+
 /**
- * The Home "gentle question" card, driven by the cadence engine
- * (features/questions/cadence.ts). Shows one eligible question at a time by
- * input type, records the answer, and lets the user set it aside or skip.
+ * The Home "gentle question" card. Behind USE_FOUR_DOORS it is driven by the
+ * server-owned cadence (features/cadence: `pendingQuestionIds`, which the
+ * backend pre-orders — the card renders them in order and never re-sorts, and
+ * deferred questions re-enter at the tail server-side). With the flag dark it
+ * keeps the legacy client engine (features/questions) untouched, so prod is
+ * unchanged until the 4-Doors flag flips in lockstep with the backend — the
+ * same ship-dark pattern the onboarding gate uses (app/gate.tsx).
  */
 export function GentleQuestionCard() {
+  return USE_FOUR_DOORS ? <ServerQuestionCard /> : <LegacyQuestionCard />;
+}
+
+/** System A (legacy): client-side `journalStage` + `nextQuestion` selection. */
+function LegacyQuestionCard() {
   // Subscribe to the fields that affect which question shows, so the card
   // re-renders as the cadence changes.
   useQuestionsStore((s) => s.journalStage);
@@ -28,21 +50,57 @@ export function GentleQuestionCard() {
   useQuestionsStore((s) => s.faithTradition);
   useQuestionsStore((s) => s.causeOfDeath);
   useSessionStore((s) => s.session);
+  const recordAnswer = useQuestionsStore((s) => s.recordAnswer);
+  const skip = useQuestionsStore((s) => s.skip);
+  const dismissCheckin = useQuestionsStore((s) => s.dismissCheckin);
+
   const state = cadenceState();
   const q = hasCheckin(state) ? nextQuestion(state) : null;
   if (!q) return null;
   // Keyed on the question: a new question gets a new form, rather than an
   // effect racing to clear the last answer out of the inputs.
-  return <QuestionForm key={q.id} q={q} />;
+  return (
+    <QuestionForm key={q.id} q={q} state={state} onAnswer={recordAnswer} onDefer={dismissCheckin} onSkip={skip} />
+  );
 }
 
-function QuestionForm({ q }: { q: CadenceQuestion }) {
-  const { colors } = useTheme();
+/** System B (server): render the first server-ordered pending question. The
+ *  list is pre-ordered by the backend; we take `pendingQuestionIds[0]` and never
+ *  re-sort. The catalog (features/questions) still supplies the prompt/input for
+ *  each id, and `cadenceState()` supplies prompt-interpolation context (name,
+ *  loved-one details). Selection and recording are entirely server-owned. */
+function ServerQuestionCard() {
+  useSessionStore((s) => s.session);
+  const pendingIds = useCadenceStore((s) => s.state?.pendingQuestionIds);
+  const answerQuestion = useCadenceStore((s) => s.answerQuestion);
+  const deferQuestion = useCadenceStore((s) => s.deferQuestion);
+  const skipQuestion = useCadenceStore((s) => s.skipQuestion);
+
   const state = cadenceState();
+  const firstId = pendingIds?.[0];
+  const q = firstId ? questionsFor(state.module).find((x) => x.id === firstId) ?? null : null;
+  if (!q) return null;
+
+  const onAnswer = (question: CadenceQuestion, value: string) => {
+    void answerQuestion(question.id, value);
+    // Keep the "What I Know" panel fed, as recording did under System A.
+    useWhatIKnowStore.getState().addLearnedLine(question.toLine(value.trim(), lovedOneName()));
+  };
+  return (
+    <QuestionForm
+      key={q.id}
+      q={q}
+      state={state}
+      onAnswer={onAnswer}
+      onDefer={() => void deferQuestion(q.id)}
+      onSkip={(question) => void skipQuestion(question.id)}
+    />
+  );
+}
+
+function QuestionForm({ q, state, onAnswer, onDefer, onSkip }: { q: CadenceQuestion; state: CadenceState } & QuestionActions) {
+  const { colors } = useTheme();
   const router = useRouter();
-  const recordAnswer = useQuestionsStore((s) => s.recordAnswer);
-  const skip = useQuestionsStore((s) => s.skip);
-  const dismissCheckin = useQuestionsStore((s) => s.dismissCheckin);
 
   const [text, setText] = useState('');
   const [choice, setChoice] = useState<string | null>(null);
@@ -61,9 +119,9 @@ function QuestionForm({ q }: { q: CadenceQuestion }) {
   const onSave = () => {
     if (saved) return;
     setSaved(true);
-    if (q.input === 'text') recordAnswer(q, text);
-    else if (q.input === 'choice' && choice) recordAnswer(q, choice);
-    else if (q.input === 'multi' && multi.length) recordAnswer(q, multi.join(', '));
+    if (q.input === 'text') onAnswer(q, text);
+    else if (q.input === 'choice' && choice) onAnswer(q, choice);
+    else if (q.input === 'multi' && multi.length) onAnswer(q, multi.join(', '));
   };
 
   const onChangeText = (t: string) => {
@@ -94,7 +152,7 @@ function QuestionForm({ q }: { q: CadenceQuestion }) {
                 library from Discover, and add to it any time.
               </Text>
               <View style={styles.actions}>
-                <Button label="Okay" onPress={() => skip(q)} />
+                <Button label="Okay" onPress={() => onSkip(q)} />
               </View>
             </>
           ) : (
@@ -109,7 +167,7 @@ function QuestionForm({ q }: { q: CadenceQuestion }) {
                 <Button
                   label="Create your library"
                   onPress={() => {
-                    recordAnswer(q, 'chose to build their library');
+                    onAnswer(q, 'chose to build their library');
                     router.push('/discover');
                   }}
                 />
@@ -167,9 +225,9 @@ function QuestionForm({ q }: { q: CadenceQuestion }) {
                 onPress={onSave}
                 disabled={!canSave || saved}
               />
-              <Button label="Not now" variant="secondary" onPress={dismissCheckin} />
+              <Button label="Not now" variant="secondary" onPress={onDefer} />
               {q.optional ? (
-                <Button label="Skip this one" variant="secondary" onPress={() => skip(q)} />
+                <Button label="Skip this one" variant="secondary" onPress={() => onSkip(q)} />
               ) : null}
             </View>
           </>
