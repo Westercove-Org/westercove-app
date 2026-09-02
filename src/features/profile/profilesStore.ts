@@ -6,6 +6,7 @@ import { useLibraryStore } from '@/features/discover/libraryStore';
 import { reloadDraftForActiveProfile, useDraftStore } from '@/features/journal/draftStore';
 import { useEntriesStore } from '@/features/journal/entriesStore';
 import { useQuestionsStore } from '@/features/questions/questionsStore';
+import { reloadSafetyForActiveProfile, useSafetyStore } from '@/features/safety/safetyStore';
 import { secureStorage } from '@/lib/secureStorage';
 import { setActiveId } from './activeProfile';
 import { useWhatIKnowStore } from './whatIKnowStore';
@@ -73,6 +74,7 @@ export async function reloadProfileStores(id: string, fresh = false): Promise<vo
     useLibraryStore.getState().resetForProfile();
     useWhatIKnowStore.setState({ learned: [] });
     useDraftStore.getState().clear();
+    useSafetyStore.getState().clear();
   } else {
     await Promise.all([
       useSessionStore.persist.rehydrate(),
@@ -80,6 +82,7 @@ export async function reloadProfileStores(id: string, fresh = false): Promise<vo
       useLibraryStore.persist.rehydrate(),
       useWhatIKnowStore.persist.rehydrate(),
       reloadDraftForActiveProfile(),
+      reloadSafetyForActiveProfile(),
     ]);
     // Journal entries are server-authoritative now (no on-device persistence),
     // so load them for the just-rehydrated active profile instead of reading a
@@ -129,6 +132,7 @@ export const useProfilesStore = create<ProfilesState>()(
         useLibraryStore.getState().resetForProfile();
         useWhatIKnowStore.setState({ learned: [] });
         useDraftStore.getState().clear();
+        useSafetyStore.getState().clear();
         set((s) => ({
           profiles: [...s.profiles, { id, name: name.trim() || `Profile ${s.profiles.length + 1}` }],
           activeId: id,
