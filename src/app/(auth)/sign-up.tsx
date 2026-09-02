@@ -10,7 +10,7 @@ import { copy } from '@/constants/copy';
 import { formatFirstChargeDate } from '@/constants/billing';
 import { isEmail } from '@/features/auth/email';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
-import { services, type PlanId, type PricingResult } from '@/services';
+import { services, type PlanId, type PlanTier, type PricingResult } from '@/services';
 import { HttpError } from '@/lib/http';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
@@ -75,7 +75,7 @@ export default function SignUpScreen() {
   const [pricing, setPricing] = useState<PricingResult | null | undefined>(undefined);
   // Which plan the user is paying for. Defaults to monthly, matching the server's
   // default, so an untouched selector and the checkout agree.
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>('monthly');
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>('standard_monthly');
 
   // Return-key focus chaining across the merged form (email -> password -> confirm).
   const passwordRef = useRef<TextInput>(null);
@@ -228,41 +228,74 @@ export default function SignUpScreen() {
     );
   };
 
-  /** Monthly/Yearly selector, shown only once pricing has loaded (both plans
-   * always present on a 200). Renders each plan's server-formatted `display`
-   * verbatim — no computed price, no invented savings badge. */
+  /** Plan grid, shown once pricing has loaded (all four plans present on a 200).
+   * Grouped by tier, monthly before annual within each; monthly is preselected
+   * so a grieving person is never defaulted into the larger annual charge (R-2).
+   * Renders each plan's server-formatted `display` verbatim — no computed price —
+   * with a static annual framing caption. */
   const planSelector = () => {
     if (!pricing) return null;
+    const tiers: { tier: PlanTier; label: string }[] = [
+      { tier: 'standard', label: c.planStandard },
+      { tier: 'premium', label: c.planPremium },
+    ];
     return (
       <View style={styles.fieldBlock}>
         <Text variant="cardTitle">{c.choosePlan}</Text>
-        <View style={styles.planRow}>
-          {pricing.plans.map((p) => {
-            const active = p.plan === selectedPlan;
-            const label = p.plan === 'monthly' ? c.planMonthly : c.planYearly;
-            return (
-              <Pressable
-                key={p.plan}
-                onPress={() => setSelectedPlan(p.plan)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: active }}
-                accessibilityLabel={`${label}, ${p.display}`}
-                style={[
-                  styles.planCard,
-                  { borderColor: active ? colors.forest : colors.line, backgroundColor: colors.card },
-                  active && styles.planCardActive,
-                ]}
-              >
-                <Text variant="cardTitle" color={active ? 'forest' : 'textPrimary'}>
-                  {label}
-                </Text>
-                <Text variant="bodySmall" color="textMuted">
-                  {p.display}
-                </Text>
-              </Pressable>
+        {tiers.map(({ tier, label }) => {
+          // Monthly before annual within the tier.
+          const plans = pricing.plans
+            .filter((p) => p.tier === tier)
+            .sort(
+              (a, b) => (a.interval === 'month' ? -1 : 1) - (b.interval === 'month' ? -1 : 1),
             );
-          })}
-        </View>
+          if (plans.length === 0) return null;
+          return (
+            <View key={tier} style={styles.tierGroup}>
+              <Text variant="sectionLabel" color="textMuted">
+                {label}
+              </Text>
+              <View style={styles.planRow}>
+                {plans.map((p) => {
+                  const active = p.plan === selectedPlan;
+                  const annual = p.interval === 'year';
+                  const intervalLabel = annual ? c.planAnnual : c.planMonthly;
+                  return (
+                    <Pressable
+                      key={p.plan}
+                      onPress={() => setSelectedPlan(p.plan)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={`${label} ${intervalLabel}, ${p.display}${
+                        annual ? `, ${c.annualCaption}` : ''
+                      }`}
+                      style={[
+                        styles.planCard,
+                        {
+                          borderColor: active ? colors.forest : colors.line,
+                          backgroundColor: colors.card,
+                        },
+                        active && styles.planCardActive,
+                      ]}
+                    >
+                      <Text variant="cardTitle" color={active ? 'forest' : 'textPrimary'}>
+                        {intervalLabel}
+                      </Text>
+                      <Text variant="bodySmall" color="textMuted">
+                        {p.display}
+                      </Text>
+                      {annual ? (
+                        <Text variant="bodySmall" color="forest">
+                          {c.annualCaption}
+                        </Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })}
       </View>
     );
   };
@@ -479,6 +512,7 @@ const styles = StyleSheet.create({
   },
   disabled: { opacity: 0.45 },
   center: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  tierGroup: { gap: spacing.sm, marginTop: spacing.sm },
   planRow: { flexDirection: 'row', gap: spacing.sm },
   planCard: {
     flex: 1,

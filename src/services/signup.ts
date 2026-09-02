@@ -44,8 +44,25 @@ export interface OnboardingVerifyResult {
   expiresAt: string;
 }
 
-/** The two subscription plans, in fixed order (monthly first). */
-export type PlanId = 'monthly' | 'yearly';
+/** The four subscription plans (tier × interval), grouped by tier in the UI,
+ * monthly first within each tier (R-1 #164). The server still accepts the
+ * legacy 'monthly'/'yearly' keys, but the app only ever sends these four. */
+export type PlanId =
+  | 'standard_monthly'
+  | 'standard_annual'
+  | 'premium_monthly'
+  | 'premium_annual';
+
+/** Product tier — the axis the plan grid groups by. */
+export type PlanTier = 'standard' | 'premium';
+
+/** The four plan ids, in grid order (standard first, monthly before annual). */
+export const KNOWN_PLAN_IDS: PlanId[] = [
+  'standard_monthly',
+  'standard_annual',
+  'premium_monthly',
+  'premium_annual',
+];
 
 /** One selectable plan. `display` is a preformatted price string — render it
  * verbatim, never compute or format a price from `amount`. `amount`/`currency`/
@@ -53,6 +70,7 @@ export type PlanId = 'monthly' | 'yearly';
  * the UI renders them (that would be a computed price in disguise). */
 export interface PlanOption {
   plan: PlanId;
+  tier: PlanTier;
   display: string;
   amount: number;
   currency: string;
@@ -60,9 +78,9 @@ export interface PlanOption {
 }
 
 /** Trial pricing for the pre-card disclosure, from the Stripe-backed pre-auth
- * endpoint (no account exists yet). `plans` is monthly-first and always carries
- * BOTH plans on a 200 (a one-plan screen would misrepresent the choice, so the
- * server 503s if either is unavailable). `trialDays`/`firstChargeDate` are
+ * endpoint (no account exists yet). `plans` always carries all FOUR plans on a
+ * 200 (standard/premium × monthly/annual; a partial grid would misrepresent the
+ * choice, so the server 503s if any price is unconfigured — all four or nothing). `trialDays`/`firstChargeDate` are
  * plan-INDEPENDENT (the trial is set at checkout-session level) — render once,
  * never per-plan. `firstChargeDate` is server-computed (utcnow + trial), never
  * the device clock. On failure the endpoint 503s with no fallback by design —
@@ -140,21 +158,31 @@ export class ApiSignupService implements SignupService {
 
   async getPricing(): Promise<PricingResult> {
     const r = await apiClient.get<{
-      plans?: { plan: string; display: string; amount: number; currency: string; interval: string }[];
+      plans?: {
+        plan: string;
+        tier: string;
+        display: string;
+        amount: number;
+        currency: string;
+        interval: string;
+      }[];
       trial_days: number;
       first_charge_date: string;
     }>('/auth/signup/pricing');
-    // Build against `plans` only. The response may temporarily also carry the old
-    // flat top-level display/amount/... mirroring monthly (a compat shim for the
-    // pre-selector app); it is being deleted, so it is ignored entirely here.
+    // Keep only the four known plans with a valid tier; ignore any unknown key
+    // (never rendered).
     const plans = (r.plans ?? []).filter(
-      (p): p is PlanOption => p.plan === 'monthly' || p.plan === 'yearly',
+      (p): p is PlanOption =>
+        KNOWN_PLAN_IDS.includes(p.plan as PlanId) &&
+        (p.tier === 'standard' || p.tier === 'premium'),
     );
-    // A 200 always carries both known plans. Anything less is malformed — block
-    // the paid path (throw → caller shows no price), never render a partial
-    // choice. Same posture as never guessing a fallback price.
-    if (!plans.some((p) => p.plan === 'monthly') || !plans.some((p) => p.plan === 'yearly')) {
-      throw new Error('pricing: expected both monthly and yearly plans');
+    // A 200 always carries all four plans. Anything less is malformed — block the
+    // paid path (throw → caller shows no price), never a partial choice. Same
+    // posture as never guessing a fallback price.
+    if (KNOWN_PLAN_IDS.some((id) => !plans.some((p) => p.plan === id))) {
+      throw new Error(
+        'pricing: expected all four plans (standard/premium × monthly/annual)',
+      );
     }
     return { plans, trialDays: r.trial_days, firstChargeDate: r.first_charge_date };
   }

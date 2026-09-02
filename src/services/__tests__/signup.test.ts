@@ -17,26 +17,21 @@ describe('ApiSignupService', () => {
   });
 
   it('getPricing GETs the pre-auth pricing endpoint and maps snake_case to camelCase', async () => {
+    const four = [
+        { plan: 'standard_monthly', tier: 'standard', display: '$24.99/month', amount: 2499, currency: 'usd', interval: 'month' },
+        { plan: 'standard_annual', tier: 'standard', display: '$274.89/year', amount: 27489, currency: 'usd', interval: 'year' },
+        { plan: 'premium_monthly', tier: 'premium', display: '$39.99/month', amount: 3999, currency: 'usd', interval: 'month' },
+        { plan: 'premium_annual', tier: 'premium', display: '$439.89/year', amount: 43989, currency: 'usd', interval: 'year' },
+    ];
     mockGet.mockResolvedValue({
-      plans: [
-        { plan: 'monthly', display: '$8.99/month', amount: 899, currency: 'usd', interval: 'month' },
-        { plan: 'yearly', display: '$79.99/year', amount: 7999, currency: 'usd', interval: 'year' },
-      ],
-      // Temporary compat mirror of the monthly plan — must be ignored.
-      display: '$8.99/month',
-      amount: 899,
-      currency: 'usd',
-      interval: 'month',
+      plans: four,
       trial_days: 14,
       first_charge_date: '2026-09-15T00:00:00',
     });
     const r = await svc.getPricing();
     expect(mockGet).toHaveBeenCalledWith('/auth/signup/pricing');
     expect(r).toEqual({
-      plans: [
-        { plan: 'monthly', display: '$8.99/month', amount: 899, currency: 'usd', interval: 'month' },
-        { plan: 'yearly', display: '$79.99/year', amount: 7999, currency: 'usd', interval: 'year' },
-      ],
+      plans: four,
       trialDays: 14,
       firstChargeDate: '2026-09-15T00:00:00',
     });
@@ -44,22 +39,29 @@ describe('ApiSignupService', () => {
 
   it('getPricing throws when a known plan is missing (blocks the paid path, no partial screen)', async () => {
     mockGet.mockResolvedValue({
-      plans: [{ plan: 'monthly', display: '$8.99/month', amount: 899, currency: 'usd', interval: 'month' }],
+      plans: [
+        { plan: 'standard_monthly', tier: 'standard', display: '$24.99/month', amount: 2499, currency: 'usd', interval: 'month' },
+        { plan: 'standard_annual', tier: 'standard', display: '$274.89/year', amount: 27489, currency: 'usd', interval: 'year' },
+        { plan: 'premium_monthly', tier: 'premium', display: '$39.99/month', amount: 3999, currency: 'usd', interval: 'month' },
+      ],
       trial_days: 14,
       first_charge_date: '2026-09-15T00:00:00',
     });
-    await expect(svc.getPricing()).rejects.toThrow(/monthly and yearly/);
+    await expect(svc.getPricing()).rejects.toThrow(/all four plans/);
   });
 
   it('getPricing drops an unknown plan value and then blocks (unknown plan is not rendered)', async () => {
     mockGet.mockResolvedValue({
       plans: [
-        { plan: 'monthly', display: '$8.99/month', amount: 899, currency: 'usd', interval: 'month' },
-        { plan: 'weekly', display: '$2.99/week', amount: 299, currency: 'usd', interval: 'week' },
+        { plan: 'standard_monthly', tier: 'standard', display: '$24.99/month', amount: 2499, currency: 'usd', interval: 'month' },
+        { plan: 'standard_annual', tier: 'standard', display: '$274.89/year', amount: 27489, currency: 'usd', interval: 'year' },
+        { plan: 'premium_monthly', tier: 'premium', display: '$39.99/month', amount: 3999, currency: 'usd', interval: 'month' },
+        { plan: 'weekly', tier: 'standard', display: '$2.99/week', amount: 299, currency: 'usd', interval: 'week' },
       ],
       trial_days: 14,
       first_charge_date: '2026-09-15T00:00:00',
     });
+    // The unknown 'weekly' is dropped; premium_annual is then missing → block.
     await expect(svc.getPricing()).rejects.toThrow();
   });
 
@@ -76,18 +78,18 @@ describe('ApiSignupService', () => {
 
   it('startPaymentCheckout POSTs email + password + plan and maps snake_case to camelCase', async () => {
     mockPost.mockResolvedValue({ pending_signup_id: 'tok_1', checkout_url: 'https://stripe/x' });
-    const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB', plan: 'yearly' });
+    const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB', plan: 'standard_annual' });
     expect(mockPost).toHaveBeenCalledWith('/auth/signup/payment/checkout', {
       email: 'a@b.co',
       password: 'sup3rsecret!AB',
-      plan: 'yearly',
+      plan: 'standard_annual',
     });
     expect(r).toEqual({ pendingSignupId: 'tok_1', checkoutUrl: 'https://stripe/x' });
   });
 
   it('passes through a null checkout_url (already-registered, enumeration-safe)', async () => {
     mockPost.mockResolvedValue({ pending_signup_id: 'tok_2', checkout_url: null });
-    const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB', plan: 'monthly' });
+    const r = await svc.startPaymentCheckout({ email: 'a@b.co', password: 'sup3rsecret!AB', plan: 'standard_monthly' });
     expect(r.checkoutUrl).toBeNull();
   });
 
