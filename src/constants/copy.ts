@@ -120,8 +120,14 @@ export const copy = {
     emailPlaceholder: 'you@example.com',
     howToJoin: 'How would you like to join?',
     choosePlan: 'Choose your plan',
+    planStandard: 'Standard',
+    planPremium: 'Premium',
     planMonthly: 'Monthly',
-    planYearly: 'Yearly',
+    planAnnual: 'Annual',
+    // Static annual framing (the annual price is eleven months of the monthly
+    // one, for both tiers). Not a computed number; if the annual:monthly ratio
+    // ever changes, update this line.
+    annualCaption: 'Eleven months for twelve',
     orgCodeOption: 'I have an organization code',
     orgCodeOptionHint: 'Join through your workplace or provider.',
     payOption: 'Pay to join',
