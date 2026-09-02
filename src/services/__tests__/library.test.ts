@@ -41,6 +41,28 @@ describe('ApiLibraryService', () => {
     expect(book.enrichment).toEqual({ id: 9, status: 'researching', confidence: 'low', summary: undefined, themes: [] });
   });
 
+  it('adds a curated book by slug (no title/authors) and maps the returned slug', async () => {
+    mockPost.mockResolvedValue({
+      id: 42,
+      profile_id: 3,
+      title: 'The Loss of a Pet',
+      authors: [],
+      source: 'curated',
+      slug: 'loss-of-a-pet',
+    });
+
+    const book = await svc.addCuratedBook(3, 'loss-of-a-pet');
+
+    expect(mockPost).toHaveBeenCalledWith('/library/books', { profile_id: 3, slug: 'loss-of-a-pet' });
+    expect(book).toMatchObject({ id: 42, source: 'curated', slug: 'loss-of-a-pet' });
+  });
+
+  it('maps a null slug on non-curated / legacy rows', async () => {
+    mockGet.mockResolvedValue([{ id: 1, profile_id: 3, title: 'B', source: 'manual' }]);
+    const [book] = await svc.listBooks(3);
+    expect(book.slug).toBeNull();
+  });
+
   it('lists a profile\'s books via query param', async () => {
     mockGet.mockResolvedValue([{ id: 1, profile_id: 3, title: 'B', source: 'manual' }]);
     const books = await svc.listBooks(3);

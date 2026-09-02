@@ -73,6 +73,7 @@ describe('libraryStore server shelf', () => {
       title: 'My Book',
       authors: ['Me'],
       source: 'manual',
+      slug: null,
       enrichment: { id: 9, status: 'researching', confidence: 'low', themes: [] },
     });
 
@@ -108,13 +109,54 @@ describe('libraryStore server shelf', () => {
       myLibrary: [{ id: 'own-1', title: 'B', author: 'Me', source: 'own', spine: '#000', backendId: 5 }],
     });
     jest.spyOn(services.library, 'listBooks').mockResolvedValue([
-      { id: 5, profileId: 3, title: 'B', authors: ['Me'], source: 'manual', enrichment: { id: 9, status: 'approved', confidence: 'high', summary: 'Done', themes: [] } },
+      { id: 5, profileId: 3, title: 'B', authors: ['Me'], source: 'manual', slug: null, enrichment: { id: 9, status: 'approved', confidence: 'high', summary: 'Done', themes: [] } },
     ]);
 
     await useLibraryStore.getState().syncServerBooks();
 
     expect(useLibraryStore.getState().myLibrary[0].summary).toBe('Done');
     expect(useLibraryStore.getState().myLibrary[0].enrichmentStatus).toBe('approved');
+  });
+
+  it('addToLibrary persists a curated add by slug and keeps the backend id', async () => {
+    const addCurated = jest.spyOn(services.library, 'addCuratedBook').mockResolvedValue({
+      id: 42,
+      profileId: 3,
+      title: 'The Loss of a Pet',
+      authors: [],
+      source: 'curated',
+      slug: 'loss-of-a-pet',
+    });
+
+    useLibraryStore.getState().addToLibrary('loss-of-a-pet');
+
+    // The local add is instant and does not wait on the network.
+    expect(useLibraryStore.getState().myLibrary[0].id).toBe('loss-of-a-pet');
+    expect(addCurated).toHaveBeenCalledWith(3, 'loss-of-a-pet');
+
+    // The fire-and-forget persist attaches the backend id once it resolves.
+    await new Promise((r) => setTimeout(r, 0));
+    expect(useLibraryStore.getState().myLibrary[0].backendId).toBe(42);
+  });
+
+  it('syncServerBooks attaches backendId to a curated book by slug, leaving its display untouched', async () => {
+    // A curated book added before a profile existed: no backendId yet.
+    useLibraryStore.setState({
+      myLibrary: [
+        { id: 'loss-of-a-pet', title: 'The Loss of a Pet', author: 'Wallace Sife', source: 'westercove', spine: '#26114E' },
+      ],
+    });
+    jest.spyOn(services.library, 'listBooks').mockResolvedValue([
+      { id: 77, profileId: 3, title: 'server title', authors: [], source: 'curated', slug: 'loss-of-a-pet' },
+    ]);
+
+    await useLibraryStore.getState().syncServerBooks();
+
+    const b = useLibraryStore.getState().myLibrary[0];
+    expect(b.backendId).toBe(77);
+    // Curated display stays catalog-owned — the server title/enrichment is not merged in.
+    expect(b.title).toBe('The Loss of a Pet');
+    expect(b.summary).toBeUndefined();
   });
 });
 
