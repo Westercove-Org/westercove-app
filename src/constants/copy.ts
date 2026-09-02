@@ -70,6 +70,13 @@ export const copy = {
       'By continuing, you confirm you are 18 or older and that you agree to our Terms and Privacy notice.',
     continue: 'I understand, continue',
     goBack: 'Go back',
+    // Full versioned disclaimer surface (R-34): the summary + these labels are
+    // the app's; the full text, checkbox labels and action labels come from the
+    // server so a copy/version change needs no app release.
+    saving: 'Saving…',
+    loadError: 'We could not load the disclaimer just now. Please try again in a moment.',
+    saveError: 'We could not record that just now. Please try again in a moment.',
+    upToDate: 'You have accepted the current version. Thank you.',
   },
 
   signIn: {
