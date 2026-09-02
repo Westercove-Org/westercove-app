@@ -6,6 +6,7 @@ import { CrisisBanner } from '@/components/CrisisBanner';
 import { Text } from '@/components/ui/Text';
 import { useProfilesStore } from '@/features/profile/profilesStore';
 import { useSessionStore } from '@/features/auth/sessionStore';
+import { planLimitFrom, type PlanLimit } from '@/features/billing/planLimit';
 import { services } from '@/services';
 import { useTheme } from '@/theme';
 import { radii, spacing } from '@/theme/tokens';
@@ -44,7 +45,18 @@ const Q4_PROMPT: Record<Door, string> = {
  * day-zero wizard only when the USE_FOUR_DOORS flag is on. Post-gate questions
  * (spoken in chat) are a later phase — not built here.
  */
-export function FourDoorsGate() {
+export function FourDoorsGate({
+  onCreated,
+  onPlanLimit,
+}: {
+  /** Add-a-profile mode (sv7-premium-second-profile): the parent takes the new
+   * backend profile id + answers and creates/switches the profile itself,
+   * instead of completing the onboarding gate. Absent = onboarding (default). */
+  onCreated?: (profileId: number, answers: GateState) => void;
+  /** Called instead of a generic error when the create hits a plan cap (402);
+   * the parent renders the upgrade card. Absent = onboarding, which never caps. */
+  onPlanLimit?: (limit: PlanLimit) => void;
+} = {}) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const completeFourDoorsGate = useSessionStore((s) => s.completeFourDoorsGate);
@@ -66,14 +78,27 @@ export function FourDoorsGate() {
     setBusy(true);
     try {
       const { profileId } = await services.survey.submitFourDoorsGate(buildGatePayload(answers));
-      // The profile LABEL is the loved-one's name, not the user's (self door →
-      // empty → a neutral "Profile N"). The user's name is a separate field.
+      // Add-a-profile mode: hand the new backend id + answers back; the parent
+      // creates and switches to the profile (and navigates).
+      if (onCreated) {
+        onCreated(profileId, answers);
+        return;
+      }
+      // Onboarding: the profile LABEL is the loved-one's name, not the user's
+      // (self door → empty → a neutral "Profile N"). The user's name is separate.
       useProfilesStore.getState().setActiveName(answers.lovedOneName?.trim() ?? '');
       // Marks the gate complete, adopts the profile id, and copies the answers
       // into the session (door canonical, mode derived); the auth guard then
       // redirects to the tab shell.
       completeFourDoorsGate(profileId, answers);
-    } catch {
+    } catch (err) {
+      // A profile cap (402) in add mode is an upgrade prompt, not an error.
+      const limit = onPlanLimit ? planLimitFrom(err) : null;
+      if (limit) {
+        onPlanLimit?.(limit);
+        setBusy(false);
+        return;
+      }
       setError('Something went wrong setting up your companion. Please try again.');
       setBusy(false);
     }

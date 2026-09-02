@@ -42,6 +42,17 @@ interface ProfilesState {
   /** On the first real sign-in, wipe any local demo/seed data and start the
    * real user clean on the single default profile. Idempotent. */
   startRealUser: () => void;
+  /** Add a second loved-one profile (sv7-premium-second-profile). Points the
+   * per-profile DATA stores at a fresh namespace and appends the roster entry,
+   * then returns the new id; the caller runs the gate and
+   * `completeFourDoorsGate` writes the new profile's session (inheriting the
+   * account's email/entitlement/entry-path from the current session). The
+   * session store is deliberately NOT reset here so that inheritance works. */
+  addProfile: (name: string) => string;
+  /** Switch to an existing profile: re-point every per-profile store at its
+   * namespace (session/questions/library/what-I-know/journal-draft all
+   * rehydrate — the #91-safe switch path). */
+  switchProfile: (id: string) => void;
 }
 
 /**
@@ -104,6 +115,32 @@ export const useProfilesStore = create<ProfilesState>()(
           initialized: [DEFAULT_PROFILE.id],
           realSignInDone: true,
         });
+      },
+
+      addProfile(name) {
+        const id = `p-${Date.now()}`;
+        // Point the per-profile DATA stores at the new namespace and reset them to
+        // empty (persist saves the clean slate under `id`). The SESSION store is
+        // left as-is so completeFourDoorsGate can inherit the account fields
+        // (email/entitlement/entry-path) and write the new profile's session.
+        setActiveId(id);
+        useEntriesStore.getState().resetForProfile();
+        useQuestionsStore.getState().resetForProfile();
+        useLibraryStore.getState().resetForProfile();
+        useWhatIKnowStore.setState({ learned: [] });
+        useDraftStore.getState().clear();
+        set((s) => ({
+          profiles: [...s.profiles, { id, name: name.trim() || `Profile ${s.profiles.length + 1}` }],
+          activeId: id,
+          initialized: [...s.initialized, id],
+        }));
+        return id;
+      },
+
+      switchProfile(id) {
+        if (id === get().activeId) return;
+        set({ activeId: id });
+        void reloadProfileStores(id);
       },
 
       setActiveName(name) {
