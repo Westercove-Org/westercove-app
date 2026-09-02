@@ -69,18 +69,16 @@ export default function LegalDisclaimerScreen() {
 
   return (
     <StackScreen title={content?.title ?? d.title}>
-        {/* Plain-language summary (the beta paragraphs) always opens. */}
-        <Card>
-          <Text variant="body" style={styles.para}>
-            {d.body1}
-          </Text>
-          <Text variant="body" style={styles.para}>
-            {d.body2}
-          </Text>
-          <Text variant="body" color="textMuted" style={styles.para}>
-            {d.body3}
-          </Text>
-        </Card>
+        {/* Plain-language summary — server-owned versioned legal copy, not chrome. */}
+        {content?.summary?.length ? (
+          <Card>
+            {content.summary.map((line, i) => (
+              <Text key={`s${i}`} variant="body" style={styles.para}>
+                {line}
+              </Text>
+            ))}
+          </Card>
+        ) : null}
 
         {error ? (
           <Text variant="bodySmall" color="crisis">

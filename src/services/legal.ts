@@ -14,6 +14,9 @@ import { apiClient } from '@/lib/http';
 export interface DisclaimerContent {
   version: string;
   title: string;
+  /** Plain-language intro paragraphs shown above the full text. Versioned
+   * legal copy (not chrome), so it is server-owned like everything else here. */
+  summary: string[];
   paragraphs: string[];
   bullets: string[];
   /** One required checkbox per entry (e.g. 18+, read-and-understood). */
@@ -44,6 +47,7 @@ export interface LegalService {
 interface ContentWire {
   version: string;
   title: string;
+  summary?: string[];
   paragraphs: string[];
   bullets: string[];
   acknowledgement_checks: string[];
@@ -68,6 +72,7 @@ function toStatus(r: StatusWire): DisclaimerStatus {
     content: {
       version: c.version,
       title: c.title,
+      summary: c.summary ?? [],
       paragraphs: c.paragraphs,
       bullets: c.bullets,
       acknowledgementChecks: c.acknowledgement_checks,
