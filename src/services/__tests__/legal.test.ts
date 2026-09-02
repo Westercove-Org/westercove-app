@@ -66,6 +66,17 @@ describe('ApiLegalService', () => {
     });
   });
 
+  it('getContent GETs the PUBLIC no-auth content endpoint and maps it', async () => {
+    mockGet.mockResolvedValue(wire.content);
+    const c = await svc.getContent('disclaimer');
+    expect(mockGet).toHaveBeenCalledWith('/legal-disclaimer/content', {
+      auth: false,
+      query: { document: 'disclaimer' },
+    });
+    expect(c.title).toBe('Before you begin');
+    expect(c.acknowledgementLabel).toBe('I accept');
+  });
+
   it('acknowledge posts the device_id and maps the refreshed status', async () => {
     mockPost.mockResolvedValue({ ...wire, required: false, reason: null });
     const s = await svc.acknowledge('device-abcdefgh');

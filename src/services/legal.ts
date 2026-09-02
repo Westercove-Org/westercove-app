@@ -49,6 +49,10 @@ export interface LegalService {
   getStatus(deviceId: string, document?: LegalDocument): Promise<DisclaimerStatus>;
   /** Record acceptance of the current version for this device (append-only). */
   acknowledge(deviceId: string, document?: LegalDocument): Promise<DisclaimerStatus>;
+  /** PUBLIC, no-auth content for the pre-account gate: version + copy only, no
+   * ack/user state (#183). The pre-auth screen displays this and records the
+   * acknowledgement via `acknowledge` once the account exists. */
+  getContent(document?: LegalDocument): Promise<DisclaimerContent>;
 }
 
 interface ContentWire {
@@ -71,24 +75,27 @@ interface StatusWire {
   content: ContentWire;
 }
 
+function toContent(c: ContentWire): DisclaimerContent {
+  return {
+    version: c.version,
+    title: c.title,
+    summary: c.summary ?? [],
+    paragraphs: c.paragraphs,
+    bullets: c.bullets,
+    acknowledgementChecks: c.acknowledgement_checks,
+    acknowledgementLabel: c.acknowledgement_label,
+    saveAndReadLaterLabel: c.save_and_read_later_label,
+    communityGuidelinesUrl: c.community_guidelines_url,
+    lastUpdated: c.last_updated ?? null,
+  };
+}
+
 function toStatus(r: StatusWire): DisclaimerStatus {
-  const c = r.content;
   return {
     required: r.required,
     reason: r.reason,
     currentVersion: r.current_version,
-    content: {
-      version: c.version,
-      title: c.title,
-      summary: c.summary ?? [],
-      paragraphs: c.paragraphs,
-      bullets: c.bullets,
-      acknowledgementChecks: c.acknowledgement_checks,
-      acknowledgementLabel: c.acknowledgement_label,
-      saveAndReadLaterLabel: c.save_and_read_later_label,
-      communityGuidelinesUrl: c.community_guidelines_url,
-      lastUpdated: c.last_updated ?? null,
-    },
+    content: toContent(r.content),
   };
 }
 
@@ -106,6 +113,15 @@ export class ApiLegalService implements LegalService {
       await apiClient.post('/legal-disclaimer/acknowledge', {
         device_id: deviceId,
         ...(document ? { document } : {}),
+      }),
+    );
+  }
+
+  async getContent(document?: LegalDocument): Promise<DisclaimerContent> {
+    return toContent(
+      await apiClient.get('/legal-disclaimer/content', {
+        auth: false,
+        query: document ? { document } : {},
       }),
     );
   }

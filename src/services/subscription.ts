@@ -46,7 +46,7 @@ export interface SubscriptionService {
   restore(): Promise<Entitlement>;
   /** Redeem a sponsor license code → the entitlement it grants. */
   redeemLicense(code: string): Promise<LicenseRedeemResult>;
-  /** Schedule deletion with a 30-day reversible grace period. */
+  /** Schedule deletion with a 25-day reversible grace period. */
   scheduleDeletion(confirmEmail: string): Promise<{ deletesOn: string }>;
   cancelDeletion(): Promise<void>;
   /** Mint a Stripe Customer Portal session and return its URL. The app opens it
@@ -122,7 +122,7 @@ export class MockSubscriptionService implements SubscriptionService {
   }
 
   async scheduleDeletion(_confirmEmail: string): Promise<{ deletesOn: string }> {
-    return { deletesOn: plusDays(30) };
+    return { deletesOn: plusDays(25) };
   }
 
   async cancelDeletion(): Promise<void> {}
