@@ -138,6 +138,19 @@ describe('ApiSubscriptionService', () => {
     await expect(svc.createPortalSession()).rejects.toThrow();
   });
 
+  it('cancelSubscription posts cancel-at-period-end then returns the refreshed status', async () => {
+    mockPost.mockResolvedValue({});
+    mockGet.mockResolvedValue({
+      entitlement: 'active_monthly',
+      stripe: { status: 'active', current_period_end: '2026-10-01T00:00:00', cancel_at_period_end: true },
+    });
+    const s = await svc.cancelSubscription();
+    expect(mockPost).toHaveBeenCalledWith('/api/account/subscription/cancel');
+    expect(mockGet).toHaveBeenCalledWith('/api/account/subscription');
+    expect(s.cancelAtPeriodEnd).toBe(true);
+    expect(s.entitlement).toBe('active_monthly');
+  });
+
   it('restore posts and returns the granted entitlement', async () => {
     mockPost.mockResolvedValue({ entitlement: 'active_monthly' });
     expect(await svc.restore()).toBe('active_monthly');

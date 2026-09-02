@@ -54,6 +54,10 @@ export interface SubscriptionService {
    * data never touches the app. Throws when the portal is unavailable (no Stripe
    * customer, or the portal is not configured — it's TEST-mode only for now). */
   createPortalSession(flow?: PortalFlow): Promise<{ url: string }>;
+  /** Cancel the subscription at period end (R-5) — no retention, no survey.
+   * The member keeps access until the current period ends. Returns the
+   * refreshed status so the screen reflects cancel-pending immediately. */
+  cancelSubscription(): Promise<SubscriptionStatus>;
 }
 
 /** Stripe portal `flow_data` intent. Only the card-form landing is used today. */
@@ -130,6 +134,16 @@ export class MockSubscriptionService implements SubscriptionService {
   async createPortalSession(_flow?: PortalFlow): Promise<{ url: string }> {
     return { url: 'https://billing.stripe.com/p/session/test_mock' };
   }
+
+  async cancelSubscription(): Promise<SubscriptionStatus> {
+    return {
+      entitlement: 'active_monthly',
+      price: '$24.99 / month',
+      stripeStatus: 'active',
+      cancelAtPeriodEnd: true,
+      renewsOn: plusDays(20),
+    };
+  }
 }
 
 /**
@@ -203,6 +217,14 @@ export class ApiSubscriptionService implements SubscriptionService {
     );
     if (!r.url) throw new Error('No portal URL returned');
     return { url: r.url };
+  }
+
+  async cancelSubscription(): Promise<SubscriptionStatus> {
+    // Cancel at period end (server sets cancel_at_period_end via Stripe), then
+    // re-read the authoritative status so the screen reflects cancel-pending —
+    // reusing getStatus's mapping rather than duplicating it here.
+    await apiClient.post('/api/account/subscription/cancel');
+    return this.getStatus();
   }
 
   async restore(): Promise<Entitlement> {
