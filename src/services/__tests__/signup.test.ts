@@ -63,10 +63,10 @@ describe('ApiSignupService', () => {
     await expect(svc.getPricing()).rejects.toThrow();
   });
 
-  it('orgCode POSTs email/password/code and returns status + email', async () => {
+  it('orgCode POSTs to the sponsored endpoint (no Stripe) and returns status + email', async () => {
     mockPost.mockResolvedValue({ status: 'created_pending_verification', email: 'a@b.co' });
     const r = await svc.orgCode({ email: 'a@b.co', password: 'hunter2hunter2', code: 'ACME-1' });
-    expect(mockPost).toHaveBeenCalledWith('/auth/signup/org-code', {
+    expect(mockPost).toHaveBeenCalledWith('/auth/signup/sponsored', {
       email: 'a@b.co',
       password: 'hunter2hunter2',
       code: 'ACME-1',

@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
@@ -57,6 +57,11 @@ export default function SignUpScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const c = copy.signUp;
+  // Per-org sign-up link pre-fills the access code (R-17): the link and the
+  // typed code are two doors into the same org-code path. We only pre-fill the
+  // field — the member still enters their email/password and taps Join, so a
+  // link never auto-submits anything.
+  const { code: codeParam } = useLocalSearchParams<{ code?: string }>();
 
   const [step, setStep] = useState<Step>('entry');
   const [email, setEmail] = useState('');
@@ -64,7 +69,7 @@ export default function SignUpScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(codeParam ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
