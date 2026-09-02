@@ -12,9 +12,9 @@ import { ENTRY_INTROS, ENTRY_TYPES } from '@/features/journal/entryTypes';
 const APPROVED_INTRO =
   'These are some of the worst days of your life, and gratitude will not make them lighter. ' +
   'But grief moves in waves, and in the space between them people often find something small ' +
-  'still worth holding. Maybe it is a kindness, a song, an hour of sleep, the fact that your ' +
-  'loved one existed at all. Add one if one comes. If nothing comes today, that is an honest ' +
-  'answer too.';
+  'still worth holding. Maybe it is a kindness, a song, an hour of sleep, or the fact that ' +
+  'your loved one existed at all. Add one if one comes. If nothing comes today, that is an ' +
+  'honest answer too.';
 
 describe('Gratitude intro copy', () => {
   it('is a category with a lead-in', () => {

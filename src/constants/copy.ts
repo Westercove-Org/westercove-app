@@ -63,7 +63,7 @@ export const copy = {
   gratitude: {
     title: 'Gratitude, alongside the grief',
     body:
-      'These are some of the worst days of your life, and gratitude will not make them lighter. But grief moves in waves, and in the space between them people often find something small still worth holding. Maybe it is a kindness, a song, an hour of sleep, the fact that your loved one existed at all. Add one if one comes. If nothing comes today, that is an honest answer too.',
+      'These are some of the worst days of your life, and gratitude will not make them lighter. But grief moves in waves, and in the space between them people often find something small still worth holding. Maybe it is a kindness, a song, an hour of sleep, or the fact that your loved one existed at all. Add one if one comes. If nothing comes today, that is an honest answer too.',
   },
 
   disclaimer:
