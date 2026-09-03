@@ -3,10 +3,14 @@ import { linkifyConsentLine } from '../linkifyConsent';
 const LINE = 'By continuing, you confirm you are 18 or older and that you agree to our Terms and Privacy notice.';
 
 describe('linkifyConsentLine', () => {
-  it('rule 1: a label not found in the line renders as one plain segment, never throws', () => {
+  it('rule 1: a label not in the line renders the FULL sentence intact and unlinked, never throws', () => {
     const out = linkifyConsentLine(LINE, [{ label: 'Community Guidelines', document: 'terms' }]);
+    // The whole sentence text is preserved, byte for byte...
+    expect(out.map((s) => s.text).join('')).toBe(LINE);
+    // ...and nothing in it is a link (no half-linked fragment, no blanked line).
+    expect(out.some((s) => s.route !== undefined)).toBe(false);
+    // Concretely: one plain segment carrying the entire sentence.
     expect(out).toEqual([{ text: LINE }]);
-    expect(out.every((s) => s.route === undefined)).toBe(true);
   });
 
   it('linkifies a served label in place, keeping the surrounding prose', () => {
