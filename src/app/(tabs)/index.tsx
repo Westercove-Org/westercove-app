@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { ComposeCard } from '@/components/ComposeCard';
 import { EntryCard } from '@/components/EntryCard';
 import { GentleQuestionCard } from '@/components/GentleQuestionCard';
+import { RecoveryBanner } from '@/components/RecoveryBanner';
 import { UpgradePrompt } from '@/components/UpgradePrompt';
 import { Screen } from '@/components/Screen';
 import { Chip } from '@/components/ui/Chip';
@@ -48,6 +49,8 @@ export default function HomeScreen() {
         subtitle: formatHeaderDateTime(now),
       }}
     >
+      <RecoveryBanner />
+
       <ComposeCard onPressPrompt={() => compose()} onPressMic={() => compose()} />
 
       <GentleQuestionCard />
