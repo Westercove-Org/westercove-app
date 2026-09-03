@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 
 import { WestercoveTabBar } from '@/components/WestercoveTabBar';
 import { useCadenceSession } from '@/features/cadence/useCadence';
+import { useLegalGate } from '@/features/legal/useLegalGate';
 import { useTheme } from '@/theme';
 
 /**
@@ -14,6 +15,9 @@ export default function TabsLayout() {
   // Reconcile 4-Doors cadence state + report the session open on entering the
   // shell. No-op unless USE_FOUR_DOORS is on with a backend profile.
   useCadenceSession();
+  // Present the legal disclaimer once per session if the server says the
+  // current version still needs acknowledgement (R-36). Non-blocking.
+  useLegalGate();
   return (
     <Tabs
       tabBar={(props) => <WestercoveTabBar {...props} />}
