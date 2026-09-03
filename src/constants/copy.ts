@@ -125,10 +125,11 @@ export const copy = {
     planPremium: 'Premium',
     planMonthly: 'Monthly',
     planAnnual: 'Annual',
-    // Static annual framing (the annual price is eleven months of the monthly
-    // one, for both tiers). Not a computed number; if the annual:monthly ratio
-    // ever changes, update this line.
-    annualCaption: 'Eleven months for twelve',
+    // Static annual framing (spec v7 R-4, Wesley's exact words): the annual
+    // price is eleven months of the monthly one, for both tiers. Not a computed
+    // number; if the annual:monthly ratio ever changes, update this line. Do
+    // not paraphrase — this is the approved phrasing.
+    annualCaption: 'Twelve months for the price of eleven',
     orgCodeOption: 'I have an organization code',
     orgCodeOptionHint: 'Join through your workplace or provider.',
     payOption: 'Pay to join',
