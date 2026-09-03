@@ -3,7 +3,7 @@ import { apiClient } from '@/lib/http';
 /**
  * Signup v2 (self-serve) over the shared `apiClient`. Same backend contract as
  * the retired QuietRoom SPA (QuietRoom/backend, unchanged):
- *  - POST /auth/signup/org-code        {email,password,code} → {status,email}
+ *  - POST /auth/signup/sponsored       {email,password,code} → {status,email}
  *  - POST /auth/signup/payment/checkout {email,password}     → {pending_signup_id, checkout_url}
  *  - GET  /auth/signup/status/{id}                            → {status,email}
  *
@@ -132,7 +132,13 @@ export function isSignupSuccessStatus(status: string): boolean {
 
 export class ApiSignupService implements SignupService {
   async orgCode(input: { email: string; password: string; code: string }): Promise<OrgCodeSignupResult> {
-    const r = await apiClient.post<{ status: string; email: string }>('/auth/signup/org-code', {
+    // Sponsored (org access-code) signup: /sponsored branches BEFORE Stripe
+    // entirely — no customer, no subscription, not even a $0 one (spec v7
+    // R-49/R-58, QuietRoom #175). Enumeration-safe: a valid code with an
+    // existing email returns the same generic 200 and does NOT spend the code;
+    // an unknown/redeemed/expired code is a uniform 400 'Invalid or unknown
+    // code' (shown generically, never 'already used').
+    const r = await apiClient.post<{ status: string; email: string }>('/auth/signup/sponsored', {
       email: input.email,
       password: input.password,
       code: input.code,
