@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -7,6 +7,7 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
+import { linkifyConsentLine } from '@/features/legal/linkifyConsent';
 import { services, type DisclaimerContent } from '@/services';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
@@ -85,7 +86,25 @@ export default function DisclaimerScreen() {
                 color={i === content.summary.length - 1 ? 'textMuted' : 'textPrimary'}
                 style={styles.para}
               >
-                {line}
+                {/* Linkify any legal document the server names inline (e.g.
+                    Terms). A stale label or an unserved target degrades to plain
+                    text — never a dead tap on a consent screen. */}
+                {linkifyConsentLine(line, content.links).map((seg, j) =>
+                  seg.route ? (
+                    <Text
+                      key={`l${j}`}
+                      variant="body"
+                      color="forest"
+                      accessibilityRole="link"
+                      onPress={() => router.push(seg.route as Href)}
+                      style={styles.link}
+                    >
+                      {seg.text}
+                    </Text>
+                  ) : (
+                    seg.text
+                  ),
+                )}
               </Text>
             ))}
 
@@ -174,6 +193,7 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   para: { fontSize: 17, lineHeight: 27 },
+  link: { textDecorationLine: 'underline' },
   full: { lineHeight: 22 },
   readMore: { minHeight: 44, justifyContent: 'center' },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 44 },
