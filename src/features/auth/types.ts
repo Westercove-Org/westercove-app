@@ -7,6 +7,10 @@ export type Entitlement =
   | 'active_monthly'
   | 'active_annual'
   | 'license_active'
+  // Payment failed but still inside the recovery window (webhook sets this on the
+  // first failed charge, alongside grace_started_at). Access continues; recovery
+  // emails go out. `lapsed` is what the day-30 worker sets once the window ends.
+  | 'grace'
   | 'lapsed';
 
 export type GateMode = 'human' | 'pet';

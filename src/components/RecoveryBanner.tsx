@@ -8,8 +8,9 @@ import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
 
 /**
- * R-11: a calm, non-modal recovery strip shown while a subscription is in its
- * grace window (entitlement `lapsed`), mirroring the recovery emails. Tapping it
+ * R-11: a calm, non-modal recovery strip shown while a failed payment can still
+ * be fixed (entitlement `grace` during the recovery window, and `lapsed` after
+ * it), mirroring the recovery emails. Tapping it
  * goes to Membership to fix payment; the ✕ dismisses it for the session only
  * (not persisted — a relaunch shows it again while payment is still lapsed).
  *

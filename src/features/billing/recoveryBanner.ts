@@ -20,13 +20,15 @@ export const useRecoveryBannerStore = create<RecoveryBannerState>()((set) => ({
 }));
 
 /**
- * The recovery banner shows only while the account is in the lapsed grace window
- * and the member hasn't dismissed it this session. Everything else — trialing,
- * active, sponsored — sees nothing.
+ * The recovery banner shows while a failed payment can still be fixed and the
+ * member hasn't dismissed it this session. That is `grace` (the recovery window,
+ * when the emails fire and the member can still pay) and `lapsed` (window ended,
+ * but paying still brings them back). Everything else — trialing, active,
+ * sponsored — sees nothing.
  */
 export function shouldShowRecoveryBanner(
   entitlement: Entitlement | undefined,
   dismissed: boolean,
 ): boolean {
-  return entitlement === 'lapsed' && !dismissed;
+  return (entitlement === 'grace' || entitlement === 'lapsed') && !dismissed;
 }
