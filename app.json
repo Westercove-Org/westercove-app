@@ -8,6 +8,7 @@
     "scheme": "westercoveapp",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.westercove.app",
       "icon": "./assets/images/westercove_icon_app.png",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Westercove uses the microphone only when you tap the mic to speak a journal entry. Your words are turned into text on your device; no audio is stored or sent.",
@@ -15,6 +16,7 @@
       }
     },
     "android": {
+      "package": "com.westercove.app",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/westercove_icon_app.png"
