@@ -8,6 +8,7 @@ import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { isSponsoredAccount } from '@/features/auth/sponsored';
+import { canManageBilling } from '@/features/billing/canManageBilling';
 import { HttpError } from '@/lib/http';
 import { services, type SubscriptionStatus } from '@/services';
 import { useTheme } from '@/theme';
@@ -57,16 +58,9 @@ export default function SubscriptionScreen() {
   // off the entry path + license entitlement, not a transient billing state.
   const sponsored = isSponsoredAccount(entitlement, entryPath);
 
-  // Who sees "Manage billing": any Stripe subscriber, PLUS anyone paying by
-  // entitlement even without a stored stripe status — users provisioned before
-  // #124 pay but have no customer id, and must still be able to fix a card
-  // (they hit the graceful portal-unavailable path). Hidden only for org-code /
-  // license users, who have no personal billing to manage.
-  const canManageBilling =
-    !!status?.stripeStatus ||
-    entitlement === 'active_monthly' ||
-    entitlement === 'active_annual' ||
-    entitlement === 'lapsed';
+  // Who sees "Manage billing" (incl. grace/lapsed and pre-#124 members with no
+  // stripeStatus) — see canManageBilling.
+  const showManageBilling = canManageBilling(entitlement, !!status?.stripeStatus);
 
   const [code, setCode] = useState('');
   const [redeemError, setRedeemError] = useState<string | null>(null);
@@ -225,7 +219,7 @@ export default function SubscriptionScreen() {
           Shown to any paying user (incl. pre-#124 with no stored customer id, who
           get the graceful portal-unavailable path); hidden for org-code / license
           users, who have nothing to manage here. */}
-      {canManageBilling ? (
+      {showManageBilling ? (
         <Card>
           <Text variant="meta" color="textMuted">
             Billing
