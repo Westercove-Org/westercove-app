@@ -38,4 +38,29 @@ describe('linkifyConsentLine', () => {
   it('no links at all → single plain segment', () => {
     expect(linkifyConsentLine(LINE, [])).toEqual([{ text: LINE }]);
   });
+
+  // The go-live shape: the moment Privacy is seeded, the backend serves a second
+  // link on the SAME sentence with no client change. This pins the multi-link
+  // branch (two matches, sorted, emitted around the prose between them) so it
+  // cannot activate silently and wrong on a content drop.
+  it('links TWO served labels in one sentence — both linkify, order and prose intact, neither swallows the other', () => {
+    const out = linkifyConsentLine(LINE, [
+      { label: 'Terms', document: 'terms' },
+      { label: 'Privacy notice', document: 'terms' },
+    ]);
+    // full sentence preserved byte-for-byte
+    expect(out.map((s) => s.text).join('')).toBe(LINE);
+    // exactly the two labels are linked, in sentence order
+    expect(out.filter((s) => s.route)).toEqual([
+      { text: 'Terms', route: '/legal-terms' },
+      { text: 'Privacy notice', route: '/legal-terms' },
+    ]);
+    // the run of prose between the two links is intact and unlinked
+    const i = out.findIndex((s) => s.text === 'Terms');
+    const j = out.findIndex((s) => s.text === 'Privacy notice');
+    expect(j).toBeGreaterThan(i);
+    const between = out.slice(i + 1, j);
+    expect(between.every((s) => s.route === undefined)).toBe(true);
+    expect(between.map((s) => s.text).join('')).toBe(' and ');
+  });
 });
