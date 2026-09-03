@@ -5,6 +5,7 @@ import { StackScreen } from '@/components/StackScreen';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
+import { copy } from '@/constants/copy';
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { isSponsoredAccount } from '@/features/auth/sponsored';
 import { HttpError } from '@/lib/http';
@@ -163,6 +164,14 @@ export default function SubscriptionScreen() {
         {status?.tier ? (
           <Text variant="body" color="textMuted" style={{ marginTop: 2 }}>
             {status.tier === 'premium' ? 'Premium plan' : 'Standard plan'}
+          </Text>
+        ) : null}
+        {/* R-4: Wesley's annual-saving framing, wherever the annual plan is
+            presented. Same approved string as the plan selector — value stated,
+            never a discount/countdown/urgency device. */}
+        {entitlement === 'active_annual' ? (
+          <Text variant="bodySmall" color="forest" style={{ marginTop: 2 }}>
+            {copy.signUp.annualCaption}
           </Text>
         ) : null}
         {status?.trialDaysRemaining != null ? (
