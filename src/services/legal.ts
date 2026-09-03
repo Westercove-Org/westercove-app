@@ -16,6 +16,14 @@ import { apiClient } from '@/lib/http';
 export type LegalDocument = 'disclaimer' | 'terms';
 
 /** Server-rendered legal content — the app displays this verbatim. */
+/** A linkable reference inside the consent copy: `label` is an exact substring
+ * of a summary line, `document` the /legal-disclaimer/content target it opens.
+ * The server only sends links for documents it actually serves. */
+export interface LegalLink {
+  label: string;
+  document: string;
+}
+
 export interface DisclaimerContent {
   version: string;
   title: string;
@@ -31,6 +39,9 @@ export interface DisclaimerContent {
   /** Label for the non-blocking "save and read later" action. */
   saveAndReadLaterLabel: string;
   communityGuidelinesUrl: string | null;
+  /** Server-supplied links to legal documents named inline in the summary
+   * (e.g. Terms). Only documents the server actually serves are included. */
+  links: LegalLink[];
   /** Plain last-updated date, when the server sends one (Terms & Privacy). */
   lastUpdated: string | null;
 }
@@ -65,6 +76,7 @@ interface ContentWire {
   acknowledgement_label: string;
   save_and_read_later_label: string;
   community_guidelines_url: string | null;
+  links?: LegalLink[];
   last_updated?: string | null;
 }
 
@@ -86,6 +98,7 @@ function toContent(c: ContentWire): DisclaimerContent {
     acknowledgementLabel: c.acknowledgement_label,
     saveAndReadLaterLabel: c.save_and_read_later_label,
     communityGuidelinesUrl: c.community_guidelines_url,
+    links: c.links ?? [],
     lastUpdated: c.last_updated ?? null,
   };
 }
