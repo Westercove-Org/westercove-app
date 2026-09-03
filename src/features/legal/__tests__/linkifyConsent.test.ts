@@ -39,6 +39,19 @@ describe('linkifyConsentLine', () => {
     expect(linkifyConsentLine(LINE, [])).toEqual([{ text: LINE }]);
   });
 
+  // Overlap hardening: two labels sharing a start index ("Privacy" ⊂ "Privacy
+  // notice"). Fed shorter-first — the order that used to orphan " notice." — the
+  // longer label must still win, so the seed of a second adjacent label lands on
+  // deterministic behaviour rather than served order.
+  it('overlapping labels at the same start index: the longer wins regardless of order', () => {
+    const out = linkifyConsentLine(LINE, [
+      { label: 'Privacy', document: 'terms' }, // shorter, listed first
+      { label: 'Privacy notice', document: 'terms' },
+    ]);
+    expect(out.map((s) => s.text).join('')).toBe(LINE); // sentence intact
+    expect(out.filter((s) => s.route)).toEqual([{ text: 'Privacy notice', route: '/legal-terms' }]);
+  });
+
   // The go-live shape: the moment Privacy is seeded, the backend serves a second
   // link on the SAME sentence with no client change. This pins the multi-link
   // branch (two matches, sorted, emitted around the prose between them) so it
