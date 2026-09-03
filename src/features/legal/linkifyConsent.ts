@@ -31,7 +31,11 @@ export function linkifyConsentLine(line: string, links: LegalLink[]): ConsentSeg
     .filter((m): m is { label: string; route: string; index: number } =>
       m.route != null && m.label.length > 0 && m.index >= 0,
     )
-    .sort((a, b) => a.index - b.index);
+    // By start index; at a shared start the longer label wins, so an overlapping
+    // shorter one (e.g. "Privacy" inside "Privacy notice") is consumed by the
+    // full phrase rather than orphaning its tail. Order-independent: the day a
+    // second label seeds adjacent, the outcome does not depend on served order.
+    .sort((a, b) => a.index - b.index || b.label.length - a.label.length);
 
   const segments: ConsentSegment[] = [];
   let cursor = 0;
