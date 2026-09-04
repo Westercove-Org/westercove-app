@@ -55,6 +55,8 @@ const TONE_MAP = {
     'Match a direct, plain tone. Clear and honest, no softening, but never blunt or cold.',
   'Quiet and minimal':
     'Match a quiet, minimal tone. Short replies with plenty of space. Often two or three sentences.',
+  'Direct and tactful':
+    'Match a direct, tactful tone. Honest and clear, softened with care, but never blunt.',
   Spiritual:
     'Match a spiritual tone. Leave room for meaning, mystery, and the sacred, without pushing any particular belief.',
 } as const;
