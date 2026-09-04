@@ -58,23 +58,20 @@ export default function WelcomeGateScreen() {
           {WELCOME_NOTICE.lede}
         </Text>
 
-        {WELCOME_NOTICE.sections.map((s) => (
-          <View key={s.heading} style={styles.section}>
-            <Text variant="cardTitle" style={styles.heading}>
-              {s.heading}
-            </Text>
-            <Text variant="body" style={styles.para}>
-              {s.body}
-            </Text>
+        {WELCOME_NOTICE.blocks.map((b, i) => (
+          <View key={i} style={styles.section}>
+            {b.heading ? (
+              <Text variant="cardTitle" style={styles.heading}>
+                {b.heading}
+              </Text>
+            ) : null}
+            {b.body ? (
+              <Text variant="body" style={styles.para}>
+                {b.body}
+              </Text>
+            ) : null}
           </View>
         ))}
-
-        <Text variant="cardTitle" style={styles.heading}>
-          {WELCOME_NOTICE.adultsLine}
-        </Text>
-        <Text variant="body" style={styles.para}>
-          {WELCOME_NOTICE.closing}
-        </Text>
 
         <Pressable
           accessibilityRole="checkbox"
