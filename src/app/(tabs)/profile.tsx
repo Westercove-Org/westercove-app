@@ -23,6 +23,7 @@ const YOUR_SPACE: Row[] = [
   { label: 'Memories', section: 'memories' },
   { label: 'Anniversaries and Hard Dates', section: 'anniversaries' },
   { label: 'Stabilizing Practices', section: 'practices' },
+  { label: 'Gratitude', section: 'gratitude' },
   { label: 'Grief Patterns', section: 'patterns' },
   {
     label: 'What I Know',
