@@ -29,13 +29,11 @@ function seedNeedsGateSession() {
 describe('DayZeroGate', () => {
   beforeEach(seedNeedsGateSession);
 
-  it('shows the first question and a step counter', async () => {
-    const { getByText } = await renderWithProviders(<DayZeroGate />);
+  it('shows the first question with no progress/step counter (S1)', async () => {
+    const { getByText, queryByText } = await renderWithProviders(<DayZeroGate />);
     expect(getByText('What would you like me to call you?')).toBeTruthy();
-    // Denominator is the fixed human-base count (4) and must not jump to 6 when
-    // the pet branch is chosen (8130) — the pet species/breed cards are
-    // un-numbered continuation steps.
-    expect(getByText('Step 1 of 4')).toBeTruthy();
+    // S1: no progress language anywhere — the "Step X of N" counter is gone.
+    expect(queryByText(/Step \d+ of \d+/)).toBeNull();
   });
 
   it('adapts the steps: the pet branch (kind + breed) appears only for a pet', () => {

@@ -231,7 +231,6 @@ export const copy = {
 
   gate: {
     title: 'Getting to know you',
-    step: 'Step', // "Step X of N"
     skip: 'Skip',
     next: 'Continue',
     back: 'Back',

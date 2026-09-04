@@ -72,12 +72,6 @@ export function DayZeroGate() {
   const isLast = index === total - 1;
   const them = answers.lovedOneName?.trim() || 'them';
 
-  // The step counter is fixed to the human-base sequence (4) so the denominator
-  // never jumps when choosing "pet" grows the flow to 6. The pet-only species/
-  // breed cards are un-numbered continuation steps (baseStep === -1), so the
-  // counter reads 3 of 4 (relationship) → [two pet cards, no counter] → 4 of 4.
-  const baseSteps = sequence('human');
-  const baseStep = baseSteps.indexOf(stepId);
 
   const advance = (next: GateAnswers) => {
     const seq = sequence(next.mode);
@@ -119,11 +113,6 @@ export function DayZeroGate() {
         <Text variant="screenTitle" accessibilityRole="header" style={styles.title}>
           {copy.gate.title}
         </Text>
-        {baseStep >= 0 ? (
-          <Text variant="bodySmall" color="textMuted">
-            {copy.gate.step} {baseStep + 1} of {baseSteps.length}
-          </Text>
-        ) : null}
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.body}>
