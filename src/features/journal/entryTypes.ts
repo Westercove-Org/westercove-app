@@ -14,6 +14,7 @@ export const ENTRY_TYPES = [
   'Practice',
   'Sign',
   'Struggle',
+  'Gratitude',
 ] as const;
 
 export type EntryType = (typeof ENTRY_TYPES)[number];
@@ -30,7 +31,29 @@ export const ENTRY_PLACEHOLDERS: Record<EntryType, string> = {
   Practice: 'Enter practices that help you...',
   Sign: 'Enter a sign you experienced here...',
   Struggle: 'What is your struggle?',
+  Gratitude: 'Add one small goodness, if one comes...',
 };
+
+/**
+ * A short note shown on the new-entry screen ABOVE the writing box, before the
+ * person writes a word — not a placeholder and not a tooltip: it stays visible
+ * while they write. Most types have none (empty string). Gratitude carries Dr.
+ * Carter's approved wording, verbatim: gratitude asked carelessly of a grieving
+ * person reads as an instruction to feel better, so the note gives explicit
+ * permission to write nothing. The last sentence is load-bearing and must never
+ * be trimmed. Keyed by type so a second type can be given a note later without
+ * touching the screen (v16). Copy is char-for-char and must not be paraphrased,
+ * shortened, or softened.
+ */
+export const ENTRY_INTRO: Partial<Record<EntryType, string>> = {
+  Gratitude:
+    'These are some of the worst days of your life, and gratitude will not make them lighter. But grief moves in waves, and in the space between them people often find a small goodness that is still worth holding. Maybe it is a kindness, a song, an hour of sleep, or the fact that your loved one existed at all. Add one if one comes. If nothing comes today, that is an honest answer too.',
+};
+
+/** The intro note for an entry type, or '' for the types that have none. */
+export function entryIntro(type: EntryType): string {
+  return ENTRY_INTRO[type] ?? '';
+}
 
 export function isEntryType(value: string | undefined): value is EntryType {
   return !!value && (ENTRY_TYPES as readonly string[]).includes(value);
@@ -53,6 +76,9 @@ export const ENTRY_TYPE_ENUM: Record<EntryType, string> = {
   Practice: 'practice',
   Sign: 'sign',
   Struggle: 'struggle',
+  // Gratitude is an ordinary entry to the companion — not in GUIDED_ENTRY_TYPES,
+  // so it appends no book/practice instruction; a normal turn is the correct reply.
+  Gratitude: 'gratitude',
 };
 
 /** The backend enum for an entry-type label, or undefined for an unknown label

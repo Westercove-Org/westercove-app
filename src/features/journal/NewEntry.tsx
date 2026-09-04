@@ -14,6 +14,7 @@ import { useSafetyRouter } from '@/features/safety/useSafetyRouter';
 import {
   ENTRY_PLACEHOLDERS,
   ENTRY_TYPES,
+  entryIntro,
   isEntryType,
   type EntryType,
 } from '@/features/journal/entryTypes';
@@ -170,6 +171,12 @@ export function NewEntry() {
           ))}
         </View>
 
+        {entryIntro(type) ? (
+          <Text variant="body" color="textMuted" style={styles.intro}>
+            {entryIntro(type)}
+          </Text>
+        ) : null}
+
         <TextInput
           value={text}
           onChangeText={onText}
@@ -255,6 +262,9 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  // The note reads as calm prose above the box and stays visible while writing —
+  // it is not a placeholder and must not be styled as a hint that disappears.
+  intro: { lineHeight: 24, marginBottom: -spacing.sm },
   input: {
     minHeight: 240,
     borderWidth: 1,
