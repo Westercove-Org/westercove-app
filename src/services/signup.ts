@@ -92,7 +92,12 @@ export interface PricingResult {
 }
 
 export interface SignupService {
-  orgCode(input: { email: string; password: string; code: string }): Promise<OrgCodeSignupResult>;
+  orgCode(input: {
+    email: string;
+    password: string;
+    code: string;
+    acceptedNoticeVersion?: string;
+  }): Promise<OrgCodeSignupResult>;
   /** Trial pricing for the pre-card disclosure. Unauthenticated. Throws on 503
    * (no fallback price by design). */
   getPricing(): Promise<PricingResult>;
@@ -101,7 +106,12 @@ export interface SignupService {
    * the emailed link is verify-only. `checkout_url` null ⇒ email already
    * registered (enum-safe). The server maps `plan` to its own Stripe price id
    * (there is no price-id field) and defaults to monthly if omitted. */
-  startPaymentCheckout(input: { email: string; password: string; plan: PlanId }): Promise<PaymentCheckoutResult>;
+  startPaymentCheckout(input: {
+    email: string;
+    password: string;
+    plan: PlanId;
+    acceptedNoticeVersion?: string;
+  }): Promise<PaymentCheckoutResult>;
   getStatus(pendingSignupId: string): Promise<SignupStatusResult>;
 
   // Onboarding completion via single-use token from the emailed deep link
@@ -131,7 +141,15 @@ export function isSignupSuccessStatus(status: string): boolean {
 }
 
 export class ApiSignupService implements SignupService {
-  async orgCode(input: { email: string; password: string; code: string }): Promise<OrgCodeSignupResult> {
+  async orgCode(input: {
+    email: string;
+    password: string;
+    code: string;
+    // S0 welcome-notice acceptance, recorded against the account the server
+    // creates (Stanley's qs7-be-welcome-notice-consent). Optional + fail-soft:
+    // if absent, the member is re-asked in-app via GET /legal-disclaimer/status.
+    acceptedNoticeVersion?: string;
+  }): Promise<OrgCodeSignupResult> {
     // Sponsored (org access-code) signup: /sponsored branches BEFORE Stripe
     // entirely — no customer, no subscription, not even a $0 one (spec v7
     // R-49/R-58, QuietRoom #175). Enumeration-safe: a valid code with an
@@ -142,14 +160,26 @@ export class ApiSignupService implements SignupService {
       email: input.email,
       password: input.password,
       code: input.code,
+      accepted_notice_version: input.acceptedNoticeVersion,
     });
     return { status: r.status, email: r.email };
   }
 
-  async startPaymentCheckout(input: { email: string; password: string; plan: PlanId }): Promise<PaymentCheckoutResult> {
+  async startPaymentCheckout(input: {
+    email: string;
+    password: string;
+    plan: PlanId;
+    /** See `orgCode` — the S0 acceptance version, optional + fail-soft. */
+    acceptedNoticeVersion?: string;
+  }): Promise<PaymentCheckoutResult> {
     const r = await apiClient.post<{ pending_signup_id: string; checkout_url: string | null }>(
       '/auth/signup/payment/checkout',
-      { email: input.email, password: input.password, plan: input.plan },
+      {
+        email: input.email,
+        password: input.password,
+        plan: input.plan,
+        accepted_notice_version: input.acceptedNoticeVersion,
+      },
     );
     return { pendingSignupId: r.pending_signup_id, checkoutUrl: r.checkout_url };
   }

@@ -10,6 +10,7 @@ import { copy } from '@/constants/copy';
 import { formatFirstChargeDate } from '@/constants/billing';
 import { isEmail } from '@/features/auth/email';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
+import { getWelcomeAcceptance } from '@/features/auth/welcomeAcceptance';
 import { services, type PlanId, type PlanTier, type PricingResult } from '@/services';
 import { HttpError } from '@/lib/http';
 import { useTheme } from '@/theme';
@@ -133,6 +134,9 @@ export default function SignUpScreen() {
         email: email.trim(),
         password,
         plan: selectedPlan,
+        // Carry the S0 welcome-notice acceptance so the server records it against
+        // the new account (optional + fail-soft; re-asked in-app if absent).
+        acceptedNoticeVersion: (await getWelcomeAcceptance())?.version,
       });
       if (checkoutUrl === null) {
         // Already-registered (enumeration-safe): generic check-email, no redirect.
@@ -161,7 +165,12 @@ export default function SignUpScreen() {
     if (!code.trim()) return setError(c.codeRequired);
     setBusy(true);
     try {
-      await services.signup.orgCode({ email: email.trim(), password, code: code.trim() });
+      await services.signup.orgCode({
+        email: email.trim(),
+        password,
+        code: code.trim(),
+        acceptedNoticeVersion: (await getWelcomeAcceptance())?.version,
+      });
       setStep('confirm');
     } catch (e) {
       setError(signupErrorMessage(e));
