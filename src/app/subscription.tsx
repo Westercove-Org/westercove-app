@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Linking, Platform, StyleSheet, TextInput } from 'react-native';
+import { Linking, Platform, StyleSheet, TextInput, View } from 'react-native';
 
 import { StackScreen } from '@/components/StackScreen';
 import { Button } from '@/components/ui/Button';
@@ -62,12 +62,25 @@ export default function SubscriptionScreen() {
   // stripeStatus) — see canManageBilling.
   const showManageBilling = canManageBilling(entitlement, !!status?.stripeStatus);
 
+  // Direct cancel on this screen (R-5): reachable in two taps from Settings
+  // (Membership → Cancel), no portal detour. Shown only for a live Stripe
+  // subscription not already ending; pre-#124 payers with no stripe status
+  // cancel via the portal above.
+  const periodEnd = status?.nextChargeDate ?? status?.renewsOn;
+  const canCancel =
+    !!status?.stripeStatus &&
+    status.stripeStatus !== 'canceled' &&
+    !status.cancelAtPeriodEnd;
+
   const [code, setCode] = useState('');
   const [redeemError, setRedeemError] = useState<string | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [portalBusy, setPortalBusy] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
+  const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   // Open the Stripe hosted customer portal. No card UI in-app — the portal owns
   // update-card / cancel / invoices. On failure (no portal configured — it's
@@ -121,6 +134,22 @@ export default function SubscriptionScreen() {
       );
     } finally {
       setRedeeming(false);
+    }
+  };
+
+  const onCancel = async () => {
+    if (cancelBusy) return;
+    setCancelBusy(true);
+    setCancelError(null);
+    try {
+      const s = await services.subscription.cancelSubscription();
+      setStatus(s);
+      setEntitlement(s.entitlement);
+      setCancelConfirm(false);
+    } catch {
+      setCancelError("We couldn't cancel just now. Please try again in a moment.");
+    } finally {
+      setCancelBusy(false);
     }
   };
 
@@ -248,6 +277,57 @@ export default function SubscriptionScreen() {
         </Card>
       ) : null}
 
+      {canCancel ? (
+        <Card>
+          <Text variant="meta" color="textMuted">
+            Cancel
+          </Text>
+          {!cancelConfirm ? (
+            <>
+              <Text variant="body" color="textMuted" style={{ marginTop: 4 }}>
+                You can cancel your membership any time. You keep access until the end of
+                the period you have paid for.
+              </Text>
+              <Button
+                label="Cancel membership"
+                variant="secondary"
+                onPress={() => setCancelConfirm(true)}
+              />
+            </>
+          ) : (
+            <>
+              <Text variant="body" style={{ marginTop: 4 }}>
+                Cancel membership?{' '}
+                {periodEnd
+                  ? `You keep access until ${periodEnd}.`
+                  : 'You keep access until the end of your current period.'}
+              </Text>
+              {cancelError ? (
+                <Text variant="bodySmall" color="crisis" style={{ marginTop: spacing.xs }}>
+                  {cancelError}
+                </Text>
+              ) : null}
+              <View style={styles.cancelActions}>
+                <Button
+                  label="Keep membership"
+                  variant="secondary"
+                  disabled={cancelBusy}
+                  onPress={() => {
+                    setCancelConfirm(false);
+                    setCancelError(null);
+                  }}
+                />
+                <Button
+                  label={cancelBusy ? 'Cancelling…' : 'Cancel membership'}
+                  disabled={cancelBusy}
+                  onPress={onCancel}
+                />
+              </View>
+            </>
+          )}
+        </Card>
+      ) : null}
+
       <Button label="Restore purchases" variant="secondary" onPress={onRestore} />
       {restoreError ? (
         <Text variant="bodySmall" color="crisis" style={{ marginTop: spacing.xs }}>
@@ -285,6 +365,7 @@ export default function SubscriptionScreen() {
 }
 
 const styles = StyleSheet.create({
+  cancelActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
   input: {
     marginTop: spacing.xs,
     borderWidth: 1,
