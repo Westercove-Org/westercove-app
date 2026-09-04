@@ -3,7 +3,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { ComposeCard } from '@/components/ComposeCard';
 import { EntryCard } from '@/components/EntryCard';
-import { GentleQuestionCard } from '@/components/GentleQuestionCard';
 import { RecoveryBanner } from '@/components/RecoveryBanner';
 import { UpgradePrompt } from '@/components/UpgradePrompt';
 import { Screen } from '@/components/Screen';
@@ -52,8 +51,6 @@ export default function HomeScreen() {
       <RecoveryBanner />
 
       <ComposeCard onPressPrompt={() => compose()} onPressMic={() => compose()} />
-
-      <GentleQuestionCard />
 
       {planLimit ? (
         <View style={styles.promptWrap}>
