@@ -1,11 +1,15 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
 import { ChevronRightIcon } from '@/components/icons';
+import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Text } from '@/components/ui/Text';
+import { useEntriesStore } from '@/features/journal/entriesStore';
+import { gatherGratitude } from '@/features/profile/gatherGratitude';
+import { useWhatIKnowStore } from '@/features/profile/whatIKnowStore';
 import { useTheme } from '@/theme';
 import { spacing } from '@/theme/tokens';
 
@@ -27,6 +31,13 @@ export const SECTIONS: Record<string, { title: string; empty: string }> = {
   practices: {
     title: 'Stabilizing Practices',
     empty: 'Nothing here yet. The things that steady you will gather here.',
+  },
+  gratitude: {
+    title: 'Gratitude',
+    // Verbatim, deliberate, and not a nudge (v16): an empty Gratitude section is
+    // a normal reading of a grieving person and must not be treated as a gap.
+    empty:
+      'nothing here yet, and that is a fair place to be. If something small comes, add it. If nothing does, leave this empty.',
   },
   patterns: {
     title: 'Grief Patterns',
@@ -50,6 +61,12 @@ export function SectionPage({ slug }: { slug: string }) {
   const insets = useSafeAreaInsets();
   const meta = SECTIONS[slug] ?? { title: 'Westercove', empty: 'Nothing here yet.' };
 
+  // Gratitude is derived, read fresh every open — never a stored copy that could
+  // drift from its sources (v16). Gathers Gratitude entries + What-I-Know lines.
+  const entries = useEntriesStore((s) => s.entries);
+  const learned = useWhatIKnowStore((s) => s.learned);
+  const gratitude = slug === 'gratitude' ? gatherGratitude(entries, learned) : null;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
@@ -63,9 +80,19 @@ export function SectionPage({ slug }: { slug: string }) {
         </Pressable>
         <Text variant="screenTitle">{meta.title}</Text>
       </View>
-      <View style={styles.body}>
-        <EmptyState message={meta.empty} />
-      </View>
+      {gratitude && gratitude.length > 0 ? (
+        <ScrollView contentContainerStyle={styles.list}>
+          {gratitude.map((line, i) => (
+            <Card key={i}>
+              <Text variant="body">{line}</Text>
+            </Card>
+          ))}
+        </ScrollView>
+      ) : (
+        <View style={styles.body}>
+          <EmptyState message={meta.empty} />
+        </View>
+      )}
       <CrisisBanner compact />
     </View>
   );
@@ -87,4 +114,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   body: { flex: 1, justifyContent: 'center' },
+  list: {
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+    paddingBottom: 88,
+    gap: spacing.cardGap,
+  },
 });
