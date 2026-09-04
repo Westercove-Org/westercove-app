@@ -222,52 +222,88 @@ export const useEntriesStore = create<EntriesState>()((set, get) => ({
   },
 
   async addEntry({ type, text, justHeard }) {
-    // Fast local pre-flight, instant and offline: gates response generation.
+    // Fast local pre-flight, instant and offline: gates response generation and
+    // is the entry's floor safety level until the authoritative tier arrives.
     const pre = services.safety.classify(text).level;
     const at = new Date();
-    const turns: ConversationTurn[] = [turn('user', text, at)];
+    // Headline comes from the offline companion (the local Mock, the designated
+    // headline authority — it never touches the network and never throws).
     const { headline } = await services.companion.respond({ text, type, justHeard: true });
-    let sessionId: number | undefined;
 
-    // Six Moves are suspended at Level 3/4 (safety surface governs) and when the
-    // user asked to be "just heard". Otherwise create the backend session that
-    // backs this entry and let the backend generate the companion reply. The gate
-    // uses the instant local pre-flight; the authoritative tier is fetched below.
-    let safety: CompanionSafety | undefined;
-    if (pre < SafetyLevel.High && !justHeard) {
-      try {
-        ({ sessionId } = await services.chat.createSession({
-          title: headline,
-          profileId: backendProfileId(),
-        }));
-      } catch {
-        // Offline: the entry still saves; the reply comes from the fallback.
-      }
-      const reply = await companionReply(sessionId, text, type);
-      const cturn = turn('companion', reply.response, at);
-      if (reply.question) cturn.pendingQuestion = reply.question;
-      turns.push(cturn);
-      safety = reply.safety;
-    } else if (justHeard) {
-      turns.push(turn('companion', 'It is heard. It stays here.', at));
-    }
-
-    // Authoritative tier — the chat turn's server safety when present, else the
-    // standalone classifier; never below the local pre-flight. Drives the entry's
-    // level, the crisis surfaces, and (via the safety store) their resources.
-    const level = await resolveSafety(text, safety);
+    // v16 P0 — the person's words are persisted FIRST, before any companion or
+    // safety call. Nobody's writing is contingent on a network call succeeding:
+    // a failed reply below must leave the entry standing with their own words in
+    // it (in the Journal, on Profile, in the download), not vanish behind a line
+    // of red text. The companion reply and authoritative tier are fetched after
+    // and merged into this same entry.
     const id = `e${Date.now()}`;
-    const entry: Entry = {
-      id,
-      type,
-      headline,
-      createdAt: at.toISOString(),
-      turns,
-      justHeard,
-      safetyLevel: level,
-      sessionId,
-    };
-    set((s) => ({ entries: [entry, ...s.entries] }));
+    set((s) => ({
+      entries: [
+        {
+          id,
+          type,
+          headline,
+          createdAt: at.toISOString(),
+          turns: [turn('user', text, at)],
+          justHeard,
+          safetyLevel: pre,
+          sessionId: undefined,
+        },
+        ...s.entries,
+      ],
+    }));
+
+    // Everything from here on only enriches the entry that already exists. The
+    // whole block is guarded: an unexpected throw anywhere in reply generation or
+    // safety resolution leaves the persisted entry untouched with the user's turn.
+    let level = pre;
+    try {
+      let sessionId: number | undefined;
+      const extra: ConversationTurn[] = [];
+
+      // Six Moves are suspended at Level 3/4 (safety surface governs) and when the
+      // user asked to be "just heard". Otherwise create the backend session that
+      // backs this entry and let the backend generate the companion reply. The gate
+      // uses the instant local pre-flight; the authoritative tier is fetched below.
+      let safety: CompanionSafety | undefined;
+      if (pre < SafetyLevel.High && !justHeard) {
+        try {
+          ({ sessionId } = await services.chat.createSession({
+            title: headline,
+            profileId: backendProfileId(),
+          }));
+        } catch {
+          // Offline: the entry still stands; the reply comes from the fallback.
+        }
+        const reply = await companionReply(sessionId, text, type);
+        const cturn = turn('companion', reply.response, at);
+        if (reply.question) cturn.pendingQuestion = reply.question;
+        extra.push(cturn);
+        safety = reply.safety;
+      } else if (justHeard) {
+        extra.push(turn('companion', 'It is heard. It stays here.', at));
+      }
+
+      // Authoritative tier — the chat turn's server safety when present, else the
+      // standalone classifier; never below the local pre-flight. Drives the entry's
+      // level, the crisis surfaces, and (via the safety store) their resources.
+      level = await resolveSafety(text, safety);
+      set((s) => ({
+        entries: s.entries.map((e) =>
+          e.id === id
+            ? {
+                ...e,
+                sessionId,
+                turns: [...e.turns, ...extra],
+                safetyLevel: Math.max(e.safetyLevel, level),
+              }
+            : e,
+        ),
+      }));
+    } catch {
+      // Reply/safety failed unexpectedly: the entry already stands with the
+      // person's words. Fall through with the pre-flight level.
+    }
     reportCadence(level);
     return { id, level };
   },
