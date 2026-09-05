@@ -7,7 +7,7 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { copy } from '@/constants/copy';
-import { formatFirstChargeDate } from '@/constants/billing';
+import { formatFirstChargeDate, TRIAL_DAYS } from '@/constants/billing';
 import { isEmail } from '@/features/auth/email';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
 import { getWelcomeAcceptance } from '@/features/auth/welcomeAcceptance';
@@ -334,11 +334,12 @@ export default function SignUpScreen() {
         </View>
       );
     }
+    const days = pricing.trialDays ?? TRIAL_DAYS;
     return (
       <View style={[styles.trialBox, { borderColor: colors.line, backgroundColor: colors.card }]}>
-        <Text variant="cardTitle">{c.trialTitle}</Text>
+        <Text variant="cardTitle">{c.trialTitle(days)}</Text>
         <Text variant="bodySmall" color="textMuted">
-          {c.trialBody}
+          {c.trialBody(days)}
         </Text>
         {/* Keep the server first-charge date as a quiet pre-checkout disclosure
             (the selected plan's price is on the plan cards above). */}
