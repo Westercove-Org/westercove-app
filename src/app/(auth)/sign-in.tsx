@@ -12,7 +12,7 @@ import { useSessionStore } from '@/features/auth/sessionStore';
 import { useProfilesStore } from '@/features/profile/profilesStore';
 import { AuthError, NewPasswordRequiredError } from '@/services';
 import { useTheme } from '@/theme';
-import { radii, spacing } from '@/theme/tokens';
+import { MAX_CONTENT_WIDTH, radii, spacing } from '@/theme/tokens';
 
 const heroImage = require('../../../assets/images/westercove_hero_valley.jpg');
 
@@ -208,7 +208,16 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  form: { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: 88, gap: spacing.lg },
+  form: {
+    // Consistent desktop width — the centered 640 column (see components/Screen.tsx).
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.xl,
+    paddingBottom: 88,
+    gap: spacing.lg,
+  },
   fieldBlock: { gap: spacing.sm },
   inputBox: {
     flexDirection: 'row',

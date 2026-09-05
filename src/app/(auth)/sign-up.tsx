@@ -14,7 +14,7 @@ import { getWelcomeAcceptance } from '@/features/auth/welcomeAcceptance';
 import { services, type PlanId, type PlanTier, type PricingResult } from '@/services';
 import { HttpError } from '@/lib/http';
 import { useTheme } from '@/theme';
-import { radii, spacing } from '@/theme/tokens';
+import { MAX_CONTENT_WIDTH, radii, spacing } from '@/theme/tokens';
 
 const heroImage = require('../../../assets/images/westercove_hero_valley.jpg');
 
@@ -493,6 +493,11 @@ export default function SignUpScreen() {
 
 const styles = StyleSheet.create({
   form: {
+    // One consistent desktop width: the same centered 640 column the tab app
+    // uses (components/Screen.tsx), so signup no longer stretches edge-to-edge.
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.xl,
     paddingBottom: 88,

@@ -9,7 +9,7 @@ import { useSessionStore } from '@/features/auth/sessionStore';
 import { planLimitFrom, type PlanLimit } from '@/features/billing/planLimit';
 import { services } from '@/services';
 import { useTheme } from '@/theme';
-import { radii, spacing } from '@/theme/tokens';
+import { MAX_CONTENT_WIDTH, radii, spacing } from '@/theme/tokens';
 import {
   buildGatePayload,
   canAdvance,
@@ -342,8 +342,22 @@ function OptionButton({
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: spacing.screen, paddingBottom: spacing.md },
-  body: { paddingHorizontal: spacing.screen, paddingBottom: 96, gap: spacing.lg },
+  // One consistent desktop width — the centered 640 column the tab app uses.
+  header: {
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.screen,
+    paddingBottom: spacing.md,
+  },
+  body: {
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.screen,
+    paddingBottom: 96,
+    gap: spacing.lg,
+  },
   qBlock: { gap: spacing.md, paddingTop: spacing.lg },
   question: { marginBottom: spacing.sm },
   input: {
