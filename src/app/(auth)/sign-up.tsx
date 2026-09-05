@@ -20,7 +20,10 @@ const heroImage = require('../../../assets/images/westercove_hero_valley.jpg');
 
 const MIN_PASSWORD = 12;
 
-type Step = 'entry' | 'orgCode' | 'confirm' | 'payCheckEmail';
+// Wesley's flow: create the account (entry), then a clear join choice
+// (joinChoice) BEFORE any pricing; only "joining on my own" reveals the
+// membership + trial (plan). Access code keeps its own step (orgCode).
+type Step = 'entry' | 'joinChoice' | 'plan' | 'orgCode' | 'confirm' | 'payCheckEmail';
 
 /** Enumeration-safe signup error copy: never reveal account existence. 429 =
  * rate limit; otherwise a neutral fallback (the server detail, when present, is
@@ -113,10 +116,11 @@ export default function SignUpScreen() {
     return true;
   };
 
-  const goOrgCode = () => {
+  // From the account form, advance to the join choice (no pricing yet).
+  const goJoinChoice = () => {
     setError(null);
     if (!validateForm()) return;
-    setStep('orgCode');
+    setStep('joinChoice');
   };
 
   // Paid path collects the password up front (mirrors org-code); the checkout
@@ -330,14 +334,16 @@ export default function SignUpScreen() {
         </View>
       );
     }
-    // Key off the plan field, not index, so a server reorder can't swap what the
-    // user is agreeing to. Fallback to the first plan is defensive only.
-    const sel = pricing.plans.find((p) => p.plan === selectedPlan) ?? pricing.plans[0];
     return (
       <View style={[styles.trialBox, { borderColor: colors.line, backgroundColor: colors.card }]}>
-        <Text variant="cardTitle">{`Free for ${pricing.trialDays} days`}</Text>
+        <Text variant="cardTitle">{c.trialTitle}</Text>
         <Text variant="bodySmall" color="textMuted">
-          {`You will not be charged today. After your ${pricing.trialDays}-day free trial, Westercove is ${sel.display}. Your card will first be charged on ${formatFirstChargeDate(pricing.firstChargeDate)}. Cancel any time before then and you will not be charged.`}
+          {c.trialBody}
+        </Text>
+        {/* Keep the server first-charge date as a quiet pre-checkout disclosure
+            (the selected plan's price is on the plan cards above). */}
+        <Text variant="bodySmall" color="textMuted">
+          {`Your card will first be charged on ${formatFirstChargeDate(pricing.firstChargeDate)}.`}
         </Text>
       </View>
     );
@@ -428,15 +434,71 @@ export default function SignUpScreen() {
                 {c.passwordMismatch}
               </Text>
             ) : null}
+            <Button
+              label={c.continueToJoin}
+              variant="amethyst"
+              disabled={!canProceed}
+              onPress={goJoinChoice}
+            />
+          </>
+        ) : null}
+
+        {step === 'joinChoice' ? (
+          <>
+            {/* The join choice comes BEFORE any pricing (Wesley): two clear
+                options, not an org-code box followed immediately by plans. */}
             <Text variant="body" color="textMuted">
               {c.howToJoin}
             </Text>
-            {pathCard(c.orgCodeOption, c.orgCodeOptionHint, goOrgCode)}
+            {pathCard(c.orgCodeOption, c.orgCodeOptionHint, () => {
+              setError(null);
+              setStep('orgCode');
+            })}
+            {pathCard(c.payOption, c.payOptionHint, () => {
+              setError(null);
+              setStep('plan');
+            })}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={c.back}
+              onPress={() => {
+                setError(null);
+                setStep('entry');
+              }}
+              style={styles.center}
+            >
+              <Text variant="body" color="textMuted">
+                {c.back}
+              </Text>
+            </Pressable>
+          </>
+        ) : null}
+
+        {step === 'plan' ? (
+          <>
+            {/* Membership + trial appear only after "I'm joining on my own". */}
             {planSelector()}
             {trialDisclosure()}
-            {/* Pay is blocked until pricing loads (or if it failed) so the user
-                never reaches card entry without the trial terms in front of them. */}
-            {pathCard(busy ? c.payStarting : c.payOption, c.payOptionHint, goPay, pricing == null)}
+            <Button
+              label={busy ? c.payStarting : c.startTrial}
+              variant="amethyst"
+              loading={busy}
+              disabled={pricing == null || busy}
+              onPress={goPay}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={c.back}
+              onPress={() => {
+                setError(null);
+                setStep('joinChoice');
+              }}
+              style={styles.center}
+            >
+              <Text variant="body" color="textMuted">
+                {c.back}
+              </Text>
+            </Pressable>
           </>
         ) : null}
 
@@ -462,7 +524,7 @@ export default function SignUpScreen() {
               accessibilityLabel={c.back}
               onPress={() => {
                 setError(null);
-                setStep('entry');
+                setStep('joinChoice');
               }}
               style={styles.center}
             >
