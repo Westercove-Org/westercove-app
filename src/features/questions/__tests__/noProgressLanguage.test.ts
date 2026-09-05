@@ -21,11 +21,15 @@ const INTAKE_SURFACES = [
   'src/features/questions/cadence.ts', // question prompts
 ];
 
-// Step counters ("Step 3 of 5" / "3 of 5"), percentages, and "almost done/there".
+// Step counters ("Step 3 of 5" / "3 of 5"), progress percentages, and "almost
+// done/there". The percentage rule is anchored to a progress word ("60%
+// complete", "40% done") on purpose: a bare "\d+%" also matches CSS layout
+// values like width: '100%', which are not progress language and were a false
+// positive. "%\s*complete" stays as a separate catch for a wordless "% complete".
 const BANNED: { name: string; re: RegExp }[] = [
   { name: 'step counter', re: /\bstep\b[^.\n]{0,20}\b\d+\s+of\s+\d+/i },
   { name: 'n of m counter', re: /\b\d+\s+of\s+\d+\b/i },
-  { name: 'percentage', re: /\b\d+\s*%/ },
+  { name: 'progress percentage', re: /\b\d+\s*%\s*(complete|done|finished|remaining|left|through)\b/i },
   { name: 'percent complete', re: /%\s*complete/i },
   { name: 'almost done/there', re: /\balmost\s+(done|there)\b/i },
 ];

@@ -10,7 +10,7 @@ import { TRIAL_DAYS, formatFirstChargeDate } from '@/constants/billing';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
 import { isSignupSuccessStatus, services, type PricingResult } from '@/services';
 import { useTheme } from '@/theme';
-import { radii, spacing } from '@/theme/tokens';
+import { MAX_CONTENT_WIDTH, radii, spacing } from '@/theme/tokens';
 
 const heroImage = require('../../../../assets/images/westercove_hero_valley.jpg');
 
@@ -148,6 +148,10 @@ export default function SignUpReturnScreen() {
 
 const styles = StyleSheet.create({
   form: {
+    // Consistent desktop width — the centered 640 column (see components/Screen.tsx).
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.xl,
     paddingBottom: 88,
