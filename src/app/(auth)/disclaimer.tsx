@@ -13,6 +13,12 @@ import { fonts, MAX_CONTENT_WIDTH, spacing } from '@/theme/tokens';
 
 const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
 
+// westercove-beta's metallic --gold (#C9AE5D), used for thin rules only — the
+// gold divider above the consent block. The RN theme has no token for this
+// (its `saffron` is the brighter horizon-glow gold), so it is inlined here.
+// ponytail: promote to a theme token if a second surface needs the gold rule.
+const BETA_GOLD = '#C9AE5D';
+
 /**
  * S0 welcome gate — v13 disclaimer re-implemented in RN to match Wesley's
  * westercove-beta design: a valley-green photo header, serif "bold-title"
@@ -53,14 +59,20 @@ export default function WelcomeGateScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <HeroHeader variant="compact" title={WELCOME_NOTICE.title} image={heroImage} />
+      {/* h1 = beta's font-serif text-3xl (30px / lh 36), amethyst-deep. */}
+      <HeroHeader
+        variant="compact"
+        title={WELCOME_NOTICE.title}
+        image={heroImage}
+        titleStyle={styles.h1}
+      />
 
       <ScrollView contentContainerStyle={styles.content}>
         <Text color="amethystText" style={styles.tagline}>
           {WELCOME_NOTICE.tagline}
         </Text>
 
-        <Text variant="body" color="textMuted" style={styles.intro}>
+        <Text variant="body" style={styles.intro}>
           {DISCLAIMER_NOTICE.intro}
         </Text>
 
@@ -86,8 +98,10 @@ export default function WelcomeGateScreen() {
           );
         })}
 
-        {/* Gold divider before the consent block (Wesley's ref). */}
-        <View style={[styles.divider, { borderTopColor: colors.saffron }]} />
+        {/* Gold divider before the consent block. Beta uses its metallic --gold
+            (#C9AE5D) for thin rules — distinct from the theme's saffron horizon
+            glow — and the app theme has no token for it yet (flagged to god). */}
+        <View style={[styles.divider, { borderTopColor: BETA_GOLD }]} />
 
         {/* Affirmative 18+ checkbox (Wesley's ref, Rohan's ruling). The label is
             its own acknowledgement sentence — NOT a pre-agreement to the Terms.
@@ -135,7 +149,7 @@ export default function WelcomeGateScreen() {
             onPress={() => router.back()}
             style={styles.goBack}
           >
-            <Text variant="body" color="textMuted">
+            <Text variant="bodySmall" color="textMuted" style={styles.smallLink}>
               {WELCOME_NOTICE.goBackLabel}
             </Text>
           </Pressable>
@@ -145,14 +159,14 @@ export default function WelcomeGateScreen() {
             Community Guidelines is plain text — no page exists yet. */}
         <View style={styles.links}>
           <LegalLink label="Full Terms" url={LEGAL_LINK_URLS.terms} />
-          <Text variant="bodySmall" color="textMuted" style={styles.dot}>
+          <Text variant="bodySmall" color="textMuted" style={[styles.dot, styles.smallLink]}>
             ·
           </Text>
           <LegalLink label="Privacy" url={LEGAL_LINK_URLS.privacy} />
-          <Text variant="bodySmall" color="textMuted" style={styles.dot}>
+          <Text variant="bodySmall" color="textMuted" style={[styles.dot, styles.smallLink]}>
             ·
           </Text>
-          <Text variant="bodySmall" color="textMuted">
+          <Text variant="bodySmall" color="textMuted" style={styles.smallLink}>
             Community Guidelines
           </Text>
         </View>
@@ -169,7 +183,7 @@ function LegalLink({ label, url }: { label: string; url: string }) {
       onPress={() => Linking.openURL(url).catch(() => {})}
       hitSlop={8}
     >
-      <Text variant="bodySmall" color="amethystText" style={styles.linkText}>
+      <Text variant="bodySmall" color="heading" style={styles.linkText}>
         {label}
       </Text>
     </Pressable>
@@ -186,38 +200,49 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
     paddingBottom: 88,
   },
-  tagline: { fontFamily: fonts.serif, fontStyle: 'italic', fontSize: 18, lineHeight: 26 },
-  intro: { marginTop: spacing.md, fontSize: 15, lineHeight: 22 },
-  // Serif "bold title" look (amethyst-deep), with generous space above to
-  // separate sections (Wesley's space-y-8).
+  // Type sizes match westercove-beta's resolved px (src/routes/disclaimer.tsx +
+  // styles.css): same families (Source Serif 4 / Inter, already app-loaded).
+  // Subhead: font-serif text-lg italic (18px / lh 28, leading default).
+  // h1: font-serif text-3xl (30px / lh 36). Screen-title variant is already
+  // Source Serif 4 400 amethyst; only the size grows to match beta.
+  h1: { fontSize: 30, lineHeight: 36 },
+  tagline: { fontFamily: fonts.serif, fontStyle: 'italic', fontSize: 18, lineHeight: 28 },
+  // Intro: text-[17px] leading-relaxed (17px / 1.625), foreground (not muted).
+  intro: { marginTop: spacing.md, fontSize: 17, lineHeight: 27.6 },
+  // Section h2: font-serif text-xl leading-snug (20px / 1.375), amethyst-deep.
+  // Beta's headings inherit weight 400 (Tailwind preflight resets <h2>), so this
+  // is Source Serif 4 Regular — NOT semibold. letterSpacing -0.01em ≈ -0.2 at 20px.
   heading: {
-    fontFamily: fonts.serifSemibold,
+    fontFamily: fonts.serif,
     fontSize: 20,
-    lineHeight: 26,
+    lineHeight: 27.5,
+    letterSpacing: -0.2,
     marginTop: spacing.xxxl,
   },
-  // The standalone 18+ line: medium-weight, sits on its own between §1 and §2.
+  // Standalone 18+ line: font-medium (Inter 500) at body size (17px / 1.625).
   standalone: {
     fontFamily: fonts.sansMedium,
     fontSize: 17,
-    lineHeight: 27,
+    lineHeight: 27.6,
     marginTop: spacing.xl,
   },
-  // Body paragraphs, spaced within a section (Wesley's space-y-3).
-  para: { fontSize: 17, lineHeight: 27, marginTop: spacing.md },
+  // Body paragraphs: text-[17px] leading-relaxed; space-y-3 within a section.
+  para: { fontSize: 17, lineHeight: 27.6, marginTop: spacing.md },
   divider: { borderTopWidth: 1, marginTop: spacing.xxxl },
   checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, marginTop: spacing.xl },
+  // Checkbox: beta h-5 w-5 (20px), forest accent.
   box: {
-    width: 24,
-    height: 24,
+    width: 20,
+    height: 20,
     borderWidth: 1.5,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
   },
-  checkLabel: { flex: 1, fontSize: 15, lineHeight: 22 },
-  beginHelper: { textAlign: 'center' },
+  checkLabel: { flex: 1, fontSize: 17, lineHeight: 27.6 },
+  // Helper + links row: text-sm (14px).
+  beginHelper: { textAlign: 'center', fontSize: 14, lineHeight: 20 },
   actions: { marginTop: spacing.xl, gap: spacing.sm },
   goBack: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
   links: {
@@ -227,6 +252,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  linkText: { textDecorationLine: 'underline' },
+  linkText: { fontSize: 14, lineHeight: 20, textDecorationLine: 'underline' },
+  // text-sm (14px) for the links row, Go back, and dots.
+  smallLink: { fontSize: 14, lineHeight: 20 },
   dot: { marginHorizontal: spacing.sm },
 });

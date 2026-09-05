@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type TextStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
@@ -24,6 +24,9 @@ export interface HeroHeaderProps {
   subtitle?: string;
   /** Hero photo (require()'d asset). Defaults to the sunrise image. */
   image?: number;
+  /** Optional per-screen override for the title text style (e.g. the disclaimer
+   * gate matches westercove-beta's larger 30px h1). Merged over the variant. */
+  titleStyle?: TextStyle;
 }
 
 /**
@@ -39,6 +42,7 @@ export function HeroHeader({
   label,
   subtitle,
   image = defaultPhoto,
+  titleStyle,
 }: HeroHeaderProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -97,6 +101,7 @@ export function HeroHeader({
           <Text
             variant={variant === 'greeting' ? 'display' : 'screenTitle'}
             accessibilityRole="header"
+            style={titleStyle}
           >
             {title}
           </Text>
