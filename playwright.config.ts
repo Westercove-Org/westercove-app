@@ -2,9 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Web end-to-end tests against the exported web build. The webServer exports
- * the app and serves it, so `npm run e2e` is self-contained. The export is a
- * server build (API routes), so it is served by `expo serve`, not a static
- * file server.
+ * the app and serves it, so `npm run e2e` is self-contained. The export is
+ * `output: 'single'` (one index.html + client-side expo-router), so it is
+ * served with an index.html SPA fallback (e2e/serve-dist.mjs) — a plain static
+ * server 404s every client route.
  */
 export default defineConfig({
   testDir: './e2e',
@@ -17,7 +18,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'npm run web:export && npx expo serve --port 8080',
+    command: 'npm run web:export && node e2e/serve-dist.mjs dist 8080',
     url: 'http://localhost:8080',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
