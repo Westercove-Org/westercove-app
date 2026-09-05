@@ -67,13 +67,17 @@ test.describe('S0 welcome gate', () => {
 });
 
 test.describe('four-doors intake (flag ON)', () => {
-  test('reaches the four-doors gate, not the legacy day-zero wizard', async ({ page }) => {
+  test('opens on the warm arrival (door first), not the legacy day-zero wizard', async ({
+    page,
+  }) => {
     await seedNeedsGateSession(page);
     await page.goto('/gate');
-    // Four-doors name step — its wording is distinct from DayZeroGate's q1.
+    // Warm arrival: the door question is the first screen (not a name prompt).
     await expect(
-      page.getByRole('heading', { name: 'What should your grief companion call you?' }),
+      page.getByRole('heading', { name: 'What brings you to Westercove?' }),
     ).toBeVisible();
+    await expect(page.getByText('Someone I love died')).toBeVisible();
+    await expect(page.getByText('You can change this later.')).toBeVisible();
     // The legacy DayZeroGate's first question must NOT appear.
     await expect(page.getByText('What would you like me to call you?')).toHaveCount(0);
   });
@@ -82,21 +86,21 @@ test.describe('four-doors intake (flag ON)', () => {
     await seedNeedsGateSession(page);
     await page.goto('/gate');
 
-    // name
-    await page.getByLabel('What should your grief companion call you?').fill('Sam');
-    await page.getByRole('button', { name: 'Next' }).click();
-
-    // door — all four options present
-    await expect(page.getByRole('heading', { name: 'What brings you here?' })).toBeVisible();
+    // door — all four options present (Wesley's labels), door is the first step
+    await expect(page.getByRole('heading', { name: 'What brings you to Westercove?' })).toBeVisible();
     for (const label of [
-      'A person I love died',
-      'Someone I love is still here, but I am losing them',
-      'I lost a part of my life or myself',
-      'My pet died',
+      'Someone I love died',
+      'I’m caring for someone who is slipping away',
+      'Part of my life has changed or ended',
+      'I lost a beloved animal',
     ]) {
       await expect(page.getByText(label)).toBeVisible();
     }
-    await page.getByText('A person I love died').click();
+    await page.getByText('Someone I love died').click();
+    await page.getByRole('button', { name: 'Next' }).click();
+
+    // name — now a quieter step after the door
+    await page.getByLabel('What should your grief companion call you?').fill('Sam');
     await page.getByRole('button', { name: 'Next' }).click();
 
     // q3 (their name) + q4 (relationship) for door 1 are text inputs

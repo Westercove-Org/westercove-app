@@ -140,9 +140,11 @@ export const copy = {
     // above the "Begin my free trial" button. The selected plan's price is on
     // the plan cards above; the server first-charge date is appended quietly so
     // the pre-checkout disclosure still says when the first charge lands.
-    trialTitle: 'Begin with 14 days free',
-    trialBody:
-      'There is no charge today. After 14 days, your selected membership begins automatically. Cancel before then and pay nothing.',
+    // Bound to the backend trial length (pricing.trialDays), not a hardcoded
+    // number — this is a billing disclosure, so the day count must track the server.
+    trialTitle: (days: number) => `Begin with ${days} days free`,
+    trialBody: (days: number) =>
+      `There is no charge today. After ${days} days, your selected membership begins automatically. Cancel before then and pay nothing.`,
     startTrial: 'Begin my free trial',
     trialUnavailable:
       'We can’t show the trial price right now, so paying to join is paused for a moment. Please try again shortly, or join with an organization code.',
