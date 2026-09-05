@@ -10,10 +10,10 @@ import { copy } from '@/constants/copy';
 import { formatFirstChargeDate, TRIAL_DAYS } from '@/constants/billing';
 import { isEmail } from '@/features/auth/email';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
+import { checkoutErrorMessage, signupErrorMessage } from '@/features/auth/signupErrors';
 import { collectSignupErrors } from '@/features/auth/signupValidation';
 import { getWelcomeAcceptance } from '@/features/auth/welcomeAcceptance';
 import { services, type PlanId, type PlanTier, type PricingResult } from '@/services';
-import { HttpError } from '@/lib/http';
 import { useTheme } from '@/theme';
 import { MAX_CONTENT_WIDTH, radii, spacing } from '@/theme/tokens';
 
@@ -25,29 +25,6 @@ const MIN_PASSWORD = 12;
 // (joinChoice) BEFORE any pricing; only "joining on my own" reveals the
 // membership + trial (plan). Access code keeps its own step (orgCode).
 type Step = 'entry' | 'joinChoice' | 'plan' | 'orgCode' | 'confirm' | 'payCheckEmail';
-
-/** Enumeration-safe signup error copy: never reveal account existence. 429 =
- * rate limit; otherwise a neutral fallback (the server detail, when present, is
- * safe — invalid code / weak password). */
-function signupErrorMessage(e: unknown): string {
-  const c = copy.signUp;
-  if (e instanceof HttpError) {
-    if (e.status === 429) return c.rateLimited;
-    if (e.message) return e.message;
-  }
-  return c.genericError;
-}
-
-/** Checkout error copy. 503 = payments off, 429 = rate limit. No 409: an
- * already-registered email returns a generic 200 with checkoutUrl:null. */
-function checkoutErrorMessage(e: unknown): string {
-  const c = copy.signUp;
-  if (e instanceof HttpError) {
-    if (e.status === 503) return c.checkoutUnavailable;
-    if (e.status === 429) return c.rateLimited;
-  }
-  return c.checkoutError;
-}
 
 /**
  * Signup v2 (self-serve), final Option-A flow. Linked from sign-in
@@ -162,7 +139,7 @@ export default function SignUpScreen() {
         await Linking.openURL(checkoutUrl);
       }
     } catch (e) {
-      setErrors([checkoutErrorMessage(e)]);
+      setErrors([checkoutErrorMessage(e, c)]);
       setBusy(false);
     }
   };
@@ -181,7 +158,7 @@ export default function SignUpScreen() {
       });
       setStep('confirm');
     } catch (e) {
-      setErrors([signupErrorMessage(e)]);
+      setErrors([signupErrorMessage(e, c)]);
     } finally {
       setBusy(false);
     }
