@@ -24,6 +24,8 @@ test.describe('S0 welcome gate', () => {
   test('renders the v13 disclaimer in Wesley structure', async ({ page }) => {
     await page.goto('/disclaimer');
     await expect(page.getByText('Welcome to Westercove™').first()).toBeVisible();
+    // Serif-italic subhead sits on the header (moved out of the scroll body).
+    await expect(page.getByText('Here for you when the world goes quiet.')).toBeVisible();
     // Serif "bold-title" section headings + the standalone 18+ line.
     await expect(page.getByText('What Westercove™ is.')).toBeVisible();
     await expect(page.getByText('If you are in crisis, please reach a person.')).toBeVisible();

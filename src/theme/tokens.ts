@@ -33,6 +33,9 @@ export interface ThemeColors {
   chipGreen: string;
   /** Landscape horizon glow — imagery only, never text/interactive. */
   saffron: string;
+  /** Metallic gold (2.17:1 on white) — thin rules and small flourishes only,
+   * never text. Distinct from the brighter `saffron` horizon glow. */
+  gold: string;
   /** Text/icon color on emerald and forest fills. */
   onAccent: string;
   /** Serif display headings (deep amethyst in the reference). */
@@ -52,6 +55,7 @@ const light: ThemeColors = {
   amethystTint: '#EEF0F8',
   chipGreen: '#EEF3E8',
   saffron: '#EDC531',
+  gold: '#C9AE5D',
   onAccent: '#FFFFFF',
   heading: '#190933',
 };
@@ -71,6 +75,7 @@ const dark: ThemeColors = {
   amethystTint: '#2A2140',
   chipGreen: '#24301F',
   saffron: '#EDC531',
+  gold: '#C9AE5D',
   onAccent: '#FFFFFF',
   heading: '#CBB8F0',
 };
