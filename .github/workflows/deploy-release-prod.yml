@@ -1,0 +1,122 @@
+name: deploy-release-prod
+
+# PROD frontend CD — MANUAL + REVIEWER-GATED. NEVER auto.
+#
+# Mirror of deploy-release.yml, but targets the PRODUCTION frontend stack and is
+# reachable ONLY by a deliberate, reviewed dispatch:
+#   - workflow_dispatch ONLY (no push, no release trigger).
+#   - runs in the `prod` GitHub Environment, which MUST have REQUIRED REVIEWERS.
+#     (The `release` environment is un-gated — do NOT use it here.)
+#   - assumes westercove-prod-frontend-deploy, whose trust is bound to
+#     :environment:prod, so an un-reviewed run cannot assume it (IAM wall, not
+#     just this workflow).
+#
+# IMMUTABLE TAGS — do NOT revert to :latest. Rollback = re-dispatch WITH a prior
+# tag (skips build, redeploys the existing image). ECR tag-immutability MUST be ON
+# for westercove-prod-frontend.
+#
+# Cognito ids for the prod build come from the `prod` environment's variables
+# (vars.COGNITO_USER_POOL_ID / vars.COGNITO_CLIENT_ID) — the prod pool is created
+# by the prod terraform apply; set them on the environment, they are not committed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Rollback only: an EXISTING image tag to redeploy. Leave EMPTY to build+deploy the current checkout (tagged with its git SHA)."
+        required: false
+
+concurrency:
+  group: deploy-prod-frontend
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPO: 920887851546.dkr.ecr.us-east-1.amazonaws.com/westercove-prod-frontend
+  ECS_CLUSTER: westercove-prod-cluster
+  ECS_SERVICE: westercove-prod-frontend
+  API_URL: https://main.westercove.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod             # REQUIRED REVIEWERS gate — verify in Settings -> Environments -> prod
+    steps:
+      - uses: actions/checkout@v4
+
+      # HARD GUARD: structurally prod-only. Fail fast if the target isn't prod so a
+      # bad edit can't silently ship to dev under the prod role.
+      - name: Assert PROD-only target
+        run: |
+          set -euo pipefail
+          if [ "${ECS_CLUSTER}" != "westercove-prod-cluster" ] || [ "${ECS_SERVICE}" != "westercove-prod-frontend" ]; then
+            echo "REFUSING: target is not prod (${ECS_CLUSTER}/${ECS_SERVICE})." >&2; exit 1
+          fi
+          echo "Target confirmed prod: ${ECS_CLUSTER}/${ECS_SERVICE}"
+
+      - name: Require Cognito env vars
+        run: |
+          set -euo pipefail
+          : "${COGNITO_USER_POOL_ID:?set vars.COGNITO_USER_POOL_ID on the prod environment}"
+          : "${COGNITO_CLIENT_ID:?set vars.COGNITO_CLIENT_ID on the prod environment}"
+        env:
+          COGNITO_USER_POOL_ID: ${{ vars.COGNITO_USER_POOL_ID }}
+          COGNITO_CLIENT_ID: ${{ vars.COGNITO_CLIENT_ID }}
+
+      # Resolve tag + build mode:
+      #  - dispatch WITHOUT a tag  -> tag = git short SHA, BUILD (deploy current checkout)
+      #  - dispatch WITH a tag     -> tag = that tag,      NO build (rollback to existing)
+      - name: Resolve tag + build mode
+        id: tag
+        run: |
+          set -euo pipefail
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"; BUILD=false
+          else
+            TAG="$(git rev-parse --short=12 HEAD)"; BUILD=true
+          fi
+          if [ -z "${TAG}" ]; then echo "No tag resolved" >&2; exit 1; fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "build=${BUILD}" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag=${TAG} build=${BUILD}"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::920887851546:role/westercove-prod-frontend-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image (immutable-tagged)
+        if: ${{ steps.tag.outputs.build == 'true' }}
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 \
+            --build-arg EXPO_PUBLIC_API_URL="${API_URL}" \
+            --build-arg EXPO_PUBLIC_COGNITO_USER_POOL_ID="${{ vars.COGNITO_USER_POOL_ID }}" \
+            --build-arg EXPO_PUBLIC_COGNITO_CLIENT_ID="${{ vars.COGNITO_CLIENT_ID }}" \
+            -t "${ECR_REPO}:${{ steps.tag.outputs.tag }}" .
+          docker push "${ECR_REPO}:${{ steps.tag.outputs.tag }}"
+
+      - name: Deploy frontend at the release tag
+        run: |
+          set -euo pipefail
+          IMAGE="${ECR_REPO}:${{ steps.tag.outputs.tag }}"
+          TD_ARN=$(aws ecs describe-services --cluster "${ECS_CLUSTER}" --services "${ECS_SERVICE}" \
+            --query 'services[0].taskDefinition' --output text)
+          aws ecs describe-task-definition --task-definition "${TD_ARN}" \
+            --query 'taskDefinition' --output json > td.json
+          jq --arg IMG "${IMAGE}" '
+            .containerDefinitions[0].image = $IMG
+            | {family,taskRoleArn,executionRoleArn,networkMode,containerDefinitions,volumes,placementConstraints,requiresCompatibilities,cpu,memory,runtimePlatform}
+            | with_entries(select(.value != null))' td.json > td-new.json
+          NEW_TD=$(aws ecs register-task-definition --cli-input-json file://td-new.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "${ECS_CLUSTER}" --service "${ECS_SERVICE}" \
+            --task-definition "${NEW_TD}" --no-cli-pager >/dev/null
+          aws ecs wait services-stable --cluster "${ECS_CLUSTER}" --services "${ECS_SERVICE}"
+          echo "Prod frontend release ${{ steps.tag.outputs.tag }} stable at ${NEW_TD}"
