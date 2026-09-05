@@ -286,6 +286,14 @@ export default function SignUpScreen() {
                       accessibilityState={{ selected: active }}
                       accessibilityLabel={`${label} ${intervalLabel}, ${p.display}${
                         annual ? `, ${c.annualCaption}` : ''
+                      }${
+                        annual && p.savingsDisplay
+                          ? `, ${
+                              p.savingsPercent != null
+                                ? c.savingsLine(p.savingsDisplay, p.savingsPercent)
+                                : `Save ${p.savingsDisplay}`
+                            }`
+                          : ''
                       }`}
                       style={[
                         styles.planCard,
@@ -305,6 +313,15 @@ export default function SignUpScreen() {
                       {annual ? (
                         <Text variant="bodySmall" color="forest">
                           {c.annualCaption}
+                        </Text>
+                      ) : null}
+                      {/* Numeric savings, server-provided (annual only); render
+                          nothing when the field is absent (monthly / single plan). */}
+                      {annual && p.savingsDisplay ? (
+                        <Text variant="bodySmall" color="forest">
+                          {p.savingsPercent != null
+                            ? c.savingsLine(p.savingsDisplay, p.savingsPercent)
+                            : `Save ${p.savingsDisplay}`}
                         </Text>
                       ) : null}
                     </Pressable>

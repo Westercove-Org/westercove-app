@@ -75,6 +75,13 @@ export interface PlanOption {
   amount: number;
   currency: string;
   interval: string;
+  /** Server-formatted savings vs paying monthly, present only on the annual
+   * plan (null/absent on monthly). Displayed verbatim — never computed client
+   * side (R-2/R-4). `savingsDisplay` e.g. '$24.99', `savingsPercent` e.g. 8.
+   * ponytail: field names track Stanley's pricing payload (savings_display /
+   * savings_percent); rename here if the BE contract lands under other keys. */
+  savingsDisplay?: string;
+  savingsPercent?: number;
 }
 
 /** Trial pricing for the pre-card disclosure, from the Stripe-backed pre-auth
@@ -201,17 +208,31 @@ export class ApiSignupService implements SignupService {
         amount: number;
         currency: string;
         interval: string;
+        savings_display?: string | null;
+        savings_percent?: number | null;
       }[];
       trial_days: number;
       first_charge_date: string;
     }>('/auth/signup/pricing');
     // Keep only the four known plans with a valid tier; ignore any unknown key
-    // (never rendered).
-    const plans = (r.plans ?? []).filter(
-      (p): p is PlanOption =>
-        KNOWN_PLAN_IDS.includes(p.plan as PlanId) &&
-        (p.tier === 'standard' || p.tier === 'premium'),
-    );
+    // (never rendered). Map the server savings (snake) to camel, verbatim — no
+    // client-side price math (R-2/R-4); absent/null stays undefined.
+    const plans: PlanOption[] = (r.plans ?? [])
+      .filter(
+        (p) =>
+          KNOWN_PLAN_IDS.includes(p.plan as PlanId) &&
+          (p.tier === 'standard' || p.tier === 'premium'),
+      )
+      .map((p) => ({
+        plan: p.plan as PlanId,
+        tier: p.tier as PlanTier,
+        display: p.display,
+        amount: p.amount,
+        currency: p.currency,
+        interval: p.interval,
+        savingsDisplay: p.savings_display ?? undefined,
+        savingsPercent: p.savings_percent ?? undefined,
+      }));
     // A 200 always carries all four plans. Anything less is malformed — block the
     // paid path (throw → caller shows no price), never a partial choice. Same
     // posture as never guessing a fallback price.
