@@ -16,7 +16,10 @@
  * qs7-be-welcome-notice-consent will later serve this copy + version from
  * GET /legal/content; when it lands, swap the source and keep this as fallback.
  */
-export const NOTICE_VERSION = 'welcome-2026-09-04';
+// Matches the server's current notice version (Stanley's qs7-be-welcome-notice-
+// consent, GET /legal-disclaimer/content). Kept in sync so a member is not
+// re-asked once after signup; swap to the served version when that fetch lands.
+export const NOTICE_VERSION = 'v11.2026-09-04';
 
 export interface NoticeBlock {
   heading?: string;
