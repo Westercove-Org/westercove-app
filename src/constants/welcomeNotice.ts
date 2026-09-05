@@ -19,7 +19,9 @@
 // Matches the server's current notice version (Stanley's qs7-be-welcome-notice-
 // consent, GET /legal-disclaimer/content). Kept in sync so a member is not
 // re-asked once after signup; swap to the served version when that fetch lands.
-export const NOTICE_VERSION = 'v11.2026-09-04';
+// v12: Wesley's consent-wording change (passive ack, no pre-agreement to Terms);
+// aligns with QuietRoom #234 (d642e30). A v11 acker gets one expected re-ask.
+export const NOTICE_VERSION = 'v12.2026-09-05';
 
 export interface NoticeBlock {
   heading?: string;
@@ -39,6 +41,12 @@ export const WELCOME_NOTICE = {
     { heading: 'A few promises.', body: 'We will tell you the truth, including the parts that are hard to hear. We will not use the word closure. We will not call this a journey. We will not say “at least.” We will not tell you that everything happens for a reason. We will not tell you that you can get another one. We will use their name when you share it. We will sit with the silence.' },
     { body: 'You do not have to be okay. You do not have to perform anything here. There is no daily goal and no streak. Come back when you are ready, use Westercove™ as much as you need, or not at all.' },
   ] as NoticeBlock[],
-  tickLabel: 'I am 18 or older, and I have read and understand the above.',
+  // Passive acknowledgement (Wesley, v12): shown as static text by Begin — NOT a
+  // checkbox. We cannot ask someone to agree to the Terms before they have seen
+  // them, and "I understand" is not the same as agreeing to continue. Pressing
+  // Begin IS the acknowledgement. VERBATIM; must match the server's
+  // LEGAL_DISCLAIMER_ACKNOWLEDGEMENT_CHECKS[0] (served via /legal-disclaimer/content).
+  ackStatement:
+    'By continuing, you confirm that you are 18 or older. You will have an opportunity to review and accept our Terms and Privacy Notice before using Westercove™.',
   beginLabel: 'Begin',
 } as const;

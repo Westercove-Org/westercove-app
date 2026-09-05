@@ -18,7 +18,9 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'npm run web:export && node e2e/serve-dist.mjs dist 8080',
+    // `-c` clears the Metro cache: a stale cache can otherwise emit a partial
+    // bundle with an empty route tree ("No routes found" / blank app).
+    command: 'npm run web:export -- -c && node e2e/serve-dist.mjs dist 8080',
     url: 'http://localhost:8080',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
