@@ -106,4 +106,60 @@ describe('HttpClient', () => {
 
     await expect(client.delete('/entries/1')).resolves.toBeNull();
   });
+
+  describe('timeout (wes-freeze-first-entry)', () => {
+    // A fetch that never resolves on its own, but rejects (like the real one)
+    // when its abort signal fires — the "hung request" that froze the UI.
+    const hangingFetch = () =>
+      fetchMock.mockImplementation(
+        (_url, init: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            init.signal?.addEventListener('abort', () =>
+              reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+            );
+          }),
+      );
+
+    afterEach(() => jest.useRealTimers());
+
+    it('aborts a hung request after the client default and throws TimeoutError', async () => {
+      jest.useFakeTimers();
+      hangingFetch();
+      const client = new HttpClient({ baseUrl: 'https://api.test', timeoutMs: 30_000 });
+
+      const p = client.get('/slow');
+      const assertion = expect(p).rejects.toMatchObject({ name: 'TimeoutError' });
+      await jest.advanceTimersByTimeAsync(30_000);
+      await assertion;
+    });
+
+    it('lets a per-request timeoutMs override the default', async () => {
+      jest.useFakeTimers();
+      hangingFetch();
+      const client = new HttpClient({ baseUrl: 'https://api.test', timeoutMs: 30_000 });
+
+      const p = client.get('/slow', { timeoutMs: 1000 });
+      const assertion = expect(p).rejects.toMatchObject({ name: 'TimeoutError' });
+      await jest.advanceTimersByTimeAsync(1000);
+      await assertion;
+    });
+
+    it('does not time out a request that responds in time', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+      const client = new HttpClient({ baseUrl: 'https://api.test', timeoutMs: 30_000 });
+
+      await expect(client.get<{ ok: boolean }>('/fast')).resolves.toEqual({ ok: true });
+    });
+
+    it('passes the caller signal through when no timeout is configured', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+      const client = new HttpClient({ baseUrl: 'https://api.test' }); // no default timeout
+      const signal = new AbortController().signal;
+
+      await client.get('/x', { signal });
+
+      const [, init] = fetchMock.mock.calls[0];
+      expect(init.signal).toBe(signal);
+    });
+  });
 });

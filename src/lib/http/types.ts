@@ -14,6 +14,9 @@ export interface RequestOptions {
   auth?: boolean;
   /** Abort signal for cancellation / timeouts. */
   signal?: AbortSignal;
+  /** Per-request timeout override in ms. Falsy (0) disables the timeout for
+   * this call; omitted uses the client default. */
+  timeoutMs?: number;
 }
 
 /**
@@ -49,4 +52,17 @@ export interface HttpClientOptions {
   onUnauthorized?: () => Promise<boolean> | boolean;
   /** Default headers applied to every request. */
   defaultHeaders?: Record<string, string>;
+  /** Default request timeout in ms. A hung request is aborted after this so the
+   * UI never freezes waiting on a response that never comes. 0/undefined = no
+   * default timeout. Per-request `timeoutMs` overrides it. */
+  timeoutMs?: number;
+}
+
+/** Thrown when a request is aborted by its own timeout (not a caller abort). */
+export class TimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Request timed out after ${timeoutMs}ms`);
+    Object.setPrototypeOf(this, TimeoutError.prototype);
+    this.name = 'TimeoutError';
+  }
 }

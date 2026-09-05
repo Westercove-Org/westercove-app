@@ -1,5 +1,6 @@
 import {
   HttpError,
+  TimeoutError,
   type HttpClientOptions,
   type RequestOptions,
 } from './types';
@@ -18,12 +19,14 @@ export class HttpClient {
   private readonly getToken: HttpClientOptions['getToken'];
   private readonly onUnauthorized: HttpClientOptions['onUnauthorized'];
   private readonly defaultHeaders: Record<string, string>;
+  private readonly timeoutMs: number;
 
   constructor(options: HttpClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, '');
     this.getToken = options.getToken;
     this.onUnauthorized = options.onUnauthorized;
     this.defaultHeaders = options.defaultHeaders ?? {};
+    this.timeoutMs = options.timeoutMs ?? 0;
   }
 
   get<T = unknown>(path: string, options?: RequestOptions): Promise<T> {
@@ -63,12 +66,43 @@ export class HttpClient {
     const headers = await this.buildHeaders(options);
     const body = this.serializeBody(options.body, headers);
 
-    return fetch(url, {
-      method: options.method ?? 'GET',
-      headers,
-      body,
-      signal: options.signal,
-    });
+    // Bound every request with a timeout so a hung connection can never freeze
+    // the UI waiting forever (Wesley: "froze on first entry, wouldn't move
+    // forward"). The timeout AbortController is combined with any caller signal;
+    // on timeout we surface a TimeoutError, on caller-abort the original abort.
+    const timeoutMs = options.timeoutMs ?? this.timeoutMs;
+    if (!timeoutMs) {
+      return fetch(url, { method: options.method ?? 'GET', headers, body, signal: options.signal });
+    }
+
+    const controller = new AbortController();
+    let timedOut = false;
+    const external = options.signal;
+    const forwardAbort = () => controller.abort(external?.reason);
+    if (external) {
+      if (external.aborted) controller.abort(external.reason);
+      else external.addEventListener('abort', forwardAbort);
+    }
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+
+    try {
+      return await fetch(url, {
+        method: options.method ?? 'GET',
+        headers,
+        body,
+        signal: controller.signal,
+      });
+    } catch (e) {
+      // Distinguish our timeout from a caller-initiated abort.
+      if (timedOut) throw new TimeoutError(timeoutMs);
+      throw e;
+    } finally {
+      clearTimeout(timer);
+      external?.removeEventListener('abort', forwardAbort);
+    }
   }
 
   private resolveUrl(path: string, query?: RequestOptions['query']): string {

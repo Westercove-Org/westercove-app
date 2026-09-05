@@ -11,6 +11,10 @@ import { API_BASE_URL } from './config';
 export const apiClient = new HttpClient({
   baseUrl: API_BASE_URL,
   getToken: getAuthToken,
+  // A hung request must never freeze the UI forever. 30s is generous for a
+  // companion reply yet bounds a stalled connection; slow endpoints can pass a
+  // longer per-request `timeoutMs`.
+  timeoutMs: 30_000,
   async onUnauthorized() {
     // Lazy require breaks the module-init cycle: sessionStore/services →
     // chat/survey → this client. Only needed at 401 time, never at load.
@@ -32,5 +36,5 @@ export const apiClient = new HttpClient({
 export { HttpClient } from './client';
 export { API_BASE_URL } from './config';
 export { getAuthToken, setAuthToken, clearAuthToken } from './authToken';
-export { HttpError } from './types';
+export { HttpError, TimeoutError } from './types';
 export type { HttpClientOptions, RequestOptions, HttpMethod } from './types';
