@@ -13,6 +13,10 @@ describe('DISCLAIMER_NOTICE', () => {
   const allText = DISCLAIMER_NOTICE.blocks.map((b) => b.text).join('\n');
 
   it('records the v14 consent version (checkbox affordance bump)', () => {
+    // DRIFT GUARD: the gate no longer fetches getContent, so this hardcoded
+    // string is the sole FE version and MUST stay in lockstep with QuietRoom's
+    // LEGAL_DISCLAIMER_VERSION (Stanley, QR #239). If this fails after a BE bump,
+    // update DISCLAIMER_VERSION to match the server — do not just retune the test.
     expect(DISCLAIMER_NOTICE.version).toBe('v14.2026-09-05');
   });
 

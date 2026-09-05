@@ -23,8 +23,14 @@ export type DisclaimerBlock =
 
 // v14: the consent affordance changed from passive to an affirmative checkbox
 // (Wesley's ref, Rohan's ruling). The BODY copy is unchanged v13 text, but a
-// consent-wording change bumps the acceptance version so it is re-asked. BE
-// locksteps this string (Stanley, QR #238); the gate records the version shown.
+// consent-wording change bumps the acceptance version so it is re-asked.
+//
+// DRIFT GUARD — LOCKSTEP REQUIRED: the gate no longer fetches getContent, so this
+// constant is the sole FE source and can silently diverge from the server. It
+// MUST equal QuietRoom's LEGAL_DISCLAIMER_VERSION (Stanley, QR #239 =
+// v14.2026-09-05). If BE bumps the version, bump this in the same change or the
+// accepted version won't match /legal/status and every user is re-asked.
+// disclaimerContent.test.ts pins this string; keep that test in sync too.
 export const DISCLAIMER_VERSION = 'v14.2026-09-05';
 
 export const DISCLAIMER_NOTICE = {
