@@ -1,75 +1,85 @@
-import { NOTICE_VERSION, WELCOME_NOTICE, type NoticeBlock } from '@/constants/welcomeNotice';
-import type { DisclaimerContent } from '@/services';
-
 /**
- * Recognized section headings, used ONLY to style a served paragraph as a
- * section heading vs body text. The backend owns the disclaimer copy (served via
- * /legal-disclaimer/content); this list does not define the copy, and an
- * unrecognized line simply renders as body — so heading text can drift on the BE
- * without breaking the render. Keep in sync with the served headings when they
- * change (design-disclaimer-rewrite v13).
+ * S0 disclaimer body — v13 copy in Wesley's westercove-beta STRUCTURE, owned by
+ * the FE and rendered verbatim. The BE `getContent('disclaimer')` model is a
+ * flat paragraph list and cannot express this document (five headed sections,
+ * the standalone 18+ line between §1 and §2, the inline "One thing we ask."
+ * opening), so — per Rohan's blessing — the gate hardcodes the body and records
+ * THIS version on Begin (version integrity: the recorded acceptance always
+ * matches the copy the person actually saw). The authed legal screen stays
+ * BE-served. Copy is VERBATIM from shared/disclaimer_copy_v13.md; a wording
+ * change MUST bump DISCLAIMER_VERSION so acceptance is re-asked.
+ *
+ * Render the trademark GLYPH ("Westercove™") — never the word "trademark".
  */
-export const SECTION_HEADINGS = new Set<string>([
-  'What Westercove™ is.',
-  'If you are in crisis, please reach a person.',
-  'What this space will hold.',
-  'One thing we ask.',
-  'Your writing belongs to you.',
-  'A few promises.',
-]);
 
-/** Public site origin for resolving relative legal links (e.g. the served
- * community-guidelines path "/about/westercove#…"). Matches the Terms/Privacy
- * host. ponytail: if the BE ever serves a non-westercove.com relative path this
- * assumption breaks — revisit if Community Guidelines moves off the main site. */
-const PUBLIC_SITE_BASE = 'https://westercove.com';
+// A single ordered list so document order is exact by construction and testable.
+// heading  → serif bold section title (amethyst).
+// standalone → a bold line that stands on its own (the 18+ line, between §1/§2).
+// para     → a body paragraph.
+export type DisclaimerBlock =
+  | { kind: 'heading'; text: string }
+  | { kind: 'standalone'; text: string }
+  | { kind: 'para'; text: string };
 
-/** A served legal URL may be absolute (open as-is) or a site-relative path
- * (prefix with the public site origin). Null stays null (rendered as plain text). */
-function absoluteUrl(url: string | null): string | null {
-  if (!url) return null;
-  return /^https?:\/\//i.test(url) ? url : `${PUBLIC_SITE_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
-}
+export const DISCLAIMER_VERSION = 'v13.2026-09-05';
 
-export interface ResolvedDisclaimer {
-  /** The version of the body ACTUALLY displayed — served content.version, or the
-   * fallback constant's own version. The gate records THIS on Begin so the
-   * recorded acceptance always matches the copy the person saw. */
-  version: string;
-  /** Intro paragraphs shown above the sectioned body. */
-  intro: string[];
-  /** Sectioned body: a block with a heading starts a section; a block with a
-   * body is a paragraph. */
-  blocks: NoticeBlock[];
-  communityGuidelinesUrl: string | null;
-  /** True when the served content was unavailable and the hardcoded notice is
-   * shown instead (offline / fetch failure). */
-  usingFallback: boolean;
-}
-
-/**
- * Resolve the disclaimer to a single render model. Served content is the source
- * of truth; when it is null (fetch failed / offline) we fall back to the
- * hardcoded WELCOME_NOTICE, which is self-consistent (its own v12 copy AND
- * version) — never a v13 version stamped on v12 text, or vice-versa.
- */
-export function resolveDisclaimer(content: DisclaimerContent | null): ResolvedDisclaimer {
-  if (content) {
-    return {
-      version: content.version,
-      intro: content.summary,
-      blocks: content.paragraphs.map((p) =>
-        SECTION_HEADINGS.has(p) ? { heading: p } : { body: p },
-      ),
-      communityGuidelinesUrl: absoluteUrl(content.communityGuidelinesUrl),
-      usingFallback: false,
-    };
-  }
-  return {
-    version: NOTICE_VERSION,
-    intro: [WELCOME_NOTICE.lede],
-    blocks: WELCOME_NOTICE.blocks,
-    communityGuidelinesUrl: null,
-    usingFallback: true,
-  };
-}
+export const DISCLAIMER_V13 = {
+  version: DISCLAIMER_VERSION,
+  intro: 'Please read this before you begin. It is short, and it matters.',
+  blocks: [
+    { kind: 'heading', text: 'What Westercove™ is.' },
+    {
+      kind: 'para',
+      text: 'Westercove™ is a digital grief wellness companion offering guided journaling, education, and personalized support for adults navigating complex loss, all in one quiet space.',
+    },
+    {
+      kind: 'para',
+      text: 'You are talking with software, not with a person. What we offer is grief wellness and education. We do not diagnose, treat, or cure anything, and we do not promise an outcome. Nobody can tell you how long grief takes or how it should feel, and we will not claim to.',
+    },
+    {
+      kind: 'para',
+      text: 'Westercove™ is not therapy and it is not medical care. It does not replace a counselor, a doctor, a veterinarian, a hospice nurse, or a grief specialist. It works alongside the care you already have and never stands in place of it. If you are working with someone, please keep working with them. If you need someone, we will help you find them.',
+    },
+    { kind: 'standalone', text: 'You must be 18 or older to use it.' },
+    { kind: 'heading', text: 'If you are in crisis, please reach a person.' },
+    {
+      kind: 'para',
+      text: 'Westercove™ is not an emergency service. Call or text 988 to reach the Suicide and Crisis Lifeline. Text HOME to 741741 to reach the Crisis Text Line. If anyone is in immediate danger, call 911. These numbers stay at the bottom of every screen.',
+    },
+    { kind: 'heading', text: 'What this space will hold.' },
+    {
+      kind: 'para',
+      text: 'Whoever you are grieving, yourself, a person or an animal, your loss belongs here. Sadness, rage, guilt, dark humor, complicated love, hopelessness, longing, regret, and almost any other shape grief takes. You do not have to soften any of it.',
+    },
+    {
+      kind: 'para',
+      text: 'One thing we ask. This place was built in love, and it can hold your love, hope, anger, and hurt, and the things you cannot say anywhere else. Be as angry as you need to be, at anyone, including the person who died. The one thing this space cannot hold is a threat to harm another person.',
+    },
+    {
+      kind: 'para',
+      text: 'If something you write suggests that you, another person, or an animal is in danger, Westercove™ will respond with crisis resources, and in rare cases we may need to act to keep someone safe. Our full policy is in the Terms.',
+    },
+    { kind: 'heading', text: 'Your writing belongs to you.' },
+    {
+      kind: 'para',
+      text: 'It travels over an encrypted connection, it is encrypted on the servers that store it, and access is locked to your account, so no other member can read it. It is never sold and never used to advertise to you. An organization that pays for your access still cannot read a word of it. You can download your journal at any time, as a summary you can keep or hand to your care team, and you can delete your account at any time, with thirty days to change your mind.',
+    },
+    {
+      kind: 'para',
+      text: 'We are building one more layer, so that your writing is encrypted inside the app before it is stored and a copy of the database would hold nothing readable.',
+    },
+    { kind: 'heading', text: 'A few promises.' },
+    {
+      kind: 'para',
+      text: 'We will tell you the truth, including the parts that are hard to hear. We will not use the word closure. We will not call this a journey. We will not say "at least." We will not tell you that everything happens for a reason. We will not tell you that you can get another one. We will use their name when you share it. We will sit with the silence.',
+    },
+    {
+      kind: 'para',
+      text: 'You are welcome to feel what you feel. There is no daily goal and no streak. Come back when you are ready, use Westercove™ as much as you need, or not at all.',
+    },
+    {
+      kind: 'para',
+      text: 'You can download your communication at any time. We name the grief research we are built on, so you can check it. We hold many kinds of loss, including the ones other products leave out, and we do not rank them. You set the tone and the place of faith in your own language, and no faith at all is a full option.',
+    },
+  ] as DisclaimerBlock[],
+} as const;
