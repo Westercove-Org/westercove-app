@@ -18,25 +18,65 @@ async function seedNeedsGateSession(page: Page) {
   });
 }
 
+// The S0 gate fetches the server disclaimer content; intercept it so the tests
+// are deterministic (no dependency on a live backend). `null` aborts the request
+// to exercise the offline fallback.
+const V13_CONTENT = {
+  version: 'v13.2026-09-05',
+  title: 'Welcome to Westercove™',
+  summary: ['Please read this before you begin. It is short, and it matters.'],
+  paragraphs: [
+    'What Westercove™ is.',
+    'Westercove™ is a digital grief wellness companion offering guided journaling, education, and personalized support for adults navigating complex loss, all in one quiet space.',
+    'You must be 18 or older to use it.',
+    'If you are in crisis, please reach a person.',
+    'Westercove™ is not an emergency service. Call or text 988 to reach the Suicide and Crisis Lifeline.',
+    'Your writing belongs to you.',
+    'You can delete your account at any time, with thirty days to change your mind.',
+    'A few promises.',
+    'We will not use the word closure. We will sit with the silence.',
+  ],
+  bullets: [],
+  acknowledgement_checks: [
+    'By continuing, you confirm that you are 18 or older. You will have an opportunity to review and accept our Terms and Privacy Notice before using Westercove™.',
+  ],
+  acknowledgement_label: 'Begin',
+  save_and_read_later_label: 'Save and read later',
+  community_guidelines_url: '/about/westercove#community-guidelines',
+  links: [{ label: 'Terms', document: 'terms' }],
+  last_updated: '2026-09-05',
+};
+
+async function mockDisclaimer(page: Page, content: object | null) {
+  await page.route('**/legal-disclaimer/content*', (route) =>
+    content
+      ? // The content fetch is cross-origin (API host ≠ the served app), so the
+        // fulfilled response needs CORS headers or the browser hides it (→ fallback).
+        route.fulfill({ json: content, headers: { 'access-control-allow-origin': '*' } })
+      : route.abort(),
+  );
+}
+
 test.describe('S0 welcome gate', () => {
-  test('shows the verbatim notice with the load-bearing lines', async ({ page }) => {
+  test('renders the server-owned v13 body (served path)', async ({ page }) => {
+    await mockDisclaimer(page, V13_CONTENT);
     await page.goto('/disclaimer');
     await expect(page.getByText('Welcome to Westercove™').first()).toBeVisible();
-    // 18+ line sits right after the crisis section — must be present verbatim.
-    await expect(
-      page.getByText('Westercove™ is for adults. You must be 18 or older to use it.'),
-    ).toBeVisible();
-    // The "thirty days" promise (Rohan's 30-day ruling) — verbatim.
+    // Served sections + the 18+ body line.
+    await expect(page.getByText('What Westercove™ is.')).toBeVisible();
+    await expect(page.getByText('You must be 18 or older to use it.')).toBeVisible();
     await expect(page.getByText(/thirty days to change your mind/)).toBeVisible();
-    // Load-bearing promises that must never drift.
     await expect(page.getByText(/We will not use the word closure/)).toBeVisible();
+    // ™ glyph, never the literal word "trademark".
+    await expect(page.getByText(/trademark/i)).toHaveCount(0);
   });
 
-  test('passive acknowledgement (v12): the exact sentence shows, Begin is always enabled', async ({
+  test('passive acknowledgement: the exact sentence shows, Begin is always enabled', async ({
     page,
   }) => {
+    await mockDisclaimer(page, V13_CONTENT);
     await page.goto('/disclaimer');
-    // Wesley's passive ack — no checkbox; pressing Begin is the acknowledgement.
+    // Passive ack — no checkbox; pressing Begin is the acknowledgement.
     await expect(
       page.getByText(
         /By continuing, you confirm that you are 18 or older\. You will have an opportunity to review and accept our Terms and Privacy Notice/,
@@ -46,21 +86,42 @@ test.describe('S0 welcome gate', () => {
     await expect(page.getByRole('button', { name: 'Begin' })).toBeEnabled();
   });
 
-  test('Begin records the acceptance at NOTICE_VERSION and moves on', async ({ page }) => {
+  test('records the version of the body shown — v13 on the served path', async ({ page }) => {
+    await mockDisclaimer(page, V13_CONTENT);
     await page.goto('/disclaimer?intent=signup');
     await page.getByRole('button', { name: 'Begin' }).click();
-    // Left the gate (sign-up is the next surface for the signup intent).
     await expect(page).not.toHaveURL(/disclaimer/);
-    // Acceptance recorded with the server-matched version (v12).
     const accepted = await page.evaluate(() =>
       Object.entries(window.localStorage)
         .map(([, v]) => v)
         .join('|'),
     );
+    expect(accepted).toContain('v13.2026-09-05');
+  });
+
+  test('falls back to the hardcoded notice and records v12 when the fetch fails', async ({
+    page,
+  }) => {
+    await mockDisclaimer(page, null); // abort → offline fallback
+    await page.goto('/disclaimer?intent=signup');
+    // Fallback (v12) copy is shown, not a blank gate.
+    await expect(
+      page.getByText('Westercove™ is for adults. You must be 18 or older to use it.'),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Begin' }).click();
+    await expect(page).not.toHaveURL(/disclaimer/);
+    const accepted = await page.evaluate(() =>
+      Object.entries(window.localStorage)
+        .map(([, v]) => v)
+        .join('|'),
+    );
+    // Version integrity: the fallback records ITS OWN version, never v13.
     expect(accepted).toContain('v12.2026-09-05');
+    expect(accepted).not.toContain('v13.2026-09-05');
   });
 
   test('the crisis line stays fixed at the foot of the gate', async ({ page }) => {
+    await mockDisclaimer(page, V13_CONTENT);
     await page.goto('/disclaimer');
     await expect(page.getByText(/In crisis\? Call or text 988/).first()).toBeVisible();
   });
