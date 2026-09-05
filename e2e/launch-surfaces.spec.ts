@@ -3,9 +3,11 @@ import { expect, test, type Page } from '@playwright/test';
 /**
  * Launch-gate E2E (Q-Set v7, USE_FOUR_DOORS default ON). Exercises the FE
  * surfaces a real user hits before the tab shell: the S0 welcome gate (verbatim
- * notice, passive v12 acknowledgement, acceptance recorded on Begin), the four-doors intake with
- * the five-tone picker, and confirmation that the legacy DayZeroGate is not
- * reachable with the flag on. BE logic is covered separately (Angela).
+ * v13 disclaimer in Wesley's structure, affirmative 18+ checkbox gating Begin,
+ * acceptance recorded on Begin), the four-doors intake with the five-tone picker, and
+ * confirmation that the legacy DayZeroGate is not reachable with the flag on.
+ * BE logic is covered separately (Angela). The disclaimer body is FE-owned
+ * (disclaimerContent.ts), so the gate makes no content fetch to intercept.
  */
 
 // Seed a signed-in-but-not-onboarded session so the auth guard routes to /gate
@@ -18,96 +20,58 @@ async function seedNeedsGateSession(page: Page) {
   });
 }
 
-// The S0 gate fetches the server disclaimer content; intercept it so the tests
-// are deterministic (no dependency on a live backend). `null` aborts the request
-// to exercise the offline fallback.
-const V13_CONTENT = {
-  version: 'v13.2026-09-05',
-  title: 'Welcome to Westercove™',
-  summary: ['Please read this before you begin. It is short, and it matters.'],
-  paragraphs: [
-    'What Westercove™ is.',
-    'Westercove™ is a digital grief wellness companion offering guided journaling, education, and personalized support for adults navigating complex loss, all in one quiet space.',
-    'You must be 18 or older to use it.',
-    'If you are in crisis, please reach a person.',
-    'Westercove™ is not an emergency service. Call or text 988 to reach the Suicide and Crisis Lifeline.',
-    'Your writing belongs to you.',
-    'You can delete your account at any time, with thirty days to change your mind.',
-    'A few promises.',
-    'We will not use the word closure. We will sit with the silence.',
-  ],
-  bullets: [],
-  acknowledgement_checks: [
-    'By continuing, you confirm that you are 18 or older. You will have an opportunity to review and accept our Terms and Privacy Notice before using Westercove™.',
-  ],
-  acknowledgement_label: 'Begin',
-  save_and_read_later_label: 'Save and read later',
-  community_guidelines_url: '/about/westercove#community-guidelines',
-  links: [{ label: 'Terms', document: 'terms' }],
-  last_updated: '2026-09-05',
-};
-
-async function mockDisclaimer(page: Page, content: object | null) {
-  await page.route('**/legal-disclaimer/content*', (route) =>
-    content
-      ? // The content fetch is cross-origin (API host ≠ the served app), so the
-        // fulfilled response needs CORS headers or the browser hides it (→ fallback).
-        route.fulfill({ json: content, headers: { 'access-control-allow-origin': '*' } })
-      : route.abort(),
-  );
-}
-
 test.describe('S0 welcome gate', () => {
-  test('renders the server-owned v13 body (served path)', async ({ page }) => {
-    await mockDisclaimer(page, V13_CONTENT);
+  test('renders the v13 disclaimer in Wesley structure', async ({ page }) => {
     await page.goto('/disclaimer');
     await expect(page.getByText('Welcome to Westercove™').first()).toBeVisible();
-    // Served sections + the 18+ body line.
+    // Serif "bold-title" section headings + the standalone 18+ line.
     await expect(page.getByText('What Westercove™ is.')).toBeVisible();
+    await expect(page.getByText('If you are in crisis, please reach a person.')).toBeVisible();
     await expect(page.getByText('You must be 18 or older to use it.')).toBeVisible();
+    // "One thing we ask." is inline body, not its own heading.
+    await expect(page.getByText(/One thing we ask\. This place was built in love/)).toBeVisible();
     await expect(page.getByText(/thirty days to change your mind/)).toBeVisible();
-    await expect(page.getByText(/We will not use the word closure/)).toBeVisible();
+    await expect(page.getByText(/We will sit with the silence/)).toBeVisible();
     // ™ glyph, never the literal word "trademark".
     await expect(page.getByText(/trademark/i)).toHaveCount(0);
   });
 
-  test('passive acknowledgement: the exact sentence shows, Begin is always enabled', async ({
-    page,
-  }) => {
-    await mockDisclaimer(page, V13_CONTENT);
+  test('affirmative checkbox gates Begin (Wesley ruling); no passive sentence', async ({ page }) => {
     await page.goto('/disclaimer');
-    // Passive ack — no checkbox; pressing Begin is the acknowledgement.
-    await expect(
-      page.getByText(
-        /By continuing, you confirm that you are 18 or older\. You will have an opportunity to review and accept our Terms and Privacy Notice/,
-      ),
-    ).toBeVisible();
-    await expect(page.getByRole('checkbox')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Begin' })).toBeEnabled();
-  });
-
-  test('records the version of the body shown — v13 on the served path', async ({ page }) => {
-    await mockDisclaimer(page, V13_CONTENT);
-    await page.goto('/disclaimer?intent=signup');
-    await page.getByRole('button', { name: 'Begin' }).click();
-    await expect(page).not.toHaveURL(/disclaimer/);
-    const accepted = await page.evaluate(() =>
-      Object.entries(window.localStorage)
-        .map(([, v]) => v)
-        .join('|'),
+    const checkbox = page.getByRole('checkbox', {
+      name: 'I am 18 or older, and I have read and understand the above.',
+    });
+    await expect(checkbox).toBeVisible();
+    // The reversed passive sentence must be gone.
+    await expect(page.getByText(/By continuing, you confirm that you are 18 or older/)).toHaveCount(
+      0,
     );
-    expect(accepted).toContain('v13.2026-09-05');
+    // Begin disabled until ticked, with the helper line; ticking enables it.
+    await expect(page.getByRole('button', { name: 'Begin' })).toBeDisabled();
+    await expect(page.getByText('Tick the box above to continue.')).toBeVisible();
+    await checkbox.click();
+    await expect(page.getByRole('button', { name: 'Begin' })).toBeEnabled();
+    await expect(page.getByText('Tick the box above to continue.')).toHaveCount(0);
   });
 
-  test('falls back to the hardcoded notice and records v12 when the fetch fails', async ({
+  test('links: Full Terms + Privacy are links, Community Guidelines is plain text', async ({
     page,
   }) => {
-    await mockDisclaimer(page, null); // abort → offline fallback
+    await page.goto('/disclaimer');
+    await expect(page.getByRole('link', { name: 'Full Terms' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Privacy' })).toBeVisible();
+    await expect(page.getByText('Community Guidelines')).toBeVisible();
+    // No page exists yet — it must NOT be a link.
+    await expect(page.getByRole('link', { name: 'Community Guidelines' })).toHaveCount(0);
+  });
+
+  test('records the version of the body shown (v14) on Begin', async ({ page }) => {
     await page.goto('/disclaimer?intent=signup');
-    // Fallback (v12) copy is shown, not a blank gate.
-    await expect(
-      page.getByText('Westercove™ is for adults. You must be 18 or older to use it.'),
-    ).toBeVisible();
+    await page
+      .getByRole('checkbox', {
+        name: 'I am 18 or older, and I have read and understand the above.',
+      })
+      .click();
     await page.getByRole('button', { name: 'Begin' }).click();
     await expect(page).not.toHaveURL(/disclaimer/);
     const accepted = await page.evaluate(() =>
@@ -115,13 +79,10 @@ test.describe('S0 welcome gate', () => {
         .map(([, v]) => v)
         .join('|'),
     );
-    // Version integrity: the fallback records ITS OWN version, never v13.
-    expect(accepted).toContain('v12.2026-09-05');
-    expect(accepted).not.toContain('v13.2026-09-05');
+    expect(accepted).toContain('v14.2026-09-05');
   });
 
   test('the crisis line stays fixed at the foot of the gate', async ({ page }) => {
-    await mockDisclaimer(page, V13_CONTENT);
     await page.goto('/disclaimer');
     await expect(page.getByText(/In crisis\? Call or text 988/).first()).toBeVisible();
   });
