@@ -49,4 +49,13 @@ export const WELCOME_NOTICE = {
   ackStatement:
     'By continuing, you confirm that you are 18 or older. You will have an opportunity to review and accept our Terms and Privacy Notice before using Westercove™.',
   beginLabel: 'Begin',
+  goBackLabel: 'Go back',
+} as const;
+
+/** Footer legal links. Terms/Privacy are the public pages (FE-owned URLs, per
+ * Rohan); Community Guidelines has no fixed URL — the gate uses the served
+ * `communityGuidelinesUrl` (null for now → rendered as plain text). */
+export const LEGAL_LINK_URLS = {
+  terms: 'https://westercove.com/terms',
+  privacy: 'https://westercove.com/privacy',
 } as const;
