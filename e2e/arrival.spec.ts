@@ -13,7 +13,10 @@ test.describe('arrival', () => {
   test('Begin leads into the disclaimer, which confirms 18+ and terms', async ({ page }) => {
     await page.goto('/launch');
     await page.getByText('Begin').click();
-    await expect(page.getByText('Before you begin')).toBeVisible();
-    await expect(page.getByText(/wellness companion, not therapy/)).toBeVisible();
+    // The S0 welcome gate (Q-Set v7): the notice title and the load-bearing 18+ line.
+    await expect(page.getByText('Welcome to Westercove™').first()).toBeVisible();
+    await expect(
+      page.getByText('Westercove™ is for adults. You must be 18 or older to use it.'),
+    ).toBeVisible();
   });
 });

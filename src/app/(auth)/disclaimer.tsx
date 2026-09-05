@@ -2,7 +2,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { CrisisBanner } from '@/components/CrisisBanner';
 import { HeroHeader } from '@/components/HeroHeader';
 import { CheckIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
@@ -104,8 +103,6 @@ export default function WelcomeGateScreen() {
           />
         </View>
       </ScrollView>
-
-      <CrisisBanner />
     </View>
   );
 }
