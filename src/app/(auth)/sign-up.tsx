@@ -287,7 +287,7 @@ export default function SignUpScreen() {
                       accessibilityLabel={`${label} ${intervalLabel}, ${p.display}${
                         annual ? `, ${c.annualCaption}` : ''
                       }${
-                        annual && p.savingsDisplay
+                        p.savingsDisplay
                           ? `, ${
                               p.savingsPercent != null
                                 ? c.savingsLine(p.savingsDisplay, p.savingsPercent)
@@ -315,9 +315,11 @@ export default function SignUpScreen() {
                           {c.annualCaption}
                         </Text>
                       ) : null}
-                      {/* Numeric savings, server-provided (annual only); render
-                          nothing when the field is absent (monthly / single plan). */}
-                      {annual && p.savingsDisplay ? (
+                      {/* Numeric savings, server-provided. Key off the field, not
+                          the interval: the server sends it only when there is a
+                          real positive saving (null on monthly AND on an annual
+                          with no/zero/mismatched saving — never a $0.00 badge). */}
+                      {p.savingsDisplay ? (
                         <Text variant="bodySmall" color="forest">
                           {p.savingsPercent != null
                             ? c.savingsLine(p.savingsDisplay, p.savingsPercent)
