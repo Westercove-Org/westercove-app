@@ -1,186 +1,111 @@
-import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
 import { HeroHeader } from '@/components/HeroHeader';
+import { CheckIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
-import { copy } from '@/constants/copy';
-import { linkifyConsentLine } from '@/features/legal/linkifyConsent';
-import { services, type DisclaimerContent } from '@/services';
+import { NOTICE_VERSION, WELCOME_NOTICE } from '@/constants/welcomeNotice';
+import { recordWelcomeAcceptance } from '@/features/auth/welcomeAcceptance';
 import { useTheme } from '@/theme';
-import { spacing } from '@/theme/tokens';
+import { radii, spacing } from '@/theme/tokens';
 
 const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
 
 /**
- * Pre-account 18+/not-therapy gate. Renders entirely from the PUBLIC, no-auth
- * legal content endpoint (sv7-legal-preauth-server-copy) — no legal copy is
- * hardcoded in the client. The member confirms the checks and continues; the
- * acknowledgement itself is recorded post-account (authed /acknowledge). On a
- * load failure we show no legal text and keep the door shut (Continue disabled)
- * rather than let anyone past an unseen disclaimer.
+ * S0 welcome gate (Q-Set v7). The verbatim welcome notice, an affirmative 18+
+ * tick, and Begin disabled until it is ticked. This is a gate, not a page
+ * someone can scroll past: there is no way forward without the tick. The crisis
+ * line stays fixed at the foot, as on every screen. On Begin the acceptance is
+ * recorded (version + timestamp) and the person continues to sign-up or sign-in.
  */
-export default function DisclaimerScreen() {
+export default function WelcomeGateScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const d = copy.disclaimerScreen;
   // A new user arriving via the launch "Create an account" CTA continues to
-  // sign-up; everyone else continues to sign-in. The notice is shown first.
+  // sign-up after accepting; everyone else continues to sign-in. Either way the
+  // notice is shown and must be accepted first — never bypassed.
   const { intent } = useLocalSearchParams<{ intent?: string }>();
   const next = intent === 'signup' ? '/sign-up' : '/sign-in';
 
-  const [content, setContent] = useState<DisclaimerContent | null>(null);
-  const [checks, setChecks] = useState<boolean[]>([]);
-  const [expanded, setExpanded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  const [agreed, setAgreed] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    void services.legal
-      .getContent('disclaimer')
-      .then((c) => {
-        if (!alive) return;
-        setContent(c);
-        setChecks(new Array(c.acknowledgementChecks.length).fill(false));
-      })
-      .catch(() => alive && setError(d.loadError));
-    return () => {
-      alive = false;
-    };
-  }, [d.loadError, attempt]);
-
-  const allChecked = checks.every(Boolean);
-  const toggle = (i: number) => setChecks((prev) => prev.map((v, j) => (j === i ? !v : v)));
+  const onBegin = async () => {
+    if (!agreed || busy) return;
+    setBusy(true);
+    // Record the acceptance before moving on. Failure here must not trap the
+    // person on the gate; the signup finalize call re-sends the version.
+    try {
+      await recordWelcomeAcceptance(NOTICE_VERSION);
+    } catch {
+      // Storage unavailable (private mode): proceed; server re-ask covers it.
+    }
+    router.push(next);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <HeroHeader variant="compact" title={content?.title ?? d.title} image={heroImage} />
+      <HeroHeader variant="compact" title={WELCOME_NOTICE.title} image={heroImage} />
 
       <ScrollView contentContainerStyle={styles.content}>
-        {error ? (
-          <>
-            <Text variant="body" color="crisis" accessibilityRole="alert" style={styles.para}>
-              {error}
-            </Text>
-            <Button
-              label="Try again"
-              variant="secondary"
-              onPress={() => {
-                setError(null);
-                setContent(null);
-                setAttempt((a) => a + 1);
-              }}
-            />
-          </>
-        ) : !content ? (
-          <ActivityIndicator color={colors.textMuted} />
-        ) : (
-          <>
-            {content.summary.map((line, i) => (
-              <Text
-                key={`s${i}`}
-                variant="body"
-                color={i === content.summary.length - 1 ? 'textMuted' : 'textPrimary'}
-                style={styles.para}
-              >
-                {/* Linkify any legal document the server names inline (e.g.
-                    Terms). A stale label or an unserved target degrades to plain
-                    text — never a dead tap on a consent screen. */}
-                {linkifyConsentLine(line, content.links).map((seg, j) =>
-                  seg.route ? (
-                    <Text
-                      key={`l${j}`}
-                      variant="body"
-                      color="forest"
-                      accessibilityRole="link"
-                      onPress={() => router.push(seg.route as Href)}
-                      style={styles.link}
-                    >
-                      {seg.text}
-                    </Text>
-                  ) : (
-                    seg.text
-                  ),
-                )}
+        <Text variant="body" color="textMuted" style={styles.tagline}>
+          {WELCOME_NOTICE.tagline}
+        </Text>
+        <Text variant="body" style={styles.para}>
+          {WELCOME_NOTICE.lede}
+        </Text>
+
+        {WELCOME_NOTICE.blocks.map((b, i) => (
+          <View key={i} style={styles.section}>
+            {b.heading ? (
+              <Text variant="cardTitle" style={styles.heading}>
+                {b.heading}
               </Text>
-            ))}
-
-            {content.paragraphs.length > 0 ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setExpanded((v) => !v)}
-                style={styles.readMore}
-              >
-                <Text variant="bodySmall" color="forest">
-                  {expanded ? 'Hide the full disclaimer' : 'Read the full disclaimer'}
-                </Text>
-              </Pressable>
             ) : null}
+            {b.body ? (
+              <Text variant="body" style={styles.para}>
+                {b.body}
+              </Text>
+            ) : null}
+          </View>
+        ))}
 
-            {expanded
-              ? content.paragraphs.map((p, i) => (
-                  <Text key={`p${i}`} variant="bodySmall" color="textMuted" style={styles.full}>
-                    {p}
-                  </Text>
-                ))
-              : null}
-
-            {content.acknowledgementChecks.map((label, i) => (
-              <Pressable
-                key={`c${i}`}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: checks[i] ?? false }}
-                accessibilityLabel={label}
-                onPress={() => toggle(i)}
-                style={styles.checkRow}
-              >
-                <View
-                  style={[
-                    styles.box,
-                    { borderColor: colors.line },
-                    checks[i] && { backgroundColor: colors.forest, borderColor: colors.forest },
-                  ]}
-                >
-                  {checks[i] ? (
-                    <Text variant="bodySmall" color="onAccent">
-                      {'✓'}
-                    </Text>
-                  ) : null}
-                </View>
-                <Text variant="body" style={styles.checkLabel}>
-                  {label}
-                </Text>
-              </Pressable>
-            ))}
-          </>
-        )}
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: agreed }}
+          accessibilityLabel={WELCOME_NOTICE.tickLabel}
+          onPress={() => setAgreed((v) => !v)}
+          style={styles.tickRow}
+          hitSlop={8}
+        >
+          <View
+            style={[
+              styles.box,
+              { borderColor: colors.line },
+              agreed && { backgroundColor: colors.emerald, borderColor: colors.emerald },
+            ]}
+          >
+            {agreed ? <CheckIcon size={16} color={colors.onAccent} /> : null}
+          </View>
+          <Text variant="body" style={styles.tickLabel}>
+            {WELCOME_NOTICE.tickLabel}
+          </Text>
+        </Pressable>
 
         <View style={styles.actions}>
           <Button
-            label={content?.acknowledgementLabel ?? d.continue}
+            label={WELCOME_NOTICE.beginLabel}
             variant="amethyst"
-            disabled={!content || !allChecked}
-            onPress={() => router.push(next)}
+            onPress={onBegin}
+            disabled={!agreed || busy}
           />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={d.goBack}
-            onPress={() => router.back()}
-            style={styles.goBack}
-          >
-            <Text variant="body" color="textMuted">
-              {d.goBack}
-            </Text>
-          </Pressable>
         </View>
       </ScrollView>
 
-      {/* Pre-account: the one screen a person in crisis has no other route from,
-          so the crisis line is fixed at the bottom here too. */}
-      <CrisisBanner compact />
+      <CrisisBanner />
     </View>
   );
 }
@@ -190,22 +115,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.xl,
     paddingBottom: 88,
-    gap: spacing.lg,
+    gap: spacing.md,
   },
+  tagline: { fontStyle: 'italic' },
   para: { fontSize: 17, lineHeight: 27 },
-  link: { textDecorationLine: 'underline' },
-  full: { lineHeight: 22 },
-  readMore: { minHeight: 44, justifyContent: 'center' },
-  checkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 44 },
+  section: { gap: spacing.xs },
+  heading: { marginTop: spacing.sm },
+  tickRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    minHeight: 44,
+  },
   box: {
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
+    borderRadius: radii.chip,
     borderWidth: 2,
-    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkLabel: { flex: 1 },
-  actions: { marginTop: spacing.xl, gap: spacing.sm },
-  goBack: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  tickLabel: { flex: 1, fontSize: 16, lineHeight: 23 },
+  actions: { marginTop: spacing.lg },
 });
