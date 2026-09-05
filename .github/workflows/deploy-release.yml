@@ -24,6 +24,12 @@ name: deploy-release
 # ref, so a branch-scoped trust would fail AssumeRoleWithWebIdentity).
 
 on:
+  # DEV auto-deploy: a push/merge to main builds the current checkout (git-SHA
+  # immutable tag) and rolls the DEV frontend. The `release` GH environment has
+  # NO required reviewers, so this is un-gated; and this workflow is hardcoded to
+  # the westercove-dev-* frontend/cluster, so it can never target prod.
+  push:
+    branches: [main]
   release:
     types: [published]
   workflow_dispatch:
@@ -33,7 +39,7 @@ on:
         required: false
 
 concurrency:
-  group: deploy-release-frontend
+  group: deploy-dev-frontend
   cancel-in-progress: false
 
 permissions:
@@ -55,6 +61,16 @@ jobs:
     environment: release          # env-scoped OIDC; no required reviewers (publishing a Release / dispatch is the deliberate act)
     steps:
       - uses: actions/checkout@v4
+
+      # HARD GUARD: structurally dev-only. Fail fast if the target isn't dev so a
+      # bad edit can't ship to prod (prod has no auto path at all).
+      - name: Assert DEV-only target
+        run: |
+          set -euo pipefail
+          if [ "${ECS_CLUSTER}" != "westercove-dev-cluster" ] || [ "${ECS_SERVICE}" != "westercove-dev-frontend" ]; then
+            echo "REFUSING: target is not dev (${ECS_CLUSTER}/${ECS_SERVICE})." >&2; exit 1
+          fi
+          echo "Target confirmed dev: ${ECS_CLUSTER}/${ECS_SERVICE}"
 
       # Resolve tag + build mode:
       #  - release published      -> tag = release tag_name, BUILD
