@@ -9,7 +9,7 @@ import { Text } from '@/components/ui/Text';
 import { NOTICE_VERSION, WELCOME_NOTICE } from '@/constants/welcomeNotice';
 import { recordWelcomeAcceptance } from '@/features/auth/welcomeAcceptance';
 import { useTheme } from '@/theme';
-import { radii, spacing } from '@/theme/tokens';
+import { MAX_CONTENT_WIDTH, radii, spacing } from '@/theme/tokens';
 
 const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
 
@@ -109,6 +109,10 @@ export default function WelcomeGateScreen() {
 
 const styles = StyleSheet.create({
   content: {
+    // Consistent desktop width — the centered 640 column (see components/Screen.tsx).
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.xl,
     paddingBottom: 88,
