@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { Image } from 'expo-image';
 
 import { CrisisBanner } from '@/components/CrisisBanner';
 import { Text } from '@/components/ui/Text';
@@ -23,6 +24,10 @@ import {
   type Door,
   type GateState,
 } from './fourDoorsModel';
+
+// Carry the signup page's mountain imagery into the arrival (Wesley), so the
+// feeling shifts from "registering" to "arriving somewhere safe".
+const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
 
 /** Prompt wording per door for Q3 (the name / what-changed) and Q4 (the detail),
  * mirroring the backend catalog. Q1/Q2/Q5 are the same on every door. */
@@ -58,7 +63,6 @@ export function FourDoorsGate({
   onPlanLimit?: (limit: PlanLimit) => void;
 } = {}) {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const completeFourDoorsGate = useSessionStore((s) => s.completeFourDoorsGate);
 
   const [answers, setAnswers] = useState<GateState>({ userName: '' });
@@ -113,10 +117,19 @@ export function FourDoorsGate({
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
+      {/* Warm arrival: a still mountain image + "Welcome to Westercove", carried
+          from signup so this reads as arriving somewhere safe, not registering.
+          Deliberately static (no drifting hero) — quieter, per Wesley. */}
+      <Image source={heroImage} style={styles.hero} contentFit="cover" />
+      <View style={styles.header}>
         <Text variant="screenTitle" accessibilityRole="header">
           Welcome to Westercove
         </Text>
+        {stepIndex === 0 ? (
+          <Text variant="body" color="textMuted">
+            Your space is ready.
+          </Text>
+        ) : null}
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
@@ -140,19 +153,26 @@ export function FourDoorsGate({
 
           {step === 'door' && (
             <>
+              <Text variant="body" color="textMuted" style={styles.lede}>
+                You do not have to know what to say or where to begin. We will start gently.
+              </Text>
               <Text variant="screenTitle" style={styles.question} accessibilityRole="header">
-                What brings you here?
+                What brings you to Westercove?
               </Text>
               <View style={styles.options}>
                 {DOOR_OPTIONS.map((o) => (
                   <OptionButton
                     key={o.door}
                     label={o.label}
+                    sublabel={o.sublabel}
                     selected={answers.door === o.door}
                     onPress={() => set({ door: o.door })}
                   />
                 ))}
               </View>
+              <Text variant="bodySmall" color="textMuted" style={styles.changeLater}>
+                You can change this later.
+              </Text>
             </>
           )}
 
@@ -314,10 +334,12 @@ export function FourDoorsGate({
 
 function OptionButton({
   label,
+  sublabel,
   selected,
   onPress,
 }: {
   label: string;
+  sublabel?: string;
   selected: boolean;
   onPress: () => void;
 }) {
@@ -326,7 +348,7 @@ function OptionButton({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      accessibilityLabel={label}
+      accessibilityLabel={sublabel ? `${label}. ${sublabel}` : label}
       onPress={onPress}
       style={[
         styles.option,
@@ -337,18 +359,26 @@ function OptionButton({
       <Text variant="cardTitle" color={selected ? 'onAccent' : 'textPrimary'}>
         {label}
       </Text>
+      {sublabel ? (
+        <Text variant="bodySmall" color={selected ? 'onAccent' : 'textMuted'} style={styles.sublabel}>
+          {sublabel}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  // One consistent desktop width — the centered 640 column the tab app uses.
+  // Full-bleed mountain banner (warm arrival), then the header text + body in
+  // the same 640 centered column the rest of the app uses (one consistent width).
+  hero: { width: '100%', height: 160 },
   header: {
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
     paddingHorizontal: spacing.screen,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.lg,
+    gap: spacing.xs,
   },
   body: {
     width: '100%',
@@ -359,6 +389,9 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   qBlock: { gap: spacing.md, paddingTop: spacing.lg },
+  lede: { fontSize: 16, lineHeight: 24 },
+  changeLater: { marginTop: spacing.xs },
+  sublabel: { marginTop: spacing.xs },
   question: { marginBottom: spacing.sm },
   input: {
     borderWidth: 1,

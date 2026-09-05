@@ -8,8 +8,13 @@ import { FourDoorsGate } from '@/features/auth/FourDoorsGate';
 import { renderWithProviders } from '@/test-utils';
 
 describe('FourDoorsGate', () => {
-  it('renders the first gate question (name)', async () => {
-    const { getByText } = await renderWithProviders(<FourDoorsGate />);
-    expect(getByText('What should your grief companion call you?')).toBeTruthy();
+  it('opens on the warm arrival: the door question, not a name prompt', async () => {
+    const { getByText, queryByText } = await renderWithProviders(<FourDoorsGate />);
+    // Door-first (Wesley's warm arrival).
+    expect(getByText('What brings you to Westercove?')).toBeTruthy();
+    expect(getByText('Someone I love died')).toBeTruthy();
+    expect(getByText('You can change this later.')).toBeTruthy();
+    // The name prompt is a later step, not the first screen.
+    expect(queryByText('What should your grief companion call you?')).toBeNull();
   });
 });

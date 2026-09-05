@@ -25,11 +25,27 @@ export function moduleForDoor(door: Door | undefined): GateMode {
   return door === 4 ? 'pet' : 'human';
 }
 
-export const DOOR_OPTIONS: { door: Door; label: string }[] = [
-  { door: 1, label: 'A person I love died' },
-  { door: 2, label: 'Someone I love is still here, but I am losing them' },
-  { door: 3, label: 'I lost a part of my life or myself' },
-  { door: 4, label: 'My pet died' },
+export const DOOR_OPTIONS: { door: Door; label: string; sublabel: string }[] = [
+  {
+    door: 1,
+    label: 'Someone I love died',
+    sublabel: 'I’m grieving the death of someone important to me.',
+  },
+  {
+    door: 2,
+    label: 'I’m caring for someone who is slipping away',
+    sublabel: 'I’m living with anticipatory grief.',
+  },
+  {
+    door: 3,
+    label: 'Part of my life has changed or ended',
+    sublabel: 'Health, relationship, career, identity, or another significant loss.',
+  },
+  {
+    door: 4,
+    label: 'I lost a beloved animal',
+    sublabel: 'I’m grieving the death of a pet or animal companion.',
+  },
 ];
 
 /** Q3 taps for D3 ("What changed?"); the backend maps these onto the sub-type. */
@@ -125,7 +141,11 @@ export function canAdvance(step: GateStep, s: GateState): boolean {
 }
 
 export type GateStep = 'name' | 'door' | 'q3' | 'q4' | 'tone';
-export const GATE_STEPS: GateStep[] = ['name', 'door', 'q3', 'q4', 'tone'];
+// Door first (Wesley's warm arrival): the very first screen after payment is the
+// welcome + door choice, not a name prompt. Name and tone follow, quieter, once
+// the person has said what brings them here. q3/q4 still come after the door
+// (they branch on it), and canAdvance gates each step independently.
+export const GATE_STEPS: GateStep[] = ['door', 'name', 'q3', 'q4', 'tone'];
 
 /** Map the collected answers onto the `POST /survey/gate` request body. Assumes
  * the gate is complete (all `canAdvance` gates passed). */
