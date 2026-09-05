@@ -119,8 +119,9 @@ export const copy = {
     orgCodeSubtitle: 'Enter your organization code',
     email: 'Email',
     emailPlaceholder: 'you@example.com',
-    howToJoin: 'How would you like to join?',
-    choosePlan: 'Choose your plan',
+    howToJoin: 'How are you joining Westercove™?',
+    continueToJoin: 'Continue',
+    choosePlan: 'Choose your membership',
     planStandard: 'Standard',
     planPremium: 'Premium',
     planMonthly: 'Monthly',
@@ -130,11 +131,19 @@ export const copy = {
     // number; if the annual:monthly ratio ever changes, update this line. Do
     // not paraphrase — this is the approved phrasing.
     annualCaption: 'Twelve months for the price of eleven',
-    orgCodeOption: 'I have an organization code',
-    orgCodeOptionHint: 'Join through your workplace or provider.',
-    payOption: 'Pay to join',
-    payOptionHint: 'Subscribe and get started right away.',
+    orgCodeOption: 'I have an access code',
+    orgCodeOptionHint: 'Provided by my employer or organization.',
+    payOption: 'I’m joining on my own',
+    payOptionHint: 'Choose a Westercove membership.',
     payStarting: 'Starting checkout…',
+    // Trial disclosure (Wesley's exact framing) shown on the membership step,
+    // above the "Begin my free trial" button. The selected plan's price is on
+    // the plan cards above; the server first-charge date is appended quietly so
+    // the pre-checkout disclosure still says when the first charge lands.
+    trialTitle: 'Begin with 14 days free',
+    trialBody:
+      'There is no charge today. After 14 days, your selected membership begins automatically. Cancel before then and pay nothing.',
+    startTrial: 'Begin my free trial',
     trialUnavailable:
       'We can’t show the trial price right now, so paying to join is paused for a moment. Please try again shortly, or join with an organization code.',
     password: 'Password',
