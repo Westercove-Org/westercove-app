@@ -10,6 +10,7 @@ import { copy } from '@/constants/copy';
 import { formatFirstChargeDate, TRIAL_DAYS } from '@/constants/billing';
 import { isEmail } from '@/features/auth/email';
 import { ResendEmailButton } from '@/features/auth/ResendEmailButton';
+import { collectSignupErrors } from '@/features/auth/signupValidation';
 import { getWelcomeAcceptance } from '@/features/auth/welcomeAcceptance';
 import { services, type PlanId, type PlanTier, type PricingResult } from '@/services';
 import { HttpError } from '@/lib/http';
@@ -75,7 +76,10 @@ export default function SignUpScreen() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [code, setCode] = useState(codeParam ?? '');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Validate on SUBMIT, not per keystroke: pressing a primary button collects
+  // every failing field into `errors` and renders them together, so the form
+  // never scolds the user while they are still typing.
+  const [errors, setErrors] = useState<string[]>([]);
 
   // Trial pricing for the pre-card disclosure — fetched live (Stripe test/live
   // differ, so it is never hardcoded). `undefined` = still loading; `null` = the
@@ -108,17 +112,17 @@ export default function SignUpScreen() {
   const canProceed = emailValid && passwordValid && passwordsMatch && !busy;
   const canJoin = canProceed && code.trim().length > 0;
 
-  /** Guard shared by both paths before leaving the merged form. */
+  /** Guard shared by both paths before leaving the merged form. Collects ALL
+   * failing fields at once (email, password rule, mismatch) and renders them
+   * together — never one-at-a-time, never per keystroke. */
   const validateForm = (): boolean => {
-    if (!emailValid) return setError(c.invalidEmail), false;
-    if (!passwordValid) return setError(c.passwordHint), false;
-    if (!passwordsMatch) return setError(c.passwordMismatch), false;
-    return true;
+    const errs = collectSignupErrors({ emailValid, passwordValid, passwordsMatch }, c);
+    setErrors(errs);
+    return errs.length === 0;
   };
 
   // From the account form, advance to the join choice (no pricing yet).
   const goJoinChoice = () => {
-    setError(null);
     if (!validateForm()) return;
     setStep('joinChoice');
   };
@@ -127,7 +131,7 @@ export default function SignUpScreen() {
   // POST sets it in Cognito, and the emailed link only verifies. Checkout starts
   // straight from the merged form — no intermediate password screen.
   const goPay = async () => {
-    setError(null);
+    setErrors([]);
     // Never start checkout without live pricing on screen (the card is already
     // disabled in this state; this is a belt-and-braces guard).
     if (!pricing) return;
@@ -158,15 +162,15 @@ export default function SignUpScreen() {
         await Linking.openURL(checkoutUrl);
       }
     } catch (e) {
-      setError(checkoutErrorMessage(e));
+      setErrors([checkoutErrorMessage(e)]);
       setBusy(false);
     }
   };
 
   const onJoin = async () => {
-    setError(null);
+    setErrors([]);
     if (!validateForm()) return;
-    if (!code.trim()) return setError(c.codeRequired);
+    if (!code.trim()) return setErrors([c.codeRequired]);
     setBusy(true);
     try {
       await services.signup.orgCode({
@@ -177,7 +181,7 @@ export default function SignUpScreen() {
       });
       setStep('confirm');
     } catch (e) {
-      setError(signupErrorMessage(e));
+      setErrors([signupErrorMessage(e)]);
     } finally {
       setBusy(false);
     }
@@ -373,10 +377,14 @@ export default function SignUpScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <HeroHeader variant="compact" title={c.title} subtitle={subtitle} image={heroImage} />
       <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
-        {error ? (
-          <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
-            {error}
-          </Text>
+        {errors.length > 0 ? (
+          <View style={styles.errorBlock} accessibilityRole="alert">
+            {errors.map((msg, i) => (
+              <Text key={i} variant="bodySmall" color="textPrimary">
+                {msg}
+              </Text>
+            ))}
+          </View>
         ) : null}
 
         {step === 'entry' ? (
@@ -426,7 +434,10 @@ export default function SignUpScreen() {
                 {eyeToggle(showPw, () => setShowPw((v) => !v))}
               </View>
             </View>
-            <Text variant="bodySmall" color="textMuted">
+            {/* The password rule is PERSISTENT helper text under the field —
+                always visible, never a transient error that flashes as you type.
+                No numberOfLines cap, so it wraps fully (not clipped/truncated). */}
+            <Text variant="bodySmall" color="textMuted" style={styles.passwordHint}>
               {c.passwordHint}
             </Text>
             <View style={styles.fieldBlock}>
@@ -449,15 +460,13 @@ export default function SignUpScreen() {
                 {eyeToggle(showConfirm, () => setShowConfirm((v) => !v))}
               </View>
             </View>
-            {confirmPassword.length > 0 && !passwordsMatch ? (
-              <Text variant="bodySmall" color="textPrimary" accessibilityRole="alert">
-                {c.passwordMismatch}
-              </Text>
-            ) : null}
+            {/* Continue is ALWAYS ENABLED (except in flight): pressing it runs
+                validateForm, which surfaces every failing field at once. The
+                mismatch is shown then, not per keystroke. */}
             <Button
               label={c.continueToJoin}
               variant="amethyst"
-              disabled={!canProceed}
+              disabled={busy}
               onPress={goJoinChoice}
             />
           </>
@@ -471,18 +480,18 @@ export default function SignUpScreen() {
               {c.howToJoin}
             </Text>
             {pathCard(c.orgCodeOption, c.orgCodeOptionHint, () => {
-              setError(null);
+              setErrors([]);
               setStep('orgCode');
             })}
             {pathCard(c.payOption, c.payOptionHint, () => {
-              setError(null);
+              setErrors([]);
               setStep('plan');
             })}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={c.back}
               onPress={() => {
-                setError(null);
+                setErrors([]);
                 setStep('entry');
               }}
               style={styles.center}
@@ -510,7 +519,7 @@ export default function SignUpScreen() {
               accessibilityRole="button"
               accessibilityLabel={c.back}
               onPress={() => {
-                setError(null);
+                setErrors([]);
                 setStep('joinChoice');
               }}
               style={styles.center}
@@ -543,7 +552,7 @@ export default function SignUpScreen() {
               accessibilityRole="button"
               accessibilityLabel={c.back}
               onPress={() => {
-                setError(null);
+                setErrors([]);
                 setStep('joinChoice');
               }}
               style={styles.center}
@@ -586,6 +595,10 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   fieldBlock: { gap: spacing.sm },
+  // All submit errors stacked together (validate-on-submit).
+  errorBlock: { gap: spacing.xs },
+  // Persistent password rule: sits directly under the field, wraps fully.
+  passwordHint: { marginTop: -spacing.sm },
   trialBox: {
     gap: spacing.xs,
     borderWidth: 1,
