@@ -56,7 +56,8 @@ export function sequence(mode: GateMode): StepId[] {
 /**
  * Day-zero onboarding: one gentle question per card, matching the demo. The pet
  * branch (kind + breed) appears only when the loved one is a pet, and the kind
- * question uses the entered name. No progress bar percentage — just "Step X of N".
+ * question uses the entered name. No progress language of any kind — no step
+ * counter, no percentage — one quiet question at a time.
  */
 export function DayZeroGate() {
   const { colors } = useTheme();
