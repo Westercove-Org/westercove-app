@@ -6,7 +6,7 @@ import { HeroHeader } from '@/components/HeroHeader';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { LEGAL_LINK_URLS, WELCOME_NOTICE } from '@/constants/welcomeNotice';
-import { DISCLAIMER_V13 } from '@/features/auth/disclaimerContent';
+import { DISCLAIMER_NOTICE } from '@/features/auth/disclaimerContent';
 import { recordWelcomeAcceptance } from '@/features/auth/welcomeAcceptance';
 import { useTheme } from '@/theme';
 import { fonts, MAX_CONTENT_WIDTH, spacing } from '@/theme/tokens';
@@ -19,9 +19,11 @@ const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
  * section headings over relaxed 17px body, a standalone 18+ line, a gold divider
  * before the passive consent block, and a Begin / Go back pair. The body copy is
  * FE-owned (see disclaimerContent.ts) because the BE content model can't express
- * this structure; Begin records DISCLAIMER_V13.version — the version actually
- * shown. Terms/Privacy open the public pages; Community Guidelines is plain text
- * (no page yet). The crisis line stays pinned at the foot via the (auth) layout.
+ * this structure; Begin records DISCLAIMER_NOTICE.version — the version actually
+ * shown. Consent is an affirmative checkbox (Wesley's ref, Rohan's ruling):
+ * Begin is disabled until the 18+ box is ticked. Terms/Privacy open the public
+ * pages; Community Guidelines is plain text (no page yet). The crisis line stays
+ * pinned at the foot via the (auth) layout.
  */
 export default function WelcomeGateScreen() {
   const router = useRouter();
@@ -33,15 +35,16 @@ export default function WelcomeGateScreen() {
   const next = intent === 'signup' ? '/sign-up' : '/sign-in';
 
   const [busy, setBusy] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   const onBegin = async () => {
-    if (busy) return;
+    if (busy || !agreed) return;
     setBusy(true);
-    // The Begin press is the acknowledgement (passive consent, #128) — record the
-    // version of the body actually shown. Failure here must not trap the person
-    // on the gate; the signup finalize call re-sends the version.
+    // The 18+ tick + Begin is the acknowledgement — record the version of the
+    // body actually shown. Failure here must not trap the person on the gate;
+    // the signup finalize call re-sends the version.
     try {
-      await recordWelcomeAcceptance(DISCLAIMER_V13.version);
+      await recordWelcomeAcceptance(DISCLAIMER_NOTICE.version);
     } catch {
       // Storage unavailable (private mode): proceed; server re-ask covers it.
     }
@@ -58,10 +61,10 @@ export default function WelcomeGateScreen() {
         </Text>
 
         <Text variant="body" color="textMuted" style={styles.intro}>
-          {DISCLAIMER_V13.intro}
+          {DISCLAIMER_NOTICE.intro}
         </Text>
 
-        {DISCLAIMER_V13.blocks.map((b, i) => {
+        {DISCLAIMER_NOTICE.blocks.map((b, i) => {
           if (b.kind === 'heading') {
             return (
               <Text key={i} color="heading" style={styles.heading}>
@@ -86,19 +89,46 @@ export default function WelcomeGateScreen() {
         {/* Gold divider before the consent block (Wesley's ref). */}
         <View style={[styles.divider, { borderTopColor: colors.saffron }]} />
 
-        {/* Passive acknowledgement (#128), unchanged and version-stable — matches
-            the server's acknowledgement check. */}
-        <Text variant="body" color="textMuted" style={styles.ackStatement}>
-          {WELCOME_NOTICE.ackStatement}
-        </Text>
+        {/* Affirmative 18+ checkbox (Wesley's ref, Rohan's ruling). The label is
+            its own acknowledgement sentence — NOT a pre-agreement to the Terms.
+            Begin is disabled until it is ticked. */}
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: agreed }}
+          accessibilityLabel={DISCLAIMER_NOTICE.consentLabel}
+          onPress={() => setAgreed((v) => !v)}
+          style={styles.checkRow}
+        >
+          <View
+            style={[
+              styles.box,
+              { borderColor: colors.line },
+              agreed && { backgroundColor: colors.forest, borderColor: colors.forest },
+            ]}
+          >
+            {agreed ? (
+              <Text variant="bodySmall" color="onAccent">
+                {'✓'}
+              </Text>
+            ) : null}
+          </View>
+          <Text variant="body" style={styles.checkLabel}>
+            {DISCLAIMER_NOTICE.consentLabel}
+          </Text>
+        </Pressable>
 
         <View style={styles.actions}>
           <Button
             label={WELCOME_NOTICE.beginLabel}
             variant="amethyst"
             onPress={onBegin}
-            disabled={busy}
+            disabled={busy || !agreed}
           />
+          {!agreed ? (
+            <Text variant="bodySmall" color="textMuted" style={styles.beginHelper}>
+              {DISCLAIMER_NOTICE.beginHelper}
+            </Text>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={WELCOME_NOTICE.goBackLabel}
@@ -176,7 +206,18 @@ const styles = StyleSheet.create({
   // Body paragraphs, spaced within a section (Wesley's space-y-3).
   para: { fontSize: 17, lineHeight: 27, marginTop: spacing.md },
   divider: { borderTopWidth: 1, marginTop: spacing.xxxl },
-  ackStatement: { marginTop: spacing.xl, fontSize: 15, lineHeight: 22 },
+  checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, marginTop: spacing.xl },
+  box: {
+    width: 24,
+    height: 24,
+    borderWidth: 1.5,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  checkLabel: { flex: 1, fontSize: 15, lineHeight: 22 },
+  beginHelper: { textAlign: 'center' },
   actions: { marginTop: spacing.xl, gap: spacing.sm },
   goBack: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
   links: {

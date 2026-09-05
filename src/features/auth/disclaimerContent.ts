@@ -21,11 +21,21 @@ export type DisclaimerBlock =
   | { kind: 'standalone'; text: string }
   | { kind: 'para'; text: string };
 
-export const DISCLAIMER_VERSION = 'v13.2026-09-05';
+// v14: the consent affordance changed from passive to an affirmative checkbox
+// (Wesley's ref, Rohan's ruling). The BODY copy is unchanged v13 text, but a
+// consent-wording change bumps the acceptance version so it is re-asked. BE
+// locksteps this string (Stanley, QR #238); the gate records the version shown.
+export const DISCLAIMER_VERSION = 'v14.2026-09-05';
 
-export const DISCLAIMER_V13 = {
+export const DISCLAIMER_NOTICE = {
   version: DISCLAIMER_VERSION,
   intro: 'Please read this before you begin. It is short, and it matters.',
+  // Wesley's affirmative checkbox label — its own 18+ acknowledgement sentence,
+  // NOT a pre-agreement to the Terms (guard: nothing here claims agreement to
+  // Terms/Privacy before they are viewed). BE serves this verbatim (checks[0],
+  // QR #238); hardcoded here because the gate presentation is hardcoded.
+  consentLabel: 'I am 18 or older, and I have read and understand the above.',
+  beginHelper: 'Tick the box above to continue.',
   blocks: [
     { kind: 'heading', text: 'What Westercove™ is.' },
     {

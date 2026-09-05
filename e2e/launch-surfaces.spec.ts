@@ -3,8 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 /**
  * Launch-gate E2E (Q-Set v7, USE_FOUR_DOORS default ON). Exercises the FE
  * surfaces a real user hits before the tab shell: the S0 welcome gate (verbatim
- * v13 disclaimer in Wesley's structure, passive acknowledgement, acceptance
- * recorded on Begin), the four-doors intake with the five-tone picker, and
+ * v13 disclaimer in Wesley's structure, affirmative 18+ checkbox gating Begin,
+ * acceptance recorded on Begin), the four-doors intake with the five-tone picker, and
  * confirmation that the legacy DayZeroGate is not reachable with the flag on.
  * BE logic is covered separately (Angela). The disclaimer body is FE-owned
  * (disclaimerContent.ts), so the gate makes no content fetch to intercept.
@@ -36,18 +36,22 @@ test.describe('S0 welcome gate', () => {
     await expect(page.getByText(/trademark/i)).toHaveCount(0);
   });
 
-  test('passive acknowledgement: the exact sentence shows, Begin is always enabled', async ({
-    page,
-  }) => {
+  test('affirmative checkbox gates Begin (Wesley ruling); no passive sentence', async ({ page }) => {
     await page.goto('/disclaimer');
-    // Passive ack — no checkbox; pressing Begin is the acknowledgement.
-    await expect(
-      page.getByText(
-        /By continuing, you confirm that you are 18 or older\. You will have an opportunity to review and accept our Terms and Privacy Notice/,
-      ),
-    ).toBeVisible();
-    await expect(page.getByRole('checkbox')).toHaveCount(0);
+    const checkbox = page.getByRole('checkbox', {
+      name: 'I am 18 or older, and I have read and understand the above.',
+    });
+    await expect(checkbox).toBeVisible();
+    // The reversed passive sentence must be gone.
+    await expect(page.getByText(/By continuing, you confirm that you are 18 or older/)).toHaveCount(
+      0,
+    );
+    // Begin disabled until ticked, with the helper line; ticking enables it.
+    await expect(page.getByRole('button', { name: 'Begin' })).toBeDisabled();
+    await expect(page.getByText('Tick the box above to continue.')).toBeVisible();
+    await checkbox.click();
     await expect(page.getByRole('button', { name: 'Begin' })).toBeEnabled();
+    await expect(page.getByText('Tick the box above to continue.')).toHaveCount(0);
   });
 
   test('links: Full Terms + Privacy are links, Community Guidelines is plain text', async ({
@@ -61,8 +65,13 @@ test.describe('S0 welcome gate', () => {
     await expect(page.getByRole('link', { name: 'Community Guidelines' })).toHaveCount(0);
   });
 
-  test('records the version of the body shown (v13) on Begin', async ({ page }) => {
+  test('records the version of the body shown (v14) on Begin', async ({ page }) => {
     await page.goto('/disclaimer?intent=signup');
+    await page
+      .getByRole('checkbox', {
+        name: 'I am 18 or older, and I have read and understand the above.',
+      })
+      .click();
     await page.getByRole('button', { name: 'Begin' }).click();
     await expect(page).not.toHaveURL(/disclaimer/);
     const accepted = await page.evaluate(() =>
@@ -70,7 +79,7 @@ test.describe('S0 welcome gate', () => {
         .map(([, v]) => v)
         .join('|'),
     );
-    expect(accepted).toContain('v13.2026-09-05');
+    expect(accepted).toContain('v14.2026-09-05');
   });
 
   test('the crisis line stays fixed at the foot of the gate', async ({ page }) => {

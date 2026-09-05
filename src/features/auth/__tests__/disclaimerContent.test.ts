@@ -1,19 +1,27 @@
-import { DISCLAIMER_V13 } from '@/features/auth/disclaimerContent';
+import { DISCLAIMER_NOTICE } from '@/features/auth/disclaimerContent';
 
 /**
  * The disclaimer body is FE-owned and rendered verbatim, so its STRUCTURE (five
  * headed sections in order, the standalone 18+ line, the inline "One thing we
  * ask." opening) and load-bearing copy are locked here. Changing the wording is
- * a deliberate act that must also bump DISCLAIMER_V13.version (acceptance is
+ * a deliberate act that must also bump DISCLAIMER_NOTICE.version (acceptance is
  * re-asked against the shown version).
  */
-describe('DISCLAIMER_V13', () => {
-  const headings = DISCLAIMER_V13.blocks.filter((b) => b.kind === 'heading').map((b) => b.text);
-  const standalones = DISCLAIMER_V13.blocks.filter((b) => b.kind === 'standalone').map((b) => b.text);
-  const allText = DISCLAIMER_V13.blocks.map((b) => b.text).join('\n');
+describe('DISCLAIMER_NOTICE', () => {
+  const headings = DISCLAIMER_NOTICE.blocks.filter((b) => b.kind === 'heading').map((b) => b.text);
+  const standalones = DISCLAIMER_NOTICE.blocks.filter((b) => b.kind === 'standalone').map((b) => b.text);
+  const allText = DISCLAIMER_NOTICE.blocks.map((b) => b.text).join('\n');
 
-  it('records a v13 version', () => {
-    expect(DISCLAIMER_V13.version).toBe('v13.2026-09-05');
+  it('records the v14 consent version (checkbox affordance bump)', () => {
+    expect(DISCLAIMER_NOTICE.version).toBe('v14.2026-09-05');
+  });
+
+  it('carries Wesley’s affirmative checkbox label — an 18+ ack, not a Terms pre-agreement', () => {
+    expect(DISCLAIMER_NOTICE.consentLabel).toBe(
+      'I am 18 or older, and I have read and understand the above.',
+    );
+    // Guard: the consent label must not claim agreement to the Terms/Privacy.
+    expect(DISCLAIMER_NOTICE.consentLabel.toLowerCase()).not.toContain('agree');
   });
 
   it('has exactly five headed sections, in Wesley order', () => {
@@ -29,9 +37,9 @@ describe('DISCLAIMER_V13', () => {
   it('carries the 18+ line as a standalone (not a heading), between §1 and §2', () => {
     expect(standalones).toEqual(['You must be 18 or older to use it.']);
     // It must sit after "What Westercove™ is." and before the crisis heading.
-    const kinds = DISCLAIMER_V13.blocks.map((b) => b.kind);
+    const kinds = DISCLAIMER_NOTICE.blocks.map((b) => b.kind);
     const standaloneIdx = kinds.indexOf('standalone');
-    const crisisIdx = DISCLAIMER_V13.blocks.findIndex(
+    const crisisIdx = DISCLAIMER_NOTICE.blocks.findIndex(
       (b) => b.kind === 'heading' && b.text.startsWith('If you are in crisis'),
     );
     expect(standaloneIdx).toBeGreaterThan(0);
@@ -40,7 +48,7 @@ describe('DISCLAIMER_V13', () => {
 
   it('opens the second "what this space will hold" paragraph with "One thing we ask." inline, not as a heading', () => {
     expect(headings).not.toContain('One thing we ask.');
-    const para = DISCLAIMER_V13.blocks.find(
+    const para = DISCLAIMER_NOTICE.blocks.find(
       (b) => b.kind === 'para' && b.text.startsWith('One thing we ask.'),
     );
     expect(para).toBeDefined();
