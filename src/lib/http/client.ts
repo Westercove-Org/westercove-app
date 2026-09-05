@@ -1,4 +1,5 @@
 import {
+  GENERIC_ERROR_MESSAGE,
   HttpError,
   TimeoutError,
   type HttpClientOptions,
@@ -147,11 +148,19 @@ export class HttpClient {
   private async parse<T>(res: Response): Promise<T> {
     const data = await this.readBody(res);
     if (!res.ok) {
-      const message =
-        (data && typeof data === 'object' && 'message' in data
-          ? String((data as { message: unknown }).message)
-          : null) ?? `Request failed with status ${res.status}`;
-      throw new HttpError(res.status, message, data);
+      // Use the server's own message when it sent a real one; otherwise a calm
+      // human fallback. NEVER synthesize "Request failed with status N" — that
+      // raw HTTP string used to leak straight onto screens that render
+      // error.message (e.g. the org-code join screen). Callers still branch on
+      // `.status` for status-specific copy.
+      const serverMessage =
+        data &&
+        typeof data === 'object' &&
+        'message' in data &&
+        typeof (data as { message: unknown }).message === 'string'
+          ? (data as { message: string }).message.trim()
+          : '';
+      throw new HttpError(res.status, serverMessage || GENERIC_ERROR_MESSAGE, data);
     }
     return data as T;
   }
