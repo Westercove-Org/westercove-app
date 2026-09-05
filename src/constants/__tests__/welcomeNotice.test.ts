@@ -50,9 +50,12 @@ describe('welcome notice (S0, verbatim + ordered)', () => {
     expect(body).toContain('We will not say “at least.”');
   });
 
-  it('uses the exact tick label', () => {
-    expect(WELCOME_NOTICE.tickLabel).toBe(
-      'I am 18 or older, and I have read and understand the above.',
+  it('uses Wesley’s exact passive acknowledgement (v12), not a tick', () => {
+    // Passive ack: no pre-agreement to Terms, no "I understand" checkbox. Must
+    // match the server's LEGAL_DISCLAIMER_ACKNOWLEDGEMENT_CHECKS[0] verbatim.
+    expect(WELCOME_NOTICE.ackStatement).toBe(
+      'By continuing, you confirm that you are 18 or older. You will have an opportunity to review and accept our Terms and Privacy Notice before using Westercove™.',
     );
+    expect(NOTICE_VERSION).toBe('v12.2026-09-05');
   });
 });

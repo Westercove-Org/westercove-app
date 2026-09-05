@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 /**
  * Launch-gate E2E (Q-Set v7, USE_FOUR_DOORS default ON). Exercises the FE
  * surfaces a real user hits before the tab shell: the S0 welcome gate (verbatim
- * notice, 18+ tick gates Begin, acceptance recorded), the four-doors intake with
+ * notice, passive v12 acknowledgement, acceptance recorded on Begin), the four-doors intake with
  * the five-tone picker, and confirmation that the legacy DayZeroGate is not
  * reachable with the flag on. BE logic is covered separately (Angela).
  */
@@ -32,33 +32,32 @@ test.describe('S0 welcome gate', () => {
     await expect(page.getByText(/We will not use the word closure/)).toBeVisible();
   });
 
-  test('the 18+ tick gates Begin — cannot proceed unticked', async ({ page }) => {
+  test('passive acknowledgement (v12): the exact sentence shows, Begin is always enabled', async ({
+    page,
+  }) => {
     await page.goto('/disclaimer');
-    const begin = page.getByRole('button', { name: 'Begin' });
-    await expect(begin).toBeVisible();
-    await expect(begin).toBeDisabled();
-
-    // Ticking the affirmative checkbox enables Begin.
-    const tick = page.getByRole('checkbox', {
-      name: /I am 18 or older, and I have read and understand the above\./,
-    });
-    await tick.click();
-    await expect(begin).toBeEnabled();
+    // Wesley's passive ack — no checkbox; pressing Begin is the acknowledgement.
+    await expect(
+      page.getByText(
+        /By continuing, you confirm that you are 18 or older\. You will have an opportunity to review and accept our Terms and Privacy Notice/,
+      ),
+    ).toBeVisible();
+    await expect(page.getByRole('checkbox')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Begin' })).toBeEnabled();
   });
 
   test('Begin records the acceptance at NOTICE_VERSION and moves on', async ({ page }) => {
     await page.goto('/disclaimer?intent=signup');
-    await page.getByRole('checkbox', { name: /I am 18 or older/ }).click();
     await page.getByRole('button', { name: 'Begin' }).click();
     // Left the gate (sign-up is the next surface for the signup intent).
     await expect(page).not.toHaveURL(/disclaimer/);
-    // Acceptance recorded with the server-matched version.
+    // Acceptance recorded with the server-matched version (v12).
     const accepted = await page.evaluate(() =>
       Object.entries(window.localStorage)
         .map(([, v]) => v)
         .join('|'),
     );
-    expect(accepted).toContain('v11.2026-09-04');
+    expect(accepted).toContain('v12.2026-09-05');
   });
 
   test('the crisis line stays fixed at the foot of the gate', async ({ page }) => {
