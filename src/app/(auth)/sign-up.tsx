@@ -286,6 +286,14 @@ export default function SignUpScreen() {
                       accessibilityState={{ selected: active }}
                       accessibilityLabel={`${label} ${intervalLabel}, ${p.display}${
                         annual ? `, ${c.annualCaption}` : ''
+                      }${
+                        p.savingsDisplay
+                          ? `, ${
+                              p.savingsPercent != null
+                                ? c.savingsLine(p.savingsDisplay, p.savingsPercent)
+                                : `Save ${p.savingsDisplay}`
+                            }`
+                          : ''
                       }`}
                       style={[
                         styles.planCard,
@@ -305,6 +313,17 @@ export default function SignUpScreen() {
                       {annual ? (
                         <Text variant="bodySmall" color="forest">
                           {c.annualCaption}
+                        </Text>
+                      ) : null}
+                      {/* Numeric savings, server-provided. Key off the field, not
+                          the interval: the server sends it only when there is a
+                          real positive saving (null on monthly AND on an annual
+                          with no/zero/mismatched saving — never a $0.00 badge). */}
+                      {p.savingsDisplay ? (
+                        <Text variant="bodySmall" color="forest">
+                          {p.savingsPercent != null
+                            ? c.savingsLine(p.savingsDisplay, p.savingsPercent)
+                            : `Save ${p.savingsDisplay}`}
                         </Text>
                       ) : null}
                     </Pressable>

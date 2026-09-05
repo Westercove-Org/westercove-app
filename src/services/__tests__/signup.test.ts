@@ -37,6 +37,29 @@ describe('ApiSignupService', () => {
     });
   });
 
+  it('getPricing maps the server annual savings (savings_display/_percent) and leaves monthly undefined', async () => {
+    mockGet.mockResolvedValue({
+      plans: [
+        { plan: 'standard_monthly', tier: 'standard', display: '$24.99/month', amount: 2499, currency: 'usd', interval: 'month' },
+        { plan: 'standard_annual', tier: 'standard', display: '$274.89/year', amount: 27489, currency: 'usd', interval: 'year', savings_display: '$24.99', savings_percent: 8 },
+        { plan: 'premium_monthly', tier: 'premium', display: '$39.99/month', amount: 3999, currency: 'usd', interval: 'month', savings_display: null, savings_percent: null },
+        { plan: 'premium_annual', tier: 'premium', display: '$439.89/year', amount: 43989, currency: 'usd', interval: 'year', savings_display: '$39.99', savings_percent: 8 },
+      ],
+      trial_days: 14,
+      first_charge_date: '2026-09-15T00:00:00',
+    });
+    const r = await svc.getPricing();
+    const annual = r.plans.find((p) => p.plan === 'standard_annual');
+    const monthly = r.plans.find((p) => p.plan === 'standard_monthly');
+    const monthlyNulled = r.plans.find((p) => p.plan === 'premium_monthly');
+    expect(annual).toMatchObject({ savingsDisplay: '$24.99', savingsPercent: 8 });
+    expect(monthly?.savingsDisplay).toBeUndefined();
+    expect(monthly?.savingsPercent).toBeUndefined();
+    // Server null -> undefined (not passed through as null).
+    expect(monthlyNulled?.savingsDisplay).toBeUndefined();
+    expect(monthlyNulled?.savingsPercent).toBeUndefined();
+  });
+
   it('getPricing throws when a known plan is missing (blocks the paid path, no partial screen)', async () => {
     mockGet.mockResolvedValue({
       plans: [

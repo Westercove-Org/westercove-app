@@ -131,6 +131,9 @@ export const copy = {
     // number; if the annual:monthly ratio ever changes, update this line. Do
     // not paraphrase — this is the approved phrasing.
     annualCaption: 'Twelve months for the price of eleven',
+    // Numeric annual savings from the server (display + percent), shown with the
+    // caption. Verbatim server values — never computed client side (R-2/R-4).
+    savingsLine: (display: string, percent: number) => `Save ${display} (${percent}%)`,
     orgCodeOption: 'I have an access code',
     orgCodeOptionHint: 'Provided by my employer or organization.',
     payOption: 'I’m joining on my own',
