@@ -13,12 +13,6 @@ import { fonts, MAX_CONTENT_WIDTH, spacing } from '@/theme/tokens';
 
 const heroImage = require('../../../assets/images/westercove_valley_green.jpg');
 
-// westercove-beta's metallic --gold (#C9AE5D), used for thin rules only — the
-// gold divider above the consent block. The RN theme has no token for this
-// (its `saffron` is the brighter horizon-glow gold), so it is inlined here.
-// ponytail: promote to a theme token if a second surface needs the gold rule.
-const BETA_GOLD = '#C9AE5D';
-
 /**
  * S0 welcome gate — v13 disclaimer re-implemented in RN to match Wesley's
  * westercove-beta design: a valley-green photo header, serif "bold-title"
@@ -59,19 +53,17 @@ export default function WelcomeGateScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* h1 = beta's font-serif text-3xl (30px / lh 36), amethyst-deep. */}
+      {/* h1 = beta's font-serif text-3xl (30px / lh 36); the serif-italic
+          subhead sits on the header, matching beta. */}
       <HeroHeader
         variant="compact"
         title={WELCOME_NOTICE.title}
+        subhead={WELCOME_NOTICE.tagline}
         image={heroImage}
         titleStyle={styles.h1}
       />
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text color="amethystText" style={styles.tagline}>
-          {WELCOME_NOTICE.tagline}
-        </Text>
-
         <Text variant="body" style={styles.intro}>
           {DISCLAIMER_NOTICE.intro}
         </Text>
@@ -98,10 +90,8 @@ export default function WelcomeGateScreen() {
           );
         })}
 
-        {/* Gold divider before the consent block. Beta uses its metallic --gold
-            (#C9AE5D) for thin rules — distinct from the theme's saffron horizon
-            glow — and the app theme has no token for it yet (flagged to god). */}
-        <View style={[styles.divider, { borderTopColor: BETA_GOLD }]} />
+        {/* Gold divider before the consent block (beta's metallic gold rule). */}
+        <View style={[styles.divider, { borderTopColor: colors.gold }]} />
 
         {/* Affirmative 18+ checkbox (Wesley's ref, Rohan's ruling). The label is
             its own acknowledgement sentence — NOT a pre-agreement to the Terms.
@@ -206,9 +196,9 @@ const styles = StyleSheet.create({
   // h1: font-serif text-3xl (30px / lh 36). Screen-title variant is already
   // Source Serif 4 400 amethyst; only the size grows to match beta.
   h1: { fontSize: 30, lineHeight: 36 },
-  tagline: { fontFamily: fonts.serif, fontStyle: 'italic', fontSize: 18, lineHeight: 28 },
   // Intro: text-[17px] leading-relaxed (17px / 1.625), foreground (not muted).
-  intro: { marginTop: spacing.md, fontSize: 17, lineHeight: 27.6 },
+  // First line under the header, so no extra top margin (beta main is py-8).
+  intro: { fontSize: 17, lineHeight: 27.6 },
   // Section h2: font-serif text-xl leading-snug (20px / 1.375), amethyst-deep.
   // Beta's headings inherit weight 400 (Tailwind preflight resets <h2>), so this
   // is Source Serif 4 Regular — NOT semibold. letterSpacing -0.01em ≈ -0.2 at 20px.

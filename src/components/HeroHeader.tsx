@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSessionStore } from '@/features/auth/sessionStore';
 import { useTheme } from '@/theme';
+import { fonts } from '@/theme/tokens';
 import { DriftingPhoto } from './DriftingPhoto';
 import { SunGlow } from './SunGlow';
 import { DownloadIcon } from './icons';
@@ -22,6 +23,10 @@ export interface HeroHeaderProps {
   /** Small label under the title (e.g. "Home" on the greeting hero). */
   label?: string;
   subtitle?: string;
+  /** Optional serif-italic subhead rendered directly under the title, inside the
+   * photo header (the disclaimer gate's "Here for you when the world goes
+   * quiet."). Matches westercove-beta, which sits the subhead on the header. */
+  subhead?: string;
   /** Hero photo (require()'d asset). Defaults to the sunrise image. */
   image?: number;
   /** Optional per-screen override for the title text style (e.g. the disclaimer
@@ -41,6 +46,7 @@ export function HeroHeader({
   title,
   label,
   subtitle,
+  subhead,
   image = defaultPhoto,
   titleStyle,
 }: HeroHeaderProps) {
@@ -105,6 +111,11 @@ export function HeroHeader({
           >
             {title}
           </Text>
+          {subhead ? (
+            <Text color="heading" style={styles.subhead}>
+              {subhead}
+            </Text>
+          ) : null}
           {label ? (
             <Text variant="screenTitle" color="heading" style={styles.label}>
               {label}
@@ -150,4 +161,6 @@ const styles = StyleSheet.create({
   downloadText: { textTransform: 'none' },
   label: { marginTop: 2 },
   subtitle: { marginTop: 4 },
+  // Serif-italic subhead (beta: font-serif text-lg italic, 18px / lh 28).
+  subhead: { marginTop: 4, fontFamily: fonts.serif, fontStyle: 'italic', fontSize: 18, lineHeight: 28 },
 });
