@@ -1,4 +1,5 @@
 import { HttpClient } from '@/lib/http/client';
+import { GENERIC_ERROR_MESSAGE, HttpError } from '@/lib/http/types';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(body === null ? '' : JSON.stringify(body), {
@@ -75,6 +76,20 @@ describe('HttpClient', () => {
       status: 400,
       message: 'nope',
     });
+  });
+
+  it('NEVER surfaces a raw HTTP status string when the server sent no message', async () => {
+    // The bug Rohan hit: an org code of `a` returned a 400 with no message body
+    // and the screen rendered "Request failed with status 400". The client must
+    // fall back to a calm human sentence, never the raw status.
+    for (const body of [null, {}, { message: 42 }, { message: '   ' }]) {
+      fetchMock.mockResolvedValue(jsonResponse(body, 400));
+      const client = new HttpClient({ baseUrl: 'https://api.test' });
+      const err = (await client.get('/join').catch((e) => e)) as HttpError;
+      expect(err.status).toBe(400);
+      expect(err.message).not.toMatch(/status \d/i);
+      expect(err.message).toBe(GENERIC_ERROR_MESSAGE);
+    }
   });
 
   it('retries once when onUnauthorized recovers the session', async () => {

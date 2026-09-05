@@ -23,6 +23,14 @@ export interface RequestOptions {
  * Thrown for any non-2xx response. Carries the status and the parsed body so
  * callers can branch on `status` or read `data` without re-reading the stream.
  */
+/**
+ * Last-resort, user-safe message for a non-2xx response that carried no message
+ * of its own. A raw "Request failed with status N" must never reach a user
+ * (a grieving one least of all), so the client falls back to this calm sentence
+ * — callers that want a screen-specific line can still branch on `HttpError.status`.
+ */
+export const GENERIC_ERROR_MESSAGE = 'Something went wrong. Please try again.';
+
 export class HttpError extends Error {
   readonly status: number;
   readonly data: unknown;

@@ -36,5 +36,5 @@ export const apiClient = new HttpClient({
 export { HttpClient } from './client';
 export { API_BASE_URL } from './config';
 export { getAuthToken, setAuthToken, clearAuthToken } from './authToken';
-export { HttpError, TimeoutError } from './types';
+export { HttpError, TimeoutError, GENERIC_ERROR_MESSAGE } from './types';
 export type { HttpClientOptions, RequestOptions, HttpMethod } from './types';
