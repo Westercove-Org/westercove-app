@@ -128,41 +128,35 @@ jobs:
           aws ecs update-service --cluster "${ECS_CLUSTER}" --service "${ECS_SERVICE}" \
             --task-definition "${NEW_TD}" --no-cli-pager >/dev/null
           # Wait for steady state. Replaces `aws ecs wait services-stable` (40x15s=10min),
-          # which red-Xed slow-but-successful cold starts (image pull + ALB health-check grace
-          # can legitimately exceed 10min). Poll rolloutState up to WAIT_TIMEOUT, but FAIL FAST
-          # on a genuinely bad rollout. Circuit breaker is DISABLED on this service, so
-          # rolloutState never reports FAILED — we detect failure from STOPPED tasks instead.
-          # Job still goes RED on: image pull error, ENI/secret init error, container crash
-          # (non-zero exit), ELB health-check kill, or not-stable-within-WAIT_TIMEOUT.
+          # which red-Xed slow-but-successful cold starts. Poll the PRIMARY deployment using
+          # ecs:DescribeServices ONLY (the permission the old waiter already used) — the deploy
+          # roles have DescribeServices but NOT ListTasks/DescribeTasks, so this step must not
+          # call those. Success = rolloutState COMPLETED and running==desired, up to WAIT_TIMEOUT.
+          # Fast-fail on failedTasks: ECS increments the PRIMARY deployment's failedTasks on tasks
+          # that fail to start / crash / fail health checks (CannotPull, ENI/secret init error,
+          # non-zero exit, ELB health-check kill) and RESETS it to 0 once any task runs healthy,
+          # so a sustained count >= FAIL_THRESHOLD is a genuine bad rollout while a slow-but-healthy
+          # rollout never trips it. Still goes RED on: failedTasks >= FAIL_THRESHOLD, or
+          # not-stable-within-WAIT_TIMEOUT.
           WAIT_TIMEOUT="${WAIT_TIMEOUT:-1200}"
+          FAIL_THRESHOLD="${FAIL_THRESHOLD:-3}"
           wait_stable() {
             local cluster="$1" service="$2"
             local deadline=$(( $(date +%s) + WAIT_TIMEOUT ))
-            local out rollout running desired td stopped reasons exits
+            local out rollout running desired failed
             while :; do
               out=$(aws ecs describe-services --cluster "$cluster" --services "$service" \
-                --query 'services[0].deployments[?status==`PRIMARY`]|[0].[rolloutState,runningCount,desiredCount,taskDefinition]' \
+                --query 'services[0].deployments[?status==`PRIMARY`]|[0].[rolloutState,runningCount,desiredCount,failedTasks]' \
                 --output text)
-              read -r rollout running desired td <<<"$out"
+              read -r rollout running desired failed <<<"$out"
               if [ "$rollout" = "COMPLETED" ] && [ "$running" = "$desired" ]; then
-                echo "OK: $service stable ($running/$desired) on $td"; return 0
+                echo "OK: $service stable ($running/$desired) rollout=$rollout"; return 0
               fi
-              stopped=$(aws ecs list-tasks --cluster "$cluster" --service-name "$service" \
-                --desired-status STOPPED --query 'taskArns' --output text)
-              if [ -n "$stopped" ] && [ "$stopped" != "None" ]; then
-                reasons=$(aws ecs describe-tasks --cluster "$cluster" --tasks $stopped \
-                  --query "tasks[?taskDefinitionArn=='$td'].[stoppedReason,containers[0].reason]" --output text)
-                if printf '%s\n' "$reasons" | grep -Eiq 'CannotPull|ResourceInitialization|ImagePull|CannotCreate|health checks'; then
-                  echo "FAILED: $service bad rollout on $td:"; printf '%s\n' "$reasons"; return 1
-                fi
-                exits=$(aws ecs describe-tasks --cluster "$cluster" --tasks $stopped \
-                  --query "tasks[?taskDefinitionArn=='$td'].containers[0].exitCode" --output text)
-                if printf '%s' "$exits" | tr '[:space:]' '\n' | grep -Eq '^[1-9][0-9]*$'; then
-                  echo "FAILED: $service task exited non-zero (crash) on $td (exit codes: $exits)"; return 1
-                fi
+              if [ "${failed:-0}" -ge "$FAIL_THRESHOLD" ]; then
+                echo "FAILED: $service bad rollout (failedTasks=$failed, rollout=$rollout running=$running/$desired)"; return 1
               fi
               if [ "$(date +%s)" -ge "$deadline" ]; then
-                echo "FAILED: $service not stable within ${WAIT_TIMEOUT}s (rollout=$rollout running=$running/$desired)"; return 1
+                echo "FAILED: $service not stable within ${WAIT_TIMEOUT}s (rollout=$rollout running=$running/$desired failedTasks=${failed:-0})"; return 1
               fi
               sleep 15
             done
