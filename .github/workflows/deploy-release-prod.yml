@@ -118,5 +118,45 @@ jobs:
             --query 'taskDefinition.taskDefinitionArn' --output text)
           aws ecs update-service --cluster "${ECS_CLUSTER}" --service "${ECS_SERVICE}" \
             --task-definition "${NEW_TD}" --no-cli-pager >/dev/null
-          aws ecs wait services-stable --cluster "${ECS_CLUSTER}" --services "${ECS_SERVICE}"
+          # Wait for steady state. Replaces `aws ecs wait services-stable` (40x15s=10min),
+          # which red-Xed slow-but-successful cold starts (image pull + ALB health-check grace
+          # can legitimately exceed 10min). Poll rolloutState up to WAIT_TIMEOUT, but FAIL FAST
+          # on a genuinely bad rollout. Circuit breaker is DISABLED on this service, so
+          # rolloutState never reports FAILED — we detect failure from STOPPED tasks instead.
+          # Job still goes RED on: image pull error, ENI/secret init error, container crash
+          # (non-zero exit), ELB health-check kill, or not-stable-within-WAIT_TIMEOUT.
+          WAIT_TIMEOUT="${WAIT_TIMEOUT:-1200}"
+          wait_stable() {
+            local cluster="$1" service="$2"
+            local deadline=$(( $(date +%s) + WAIT_TIMEOUT ))
+            local out rollout running desired td stopped reasons exits
+            while :; do
+              out=$(aws ecs describe-services --cluster "$cluster" --services "$service" \
+                --query 'services[0].deployments[?status==`PRIMARY`]|[0].[rolloutState,runningCount,desiredCount,taskDefinition]' \
+                --output text)
+              read -r rollout running desired td <<<"$out"
+              if [ "$rollout" = "COMPLETED" ] && [ "$running" = "$desired" ]; then
+                echo "OK: $service stable ($running/$desired) on $td"; return 0
+              fi
+              stopped=$(aws ecs list-tasks --cluster "$cluster" --service-name "$service" \
+                --desired-status STOPPED --query 'taskArns' --output text)
+              if [ -n "$stopped" ] && [ "$stopped" != "None" ]; then
+                reasons=$(aws ecs describe-tasks --cluster "$cluster" --tasks $stopped \
+                  --query "tasks[?taskDefinitionArn=='$td'].[stoppedReason,containers[0].reason]" --output text)
+                if printf '%s\n' "$reasons" | grep -Eiq 'CannotPull|ResourceInitialization|ImagePull|CannotCreate|health checks'; then
+                  echo "FAILED: $service bad rollout on $td:"; printf '%s\n' "$reasons"; return 1
+                fi
+                exits=$(aws ecs describe-tasks --cluster "$cluster" --tasks $stopped \
+                  --query "tasks[?taskDefinitionArn=='$td'].containers[0].exitCode" --output text)
+                if printf '%s' "$exits" | tr '[:space:]' '\n' | grep -Eq '^[1-9][0-9]*$'; then
+                  echo "FAILED: $service task exited non-zero (crash) on $td (exit codes: $exits)"; return 1
+                fi
+              fi
+              if [ "$(date +%s)" -ge "$deadline" ]; then
+                echo "FAILED: $service not stable within ${WAIT_TIMEOUT}s (rollout=$rollout running=$running/$desired)"; return 1
+              fi
+              sleep 15
+            done
+          }
+          wait_stable "${ECS_CLUSTER}" "${ECS_SERVICE}"
           echo "Prod frontend release ${{ steps.tag.outputs.tag }} stable at ${NEW_TD}"
